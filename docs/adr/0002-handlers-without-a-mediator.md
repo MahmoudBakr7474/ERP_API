@@ -11,7 +11,7 @@ hides which handler runs.
 `ICommandHandler<TCommand, TResponse>` and `IQueryHandler<TQuery, TResponse>` (BuildingBlocks.Application) return
 `Result<TResponse>`. `AddCommandHandler<,,>` / `AddQueryHandler<,,>` register the feature handler behind
 decorators: commands get logging → validation → handler; queries get validation → handler. Callers depend on the
-interface, so the pipeline cannot be skipped by accident. Feature folders hold `Command`/`Query`, `Handler`,
+interface, so the pipeline cannot be skipped by accident. Use case folders (`Features/<Area>/<UseCase>/`, ADR 0010) hold `Command`/`Query`, `Handler`,
 `Validator`.
 
 ## Alternatives

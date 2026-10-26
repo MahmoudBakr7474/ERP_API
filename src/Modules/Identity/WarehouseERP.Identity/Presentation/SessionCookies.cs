@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.BuildingBlocks.Infrastructure.Http;
-using WarehouseERP.Identity.Application.Features.Login;
+using WarehouseERP.Identity.Application.Features.Authentication.Login;
 using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Identity.Presentation;

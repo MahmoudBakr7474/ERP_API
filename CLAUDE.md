@@ -19,7 +19,7 @@
 - Maintain Architecture Tests to enforce dependency rules, including new modules. Avoid circular references and shared business logic in the SharedKernel.
 
 ## Preferred application patterns
-- Feature folders (e.g. `Features/CreateProduct/{Command,Handler,Validator}`); async + `CancellationToken`.
+- Application layout = **business area + vertical slice**: `Features/<BusinessArea>/<UseCase>/` (e.g. `Catalog.Application/Features/Products/CreateProduct/`, `Features/Categories/CreateCategory/`). Each use case folder holds `Command.cs` or `Query.cs` (the request and its own DTOs), `Handler.cs` and `Validator.cs` (when input needs validation), named `<UseCase>Command|Query|Handler|Validator`, namespace = folder path. Use cases never reference each other and areas never reference each other; types shared by an area's use cases sit directly in `Features/<Area>/`, port read models in `Abstractions/`, module-wide helpers in `Shared/`. No CRUD service classes. Enforced by `FeatureConventionTests`; details in `docs/ARCHITECTURE.md` and ADR 0010. Async + `CancellationToken`.
 - `Result`/`Result<T>` for *expected* domain and application errors, with stable error codes; use exceptions for truly unexpected failures. Map errors consistently to RFC 7807-style ProblemDetails at the HTTP boundary.
 - FluentValidation through explicit async validation or an Application pipeline, not obsolete MVC auto-validation. Domain invariants and database constraints remain authoritative.
 - Strongly typed Options and `ValidateOnStart()` for required application configuration. Do not use appsettings as a substitute for editable operational policies.

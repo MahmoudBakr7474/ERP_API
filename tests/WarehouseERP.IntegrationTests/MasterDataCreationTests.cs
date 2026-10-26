@@ -1,10 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
-using WarehouseERP.Catalog.Application.Features.CreateProduct;
+using WarehouseERP.Catalog.Application.Features.Products.CreateProduct;
 using WarehouseERP.Catalog.Contracts;
 using WarehouseERP.Catalog.Domain;
-using WarehouseERP.Organization.Application.Features.CreateWarehouse;
+using WarehouseERP.Organization.Application.Features.Warehouses.CreateWarehouse;
 using WarehouseERP.Organization.Contracts;
 using WarehouseERP.Organization.Domain;
 using WarehouseERP.SharedKernel.Results;

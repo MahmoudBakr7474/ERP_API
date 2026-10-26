@@ -5,10 +5,10 @@ using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Infrastructure.Http;
 using WarehouseERP.Catalog.Application.Abstractions;
-using WarehouseERP.Catalog.Application.Features.CreateProduct;
-using WarehouseERP.Catalog.Application.Features.GetProduct;
-using WarehouseERP.Catalog.Application.Features.ListProducts;
-using WarehouseERP.Catalog.Application.Features.UpdateProduct;
+using WarehouseERP.Catalog.Application.Features.Products.CreateProduct;
+using WarehouseERP.Catalog.Application.Features.Products.GetProduct;
+using WarehouseERP.Catalog.Application.Features.Products.ListProducts;
+using WarehouseERP.Catalog.Application.Features.Products.UpdateProduct;
 using WarehouseERP.Catalog.Contracts;
 
 namespace WarehouseERP.Catalog.Presentation;

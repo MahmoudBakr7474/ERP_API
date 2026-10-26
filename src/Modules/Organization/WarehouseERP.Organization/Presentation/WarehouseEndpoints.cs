@@ -5,9 +5,9 @@ using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Infrastructure.Http;
 using WarehouseERP.Organization.Application.Abstractions;
-using WarehouseERP.Organization.Application.Features.CreateWarehouse;
-using WarehouseERP.Organization.Application.Features.GetWarehouse;
-using WarehouseERP.Organization.Application.Features.ListWarehouses;
+using WarehouseERP.Organization.Application.Features.Warehouses.CreateWarehouse;
+using WarehouseERP.Organization.Application.Features.Warehouses.GetWarehouse;
+using WarehouseERP.Organization.Application.Features.Warehouses.ListWarehouses;
 using WarehouseERP.Organization.Contracts;
 
 namespace WarehouseERP.Organization.Presentation;

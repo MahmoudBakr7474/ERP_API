@@ -35,5 +35,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
     <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
+    <!-- Read directly by the feature-convention architecture tests (same version NetArchTest uses). -->
+    <PackageVersion Include="Mono.Cecil" Version="0.11.3" />
   </ItemGroup>
 </Project>

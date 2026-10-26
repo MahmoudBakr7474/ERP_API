@@ -63,7 +63,7 @@ internal static partial class Credentials
     private static partial void LoginRefusedUnknownUser(ILogger logger);
 }
 
-internal static class Sessions
+internal static class SessionRevocation
 {
     /// <summary>Ends every active session of a user, optionally keeping one (the caller's own).</summary>
     public static async Task RevokeAllAsync(

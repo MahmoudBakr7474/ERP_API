@@ -1,7 +1,7 @@
-using WarehouseERP.Catalog.Application.Features.CreateProduct;
-using WarehouseERP.Catalog.Application.Features.UpdateProduct;
+using WarehouseERP.Catalog.Application.Features.Products.CreateProduct;
+using WarehouseERP.Catalog.Application.Features.Products.UpdateProduct;
 using WarehouseERP.Catalog.Contracts;
-using WarehouseERP.Organization.Application.Features.CreateWarehouse;
+using WarehouseERP.Organization.Application.Features.Warehouses.CreateWarehouse;
 using WarehouseERP.Organization.Contracts;
 
 namespace WarehouseERP.UnitTests.Application;

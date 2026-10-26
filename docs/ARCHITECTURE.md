@@ -19,7 +19,8 @@ src/
                                             registration, Result -> ProblemDetails, permission policies
   Modules/<Module>/
     WarehouseERP.<Module>.Domain/           entities, invariants, domain errors
-    WarehouseERP.<Module>.Application/      Features/<UseCase>/{Command|Query, Handler, Validator}, ports, errors
+    WarehouseERP.<Module>.Application/      Features/<BusinessArea>/<UseCase>/{Command|Query, Handler, Validator},
+                                            Abstractions/ (ports), Shared/, errors
     WarehouseERP.<Module>/                  Infrastructure/ (EF configurations, port implementations, contract
                                             implementations) + Presentation/ (endpoints) + <Module>Module (DI)
     WarehouseERP.<Module>.Contracts/        what other modules may use: read interfaces, enums, permission names
@@ -68,6 +69,9 @@ Arrows point inward. No cycles (checked). The module's outer project never refer
 | Only the host and Persistence reference module outer projects; nothing references the host | `Only_the_host_and_persistence_reference_module_outer_assemblies`, `Nothing_references_the_host` |
 | No circular references | `Project_assemblies_form_no_cycle` |
 | New modules are discovered from the host and checked automatically | `Host_wires_the_known_modules` (update the expected list when adding one) |
+| Application features live in `Features/<Area>` or `Features/<Area>/<UseCase>`, nothing deeper or directly under `Features` | `Feature_types_live_in_a_business_area_or_one_of_its_use_cases` |
+| Each handler and validator sits in its own use case folder, named `<UseCase>Handler`/`<UseCase>Validator`, with its `<UseCase>Command`/`<UseCase>Query` beside it | `Each_handler_validator_and_request_sits_in_its_own_use_case_folder` |
+| Use cases don't reference other use cases, areas don't reference other areas, area-shared types don't reference use cases (checked on the IL, async/lambda code included) | `Use_cases_and_areas_do_not_reference_each_other` |
 
 ## A request, end to end
 
@@ -88,9 +92,36 @@ HTTP ─► CorrelationIdMiddleware ─► Serilog request logging ─► Except
 * Handlers see the user through `ICurrentUser`; warehouse scope is checked in the handler, permissions by
   endpoint policies (ADR 0005). The Identity module authenticates every request against its sessions (ADR 0009).
 
+## Application folder convention (ADR 0010)
+
+Business area first, then one vertical slice per use case:
+
+```
+WarehouseERP.Catalog.Application/
+  Abstractions/                 ports and the read models they return (IProductRepository, ProductDetails, ...)
+  Shared/                       module-wide helpers used by several areas (rare)
+  Features/
+    Products/                   business area: an entity or a functional area, plural noun or area name
+      CreateProduct/            one use case = one folder = one namespace
+        Command.cs              CreateProductCommand (+ response DTOs only this use case returns)
+        Handler.cs              CreateProductHandler
+        Validator.cs            CreateProductValidator (when the input needs validation)
+      GetProduct/  ListProducts/  UpdateProduct/
+    Categories/CreateCategory/  Units/CreateUnit/  ...
+```
+
+* Areas today: Organization `Warehouses`; Catalog `Products`; Identity `Authentication`, `Account` (the signed-in
+  user's own profile and password), `Users`, `Roles`, `Permissions`, `Sessions`.
+* A use case never references another use case, and an area never references another area. What several use cases
+  of one area share sits directly in `Features/<Area>/` (e.g. `Identity…Features/Authentication/ApiTokens.cs`, used by
+  `IssueApiToken` and `RefreshApiToken`); what several areas share is a port in `Abstractions/` or a helper in
+  `Shared/`. There are no service classes that gather an entity's CRUD.
+* Presentation mirrors the areas: one endpoints file per area is the norm (`Presentation/<Area>Endpoints.cs`).
+
 ## Adding a feature
 
-1. `Application/Features/<UseCase>/Command.cs` (or `Query.cs`), `Handler.cs`, `Validator.cs`.
+1. `Application/Features/<Area>/<UseCase>/Command.cs` (or `Query.cs`), `Handler.cs`, `Validator.cs`; a new area is
+   just a new folder.
 2. A port in `Application/Abstractions` if the handler needs data it can't get yet; implement it in
    `<Module>/Infrastructure`. Writes save once, through the repository method that is the save point.
 3. Register in `<Module>Module.Add<Module>Module()` with `AddCommandHandler`/`AddQueryHandler` (this wraps the
