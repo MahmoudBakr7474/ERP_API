@@ -6,11 +6,6 @@ using WarehouseERP.Organization.Contracts;
 
 namespace WarehouseERP.Identity.Infrastructure.Security;
 
-/// <param name="AllPermissions">The Administrator role: every permission, present and future.</param>
-/// <param name="WarehouseIds">Effective warehouses; ignored when <paramref name="AllWarehouses"/> is true.</param>
-internal sealed record EffectiveAccess(
-    bool AllPermissions, IReadOnlyCollection<string> Permissions, bool AllWarehouses, IReadOnlyCollection<Guid> WarehouseIds);
-
 // What a user may do and where, read fresh on every request: a role, permission or scope change applies to the next
 // request without signing in again. Branch grants expand to the branch's current warehouses through Organization's
 // contract, so a warehouse added to the branch later is covered at once.

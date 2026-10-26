@@ -60,7 +60,7 @@ public sealed class MasterDataCreationTests(DatabaseFixture fx)
     {
         var (branchId, _) = await fx.SeedBranchAndUnitAsync();
         var result = await CreateWarehouseAsync(new(branchId, DatabaseFixture.Code("TR"), "ترانزيت", null, WarehouseType.Transit, true));
-        Assert.Same(WarehouseErrors.TransitCannotSell, result.Error);
+        Assert.Same(WarehouseDomainErrors.TransitCannotSell, result.Error);
     }
 
     [Fact]
@@ -81,6 +81,6 @@ public sealed class MasterDataCreationTests(DatabaseFixture fx)
         var (_, unitId) = await fx.SeedBranchAndUnitAsync();
         var result = await CreateProductAsync(
             new(DatabaseFixture.Code("SKU"), "خدمة", null, unitId, null, ProductType.Service, TrackingMode.Serial));
-        Assert.Same(ProductErrors.TrackingNeedsStockItem, result.Error);
+        Assert.Same(ProductDomainErrors.TrackingNeedsStockItem, result.Error);
     }
 }

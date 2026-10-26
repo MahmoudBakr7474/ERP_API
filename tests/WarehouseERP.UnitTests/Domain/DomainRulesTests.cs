@@ -20,7 +20,7 @@ public sealed class DomainRulesTests
     [Fact]
     public void Transit_warehouse_can_not_sell()
     {
-        Assert.Same(WarehouseErrors.TransitCannotSell,
+        Assert.Same(WarehouseDomainErrors.TransitCannotSell,
             Warehouse.Create(Guid.NewGuid(), "TR", "ترانزيت", null, WarehouseType.Transit, allowsSelling: true).Error);
         Assert.True(Warehouse.Create(Guid.NewGuid(), "TR", "ترانزيت", null, WarehouseType.Transit, allowsSelling: false).IsSuccess);
     }
@@ -41,7 +41,7 @@ public sealed class DomainRulesTests
     [InlineData(ProductType.NonStockItem, TrackingMode.Batch)]
     public void Only_stock_items_are_tracked(ProductType type, TrackingMode tracking)
     {
-        Assert.Same(ProductErrors.TrackingNeedsStockItem,
+        Assert.Same(ProductDomainErrors.TrackingNeedsStockItem,
             Product.Create("SKU-1", "خدمة", null, Guid.NewGuid(), null, type, tracking).Error);
     }
 

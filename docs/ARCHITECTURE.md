@@ -18,11 +18,12 @@ src/
     WarehouseERP.BuildingBlocks.Infrastructure/ temporal mapping, auditing interceptor, DbFailures, handler
                                             registration, Result -> ProblemDetails, permission policies
   Modules/<Module>/
-    WarehouseERP.<Module>.Domain/           entities, invariants, domain errors
-    WarehouseERP.<Module>.Application/      Features/<BusinessArea>/<UseCase>/{Command|Query, Handler, Validator},
-                                            Abstractions/ (ports), Shared/, errors
-    WarehouseERP.<Module>/                  Infrastructure/ (EF configurations, port implementations, contract
-                                            implementations) + Presentation/ (endpoints) + <Module>Module (DI)
+    WarehouseERP.<Module>.Domain/           entities, value objects, enums, invariants, <Entity>DomainErrors
+    WarehouseERP.<Module>.Application/      Features/<Area>/<UseCase>/, Contracts/<Area>/, Abstractions/Interfaces/<Group>/,
+                                            Errors/, Shared/ (see "Application layer organization")
+    WarehouseERP.<Module>/                  Infrastructure/ (Persistence/Configurations/, repositories and read stores,
+                                            contract implementations) + Presentation/ (endpoints, Contracts/<Area>/
+                                            HTTP-only requests) + <Module>Module (DI)
     WarehouseERP.<Module>.Contracts/        what other modules may use: read interfaces, enums, permission names
 tests/
   WarehouseERP.UnitTests/                   Result, mapping, pipeline, domain rules, validators, handlers (fakes)
@@ -72,6 +73,12 @@ Arrows point inward. No cycles (checked). The module's outer project never refer
 | Application features live in `Features/<Area>` or `Features/<Area>/<UseCase>`, nothing deeper or directly under `Features` | `Feature_types_live_in_a_business_area_or_one_of_its_use_cases` |
 | Each handler and validator sits in its own use case folder, named `<UseCase>Handler`/`<UseCase>Validator`, with its `<UseCase>Command`/`<UseCase>Query` beside it | `Each_handler_validator_and_request_sits_in_its_own_use_case_folder` |
 | Use cases don't reference other use cases, areas don't reference other areas, area-shared types don't reference use cases (checked on the IL, async/lambda code included) | `Use_cases_and_areas_do_not_reference_each_other` |
+| Application errors live in `Errors/` in `<Area>Errors` classes; domain errors in `<Entity>DomainErrors` | `Application_errors_are_grouped_by_business_area_in_Errors`, `Domain_errors_are_named_after_their_entity` |
+| Application interfaces live in `Abstractions/Interfaces/<Group>/` | `Application_interfaces_live_in_Abstractions_Interfaces_grouped_by_responsibility` |
+| Reused application contracts live in `Contracts/<Area>/`, one level, no `DTOs`/`Requests`/`Responses` folders | `Reused_application_contracts_are_grouped_by_business_area` |
+| HTTP-only request records live in `Presentation/Contracts/<Area>/` | `Http_request_records_live_in_Presentation_Contracts_by_area` |
+| One top-level type per module source file, named after it (documented exceptions only) | `Every_module_source_file_declares_one_top_level_type_named_like_the_file` |
+| Namespaces match folders in every module | IDE0130 as a build error (`.editorconfig`, `[src/Modules/**.cs]`) |
 
 ## A request, end to end
 
@@ -92,38 +99,72 @@ HTTP ─► CorrelationIdMiddleware ─► Serilog request logging ─► Except
 * Handlers see the user through `ICurrentUser`; warehouse scope is checked in the handler, permissions by
   endpoint policies (ADR 0005). The Identity module authenticates every request against its sessions (ADR 0009).
 
-## Application folder convention (ADR 0010)
+## Application layer organization (ADR 0010, ADR 0011)
 
-Business area first, then one vertical slice per use case:
+Business area first, then one vertical slice per use case; a few folders for what is genuinely shared:
 
+```text
+WarehouseERP.Identity.Application/
+├── Features/                         Authentication/, Account/, Users/, Roles/, Permissions/, Sessions/
+│   ├── Authentication/
+│   │   ├── Login/                    LoginCommand.cs, LoginHandler.cs, LoginValidator.cs, LoginResponse.cs
+│   │   ├── IssueApiToken/  RefreshApiToken/  Logout/
+│   │   └── ApiTokenIssuer.cs, Credentials.cs, IssuedPair.cs    (shared by this area's use cases only)
+│   ├── Account/GetMe/                GetMeQuery.cs, GetMeHandler.cs, MeResponse.cs
+│   └── Users/CreateUser/ ...  Users/AdministratorGuard.cs
+├── Contracts/                        reused by several use cases or returned by a port
+│   ├── Users/                        UserDetailsResponse.cs, UserSummaryResponse.cs, UserRoleResponse.cs
+│   ├── Authentication/               ApiTokensResponse.cs (IssueApiToken + RefreshApiToken)
+│   └── Roles/  Sessions/  UserAccess/
+├── Abstractions/Interfaces/          one interface (or port model) per file
+│   ├── Users/                        IUserAccounts, IUserReadStore, UserAccount, NewUserAccount
+│   ├── Authentication/               IUserCredentials, LoginCheck, LoginOutcome
+│   ├── Roles/                        IRoleRepository, IUserRoleAssignments
+│   └── Sessions/  UserAccess/  Persistence/ (IIdentityPersistence)
+├── Errors/                           AuthenticationErrors, UserErrors, RoleErrors, PermissionErrors, UserAccessErrors, SessionErrors
+├── Shared/                           IdentityRules, PrivilegeGuard, SessionRevocation (used by several areas)
+└── IdentitySessionOptions.cs         the module's options
 ```
-WarehouseERP.Catalog.Application/
-  Abstractions/                 ports and the read models they return (IProductRepository, ProductDetails, ...)
-  Shared/                       module-wide helpers used by several areas (rare)
-  Features/
-    Products/                   business area: an entity or a functional area, plural noun or area name
-      CreateProduct/            one use case = one folder = one namespace
-        Command.cs              CreateProductCommand (+ response DTOs only this use case returns)
-        Handler.cs              CreateProductHandler
-        Validator.cs            CreateProductValidator (when the input needs validation)
-      GetProduct/  ListProducts/  UpdateProduct/
-    Categories/CreateCategory/  Units/CreateUnit/  ...
-```
 
-* Areas today: Organization `Warehouses`; Catalog `Products`; Identity `Authentication`, `Account` (the signed-in
-  user's own profile and password), `Users`, `Roles`, `Permissions`, `Sessions`.
-* A use case never references another use case, and an area never references another area. What several use cases
-  of one area share sits directly in `Features/<Area>/` (e.g. `Identity…Features/Authentication/ApiTokens.cs`, used by
-  `IssueApiToken` and `RefreshApiToken`); what several areas share is a port in `Abstractions/` or a helper in
-  `Shared/`. There are no service classes that gather an entity's CRUD.
-* Presentation mirrors the areas: one endpoints file per area is the norm (`Presentation/<Area>Endpoints.cs`).
+Organization: `Features/Warehouses`, `Contracts/Warehouses`, `Abstractions/Interfaces/Warehouses`, `Errors/{Warehouse,Branch}Errors`.
+Catalog: `Features/Products`, `Contracts/Products`, `Abstractions/Interfaces/Products`, `Errors/{Product,Unit,Category}Errors`.
+
+### Where each type belongs
+
+| Type | Place | Name |
+|---|---|---|
+| Entity, value object, domain enum | `<Module>.Domain/` | `Product`, `WarehouseType` |
+| Domain invariant error | `<Module>.Domain/` | `<Entity>DomainErrors` (`ProductDomainErrors.TrackingNeedsStockItem`) |
+| Command / Query | `Application/Features/<Area>/<UseCase>/` | `<UseCase>Command` / `<UseCase>Query` |
+| Handler / Validator | same folder | `<UseCase>Handler` / `<UseCase>Validator` |
+| Model only one use case returns or takes | same folder | `<UseCase>Response` or a meaningful name (`MeResponse`, `RoleDetailsResponse`) |
+| Model reused by several use cases or returned by a port | `Application/Contracts/<Area>/` | `...Response` / `...Request` by meaning, never an automatic `Dto` suffix |
+| Helper used by one use case / one area / several areas | its use case folder / `Features/<Area>/` / `Shared/` | meaningful (`RowVersions`, `Credentials`, `PrivilegeGuard`) |
+| Interface (port) and the models in its signature | `Application/Abstractions/Interfaces/<Group>/` | `IProductRepository`, `IUserReadStore`, `LoginCheck` |
+| Application error | `Application/Errors/` | `<Area>Errors` (`UserErrors.NotFound`); codes are stable |
+| Options class | Application root (module-wide) | `IdentitySessionOptions` |
+| HTTP request that differs from the command | `<Module>/Presentation/Contracts/<Area>/` | `UpdateUserRequest`; identical ones are not written, the endpoint binds the command |
+| Standard HTTP bodies | `BuildingBlocks.Infrastructure/Http/` | `CreatedResponse`, `UpdatedResponse` |
+| Endpoints | `<Module>/Presentation/` | `<Area>Endpoints` |
+| Repository / read store / port implementation | `<Module>/Infrastructure/Persistence/` (or `Security/`, etc. by concern) | `ProductRepository`, `UserReadStore`, `UserCredentials` |
+| EF Core configuration | `<Module>/Infrastructure/Persistence/Configurations/` | `<Entity>Configuration` |
+| What other modules may use | `<Module>.Contracts` assembly | `IWarehouseDirectory`, `CatalogPermissions`; never `Application/Contracts` |
+
+Rules worth remembering:
+* A use case never references another use case; an area never references another area; area-level types never
+  reference a use case.
+* A model moves out of its use case only on genuine reuse; there is no `Contracts/DTOs` folder and no mandatory
+  `Requests`/`Responses` level. `Request`/`Response` describe a role, not HTTP.
+* One top-level type per file, namespace = folder. A justified exception is documented in
+  `ApplicationLayoutTests.MultiTypeFileExceptions` and in the PR.
 
 ## Adding a feature
 
-1. `Application/Features/<Area>/<UseCase>/Command.cs` (or `Query.cs`), `Handler.cs`, `Validator.cs`; a new area is
-   just a new folder.
-2. A port in `Application/Abstractions` if the handler needs data it can't get yet; implement it in
-   `<Module>/Infrastructure`. Writes save once, through the repository method that is the save point.
+1. Find the owning module and business area; create `Application/Features/<Area>/<UseCase>/` with
+   `<UseCase>Command.cs` (or `Query.cs`), `<UseCase>Handler.cs`, `<UseCase>Validator.cs` and any model only it uses.
+2. A port in `Application/Abstractions/Interfaces/<Group>/` if the handler needs data it can't get yet; implement it
+   in `<Module>/Infrastructure`. Writes save once, through the repository method that is the save point. Errors go to
+   `Application/Errors/<Area>Errors.cs`; a model reused by several use cases goes to `Application/Contracts/<Area>/`.
 3. Register in `<Module>Module.Add<Module>Module()` with `AddCommandHandler`/`AddQueryHandler` (this wraps the
    handler in the pipeline), map the endpoint in `Presentation/`, name its permission in Contracts.
 4. Unit-test the handler with fakes, integration-test the endpoint. No migration unless the schema must change.

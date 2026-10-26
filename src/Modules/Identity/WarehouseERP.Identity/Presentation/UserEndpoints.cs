@@ -4,19 +4,21 @@ using Microsoft.AspNetCore.Routing;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Infrastructure.Http;
-using WarehouseERP.Identity.Application.Abstractions;
+using WarehouseERP.Identity.Application.Contracts.Sessions;
+using WarehouseERP.Identity.Application.Contracts.Users;
+using WarehouseERP.Identity.Application.Features.Sessions.ListSessions;
+using WarehouseERP.Identity.Application.Features.Sessions.RevokeUserSessions;
 using WarehouseERP.Identity.Application.Features.Users.CreateUser;
 using WarehouseERP.Identity.Application.Features.Users.GetUser;
-using WarehouseERP.Identity.Application.Features.Sessions.ListSessions;
 using WarehouseERP.Identity.Application.Features.Users.ListUsers;
 using WarehouseERP.Identity.Application.Features.Users.ResetUserPassword;
-using WarehouseERP.Identity.Application.Features.Sessions.RevokeUserSessions;
 using WarehouseERP.Identity.Application.Features.Users.SetUserAccess;
 using WarehouseERP.Identity.Application.Features.Users.SetUserActive;
 using WarehouseERP.Identity.Application.Features.Users.SetUserRoles;
 using WarehouseERP.Identity.Application.Features.Users.UnlockUser;
 using WarehouseERP.Identity.Application.Features.Users.UpdateUser;
 using WarehouseERP.Identity.Contracts;
+using WarehouseERP.Identity.Presentation.Contracts.Users;
 using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Identity.Presentation;
@@ -26,20 +28,6 @@ internal static class UserEndpoints
 {
     public const string Route = "/api/identity/users";
 
-    public sealed record CreateUserRequest(
-        string UserName, string DisplayName, string? Email, string Password, IReadOnlyList<Guid>? RoleIds,
-        bool IsCompanyWide, IReadOnlyList<Guid>? BranchIds, IReadOnlyList<Guid>? WarehouseIds);
-
-    public sealed record UpdateUserRequest(string DisplayName, string? Email);
-
-    public sealed record ResetPasswordRequest(string NewPassword);
-
-    public sealed record SetRolesRequest(IReadOnlyList<Guid>? RoleIds);
-
-    public sealed record SetAccessRequest(bool IsCompanyWide, IReadOnlyList<Guid>? BranchIds, IReadOnlyList<Guid>? WarehouseIds);
-
-    public sealed record CreatedResponse(Guid Id);
-
     public static IEndpointRouteBuilder MapUserEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup(Route).WithTags("Users");
@@ -47,13 +35,13 @@ internal static class UserEndpoints
         group.MapGet("/", ListAsync)
             .RequireAuthorization(IdentityPermissions.UsersRead)
             .WithName("ListUsers")
-            .Produces<PagedResult<UserSummary>>()
+            .Produces<PagedResult<UserSummaryResponse>>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{id:guid}", GetAsync)
             .RequireAuthorization(IdentityPermissions.UsersRead)
             .WithName("GetUser")
-            .Produces<UserDetails>()
+            .Produces<UserDetailsResponse>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapPost("/", CreateAsync)
@@ -117,12 +105,12 @@ internal static class UserEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
-        group.MapGet("/{id:guid}/sessions", async (Guid id, IQueryHandler<ListSessionsQuery, IReadOnlyList<SessionItem>> handler,
+        group.MapGet("/{id:guid}/sessions", async (Guid id, IQueryHandler<ListSessionsQuery, IReadOnlyList<SessionResponse>> handler,
                     CancellationToken ct) =>
                 (await handler.HandleAsync(new ListSessionsQuery(id), ct)).ToHttpResult(TypedResults.Ok))
             .RequireAuthorization(IdentityPermissions.SessionsManage)
             .WithName("ListUserSessions")
-            .Produces<IReadOnlyList<SessionItem>>();
+            .Produces<IReadOnlyList<SessionResponse>>();
 
         group.MapPost("/{id:guid}/sessions/revoke", (Guid id, ICommandHandler<RevokeUserSessionsCommand, Done> handler, CancellationToken ct) =>
                 NoContentAsync(handler.HandleAsync(new RevokeUserSessionsCommand(id), ct)))
@@ -134,11 +122,11 @@ internal static class UserEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        IQueryHandler<ListUsersQuery, PagedResult<UserSummary>> handler, CancellationToken ct,
+        IQueryHandler<ListUsersQuery, PagedResult<UserSummaryResponse>> handler, CancellationToken ct,
         int page = 1, int? pageSize = null, string? search = null) =>
         (await handler.HandleAsync(new ListUsersQuery(page, pageSize, search), ct)).ToHttpResult(TypedResults.Ok);
 
-    private static async Task<IResult> GetAsync(Guid id, IQueryHandler<GetUserQuery, UserDetails> handler, CancellationToken ct) =>
+    private static async Task<IResult> GetAsync(Guid id, IQueryHandler<GetUserQuery, UserDetailsResponse> handler, CancellationToken ct) =>
         (await handler.HandleAsync(new GetUserQuery(id), ct)).ToHttpResult(TypedResults.Ok);
 
     private static async Task<IResult> CreateAsync(

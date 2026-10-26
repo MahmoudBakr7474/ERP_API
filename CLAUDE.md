@@ -19,7 +19,7 @@
 - Maintain Architecture Tests to enforce dependency rules, including new modules. Avoid circular references and shared business logic in the SharedKernel.
 
 ## Preferred application patterns
-- Application layout = **business area + vertical slice**: `Features/<BusinessArea>/<UseCase>/` (e.g. `Catalog.Application/Features/Products/CreateProduct/`, `Features/Categories/CreateCategory/`). Each use case folder holds `Command.cs` or `Query.cs` (the request and its own DTOs), `Handler.cs` and `Validator.cs` (when input needs validation), named `<UseCase>Command|Query|Handler|Validator`, namespace = folder path. Use cases never reference each other and areas never reference each other; types shared by an area's use cases sit directly in `Features/<Area>/`, port read models in `Abstractions/`, module-wide helpers in `Shared/`. No CRUD service classes. Enforced by `FeatureConventionTests`; details in `docs/ARCHITECTURE.md` and ADR 0010. Async + `CancellationToken`.
+- Application code follows the **Application Layer Organization & Vertical Slice Conventions** section below. Async + `CancellationToken` everywhere.
 - `Result`/`Result<T>` for *expected* domain and application errors, with stable error codes; use exceptions for truly unexpected failures. Map errors consistently to RFC 7807-style ProblemDetails at the HTTP boundary.
 - FluentValidation through explicit async validation or an Application pipeline, not obsolete MVC auto-validation. Domain invariants and database constraints remain authoritative.
 - Strongly typed Options and `ValidateOnStart()` for required application configuration. Do not use appsettings as a substitute for editable operational policies.
@@ -27,6 +27,44 @@
 - `IExceptionHandler` + ProblemDetails in Host; distinguish validation/conflict/authorization from 500 errors.
 - CQRS as separate reads/writes; do not add an unnecessary mediator, event bus, generic repository, or microservice.
 - Outbox/Inbox for reliable integration when needed. Distinguish Domain Events from Integration Events and enforce idempotency.
+
+## Application Layer Organization & Vertical Slice Conventions
+Permanent standard for every module (Identity, Organization, Catalog, Inventory, Purchasing, Sales, POS, Accounting).
+Full rules, the "where each type belongs" table and the enforcing tests: `docs/ARCHITECTURE.md` → *Application
+layer organization*; reasons and alternatives: `docs/adr/0011-application-layer-organization.md` (refines ADR 0010).
+
+```text
+<Module>.Application/
+├── Features/<BusinessArea>/<UseCase>/      e.g. Features/Products/CreateProduct/
+│     CreateProductCommand.cs  CreateProductHandler.cs  CreateProductValidator.cs  CreateProductResponse.cs
+├── Contracts/<BusinessArea>/               models reused by several use cases (or returned by a port): ProductSummaryResponse.cs
+├── Abstractions/Interfaces/<Group>/        one interface per file: Products/, Users/, Sessions/, Persistence/ ...
+├── Errors/                                 <Area>Errors.cs: ProductErrors, UserErrors, SessionErrors ...
+└── Shared/                                 rare helpers used by several areas
+```
+
+- **Use cases**: grouped by business area, one folder per use case holding its Command or Query, Handler, Validator and
+  the models only it uses. Never global Commands/Queries/Handlers/Validators folders, never CRUD services.
+- **Contracts**: a model used by one use case stays in its folder. Move it to `Application/Contracts/<Area>/` only on
+  genuine reuse (several use cases, or a port returns it). No `Contracts/DTOs`, no mandatory `Requests`/`Responses`
+  subfolders, no automatic `Dto` suffix: name models `...Request`/`...Response` by meaning; a name alone does not make a
+  type HTTP-specific. `Application/Contracts` is internal to the module; other modules use only the
+  `<Module>.Contracts` assembly.
+- **No duplicate models**: commands and queries are the use-case contract. Write a Presentation request record
+  (`Presentation/Contracts/<Area>/`) only when HTTP genuinely differs (route id, server-set field, lenient optional
+  list); otherwise the endpoint binds the command. Standard HTTP bodies `CreatedResponse`/`UpdatedResponse` live in
+  BuildingBlocks.Infrastructure.
+- **Interfaces** in `Abstractions/Interfaces/<Group>/`, one per file; segregate when a consumer needs only part (e.g.
+  `IUserAccounts` / `IUserCredentials` / `IUserRoleAssignments`), not into tiny pieces. Implementations live in the
+  module's Infrastructure. Application never references EF Core, SQL Server or Infrastructure.
+- **Errors** by business area in `Application/Errors/<Area>Errors.cs`; domain invariant errors stay in the Domain as
+  `<Entity>DomainErrors`. Error codes never change. `Result`/`Error` stay in BuildingBlocks.
+- **Files**: one top-level type per file, file named after it, namespace = folder (IDE0130 is an error in modules).
+  Domain enums stay in Domain; helpers sit next to their owner (use case, area, or `Shared/` when several areas use them).
+- **Before writing a feature**: owning module → business area → `Features/<Area>/<UseCase>/` → its types beside it →
+  reuse `Contracts/<Area>` only where real → interfaces and errors by responsibility → tests → docs/ADR when a new
+  decision is made. A feature that needs a different structure documents why (and, for a multi-type file, an entry in
+  `ApplicationLayoutTests.MultiTypeFileExceptions`) instead of silently breaking the convention.
 
 ## Database and operational safety
 - Never change Migration 01, schemas, temporal tables, indexes, or historical data just to make architecture refactoring pass.

@@ -1,11 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Antiforgery;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using WarehouseERP.BuildingBlocks.Application.Security;
-using WarehouseERP.BuildingBlocks.Infrastructure.Http;
 using WarehouseERP.Identity.Application.Features.Authentication.Login;
-using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Identity.Presentation;
 
@@ -14,7 +11,7 @@ namespace WarehouseERP.Identity.Presentation;
 // the React client reads and sends back as X-XSRF-TOKEN on every unsafe request.
 internal static class SessionCookies
 {
-    public static void SignIn(HttpContext http, IAntiforgery antiforgery, WebSignIn signIn)
+    public static void SignIn(HttpContext http, IAntiforgery antiforgery, LoginResponse signIn)
     {
         http.Response.Cookies.Append(IdentityHttpDefaults.SessionCookie, signIn.Token, new CookieOptions
         {
@@ -53,36 +50,4 @@ internal static class SessionCookies
 
     public static bool IsCookieSession(HttpContext http) =>
         http.User.Identity?.AuthenticationType == IdentityHttpDefaults.CookieAuthenticationType;
-}
-
-// Passwords and session tokens never travel over plain HTTP; the Secure cookies and anti-forgery need HTTPS anyway.
-// Behind a TLS-terminating proxy the host must apply forwarded headers, or every sign-in is refused with this code.
-internal static class HttpsOnly
-{
-    public static readonly Error Required = Error.Forbidden(
-        "Identity.Session.HttpsRequired", "Signing in and handling credentials require HTTPS.");
-
-    public static RouteHandlerBuilder RequireHttps(this RouteHandlerBuilder builder) =>
-        builder.AddEndpointFilter(async (context, next) =>
-            context.HttpContext.Request.IsHttps ? await next(context) : Required.ToProblem());
-}
-
-// Cookies are sent by the browser on its own, so a cookie-authenticated unsafe request must also prove it came from
-// our client (CSRF), on top of SameSite=Strict. Bearer requests carry their token explicitly and need no check.
-internal sealed class CookieSessionAntiforgeryMiddleware(RequestDelegate next, IAntiforgery antiforgery)
-{
-    public static readonly Error CsrfTokenInvalid = Error.Forbidden(
-        "Identity.Session.CsrfTokenInvalid", "The anti-forgery token is missing or invalid; reload the page and try again.");
-
-    public async Task InvokeAsync(HttpContext context)
-    {
-        var method = context.Request.Method;
-        var safe = HttpMethods.IsGet(method) || HttpMethods.IsHead(method) || HttpMethods.IsOptions(method) || HttpMethods.IsTrace(method);
-        if (!safe && SessionCookies.IsCookieSession(context) && !await antiforgery.IsRequestValidAsync(context))
-        {
-            await CsrfTokenInvalid.ToProblem().ExecuteAsync(context);
-            return;
-        }
-        await next(context);
-    }
 }

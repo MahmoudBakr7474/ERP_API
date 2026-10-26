@@ -1,6 +1,5 @@
 using System.Reflection;
 using Mono.Cecil;
-using Mono.Cecil.Cil;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using static WarehouseERP.ArchitectureTests.Solution;
 

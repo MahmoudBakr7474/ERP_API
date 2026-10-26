@@ -4,14 +4,18 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Identity.Application;
-using WarehouseERP.Identity.Application.Abstractions;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Authentication;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Users;
+using WarehouseERP.Identity.Application.Contracts.UserAccess;
+using WarehouseERP.Identity.Application.Contracts.Users;
+using WarehouseERP.Identity.Application.Errors;
 using WarehouseERP.Identity.Application.Features.Account.ChangeMyPassword;
-using WarehouseERP.Identity.Application.Features.Roles.CreateRole;
-using WarehouseERP.Identity.Application.Features.Users.CreateUser;
 using WarehouseERP.Identity.Application.Features.Account.GetMe;
 using WarehouseERP.Identity.Application.Features.Authentication.Login;
 using WarehouseERP.Identity.Application.Features.Authentication.RefreshApiToken;
+using WarehouseERP.Identity.Application.Features.Roles.CreateRole;
 using WarehouseERP.Identity.Application.Features.Sessions.RevokeSession;
+using WarehouseERP.Identity.Application.Features.Users.CreateUser;
 using WarehouseERP.Identity.Application.Features.Users.SetUserAccess;
 using WarehouseERP.Identity.Application.Features.Users.SetUserActive;
 using WarehouseERP.Identity.Application.Features.Users.SetUserRoles;
@@ -57,7 +61,7 @@ public sealed class IdentityHandlerTests
 
         var result = await Login(log).HandleAsync(new LoginCommand("typed-name", "typed-secret"), default);
 
-        Assert.Same(IdentityApplicationErrors.LoginFailed, result.Error);
+        Assert.Same(AuthenticationErrors.LoginFailed, result.Error);
         Assert.Empty(_sessions.All);
         Assert.Equal(1, _persistence.Saves); // the failed-attempt count
         var logged = Assert.Single(log.Entries);
@@ -74,7 +78,7 @@ public sealed class IdentityHandlerTests
 
         var result = await Login(new ListLogger()).HandleAsync(new LoginCommand("u", "p"), default);
 
-        Assert.Same(IdentityApplicationErrors.LoginFailed, result.Error); // a 409 would reveal the user exists
+        Assert.Same(AuthenticationErrors.LoginFailed, result.Error); // a 409 would reveal the user exists
     }
 
     [Fact]
@@ -106,7 +110,7 @@ public sealed class IdentityHandlerTests
 
         var reused = await handler.HandleAsync(new RefreshApiTokenCommand(refresh), default);
 
-        Assert.Same(IdentityErrors.RefreshTokenReused, reused.Error);
+        Assert.Same(SessionDomainErrors.RefreshTokenReused, reused.Error);
         Assert.True(session.IsRevoked);
         Assert.Equal(2, _persistence.Saves);
         Assert.Contains(log.Entries, e => e.Level == LogLevel.Warning);
@@ -117,11 +121,11 @@ public sealed class IdentityHandlerTests
     {
         var caller = new FakeCaller();
         _sessions.StartWeb(caller.UserId!.Value, _clock.GetUtcNow().UtcDateTime);
-        _accounts.NextPasswordChange = IdentityApplicationErrors.PasswordIncorrect;
+        _accounts.NextPasswordChange = AuthenticationErrors.PasswordIncorrect;
 
         var result = await ChangePassword(caller).HandleAsync(new ChangeMyPasswordCommand("wrong", "New-Password-1", Guid.NewGuid()), default);
 
-        Assert.Same(IdentityApplicationErrors.PasswordIncorrect, result.Error);
+        Assert.Same(AuthenticationErrors.PasswordIncorrect, result.Error);
         Assert.Equal(1, _persistence.Saves);
         Assert.DoesNotContain(_sessions.All, s => s.IsRevoked);
     }
@@ -151,8 +155,8 @@ public sealed class IdentityHandlerTests
         var self = await SetActive(caller).HandleAsync(new SetUserActiveCommand(caller.UserId!.Value, false), default);
         var last = await SetActive(caller).HandleAsync(new SetUserActiveCommand(onlyAdmin, false), default);
 
-        Assert.Same(IdentityApplicationErrors.CannotDeactivateSelf, self.Error);
-        Assert.Same(IdentityApplicationErrors.LastAdministrator, last.Error);
+        Assert.Same(UserErrors.CannotDeactivateSelf, self.Error);
+        Assert.Same(UserErrors.LastAdministrator, last.Error);
         Assert.Empty(_accounts.Changes);
     }
 
@@ -180,9 +184,9 @@ public sealed class IdentityHandlerTests
         var toAdministrator = await SetRoles(caller).HandleAsync(new SetUserRolesCommand(user, [_roles.AdministratorId]), default);
         var unknown = await SetRoles(caller).HandleAsync(new SetUserRolesCommand(user, [Guid.NewGuid()]), default);
 
-        Assert.Same(IdentityApplicationErrors.ExceedsOwnPermissions, toProducts.Error);
-        Assert.Same(IdentityApplicationErrors.ExceedsOwnPermissions, toAdministrator.Error);
-        Assert.Same(IdentityApplicationErrors.UnknownRoles, unknown.Error);
+        Assert.Same(PermissionErrors.ExceedsOwnPermissions, toProducts.Error);
+        Assert.Same(PermissionErrors.ExceedsOwnPermissions, toAdministrator.Error);
+        Assert.Same(RoleErrors.UnknownRoles, unknown.Error);
         Assert.Empty(_accounts.Changes);
     }
 
@@ -195,7 +199,7 @@ public sealed class IdentityHandlerTests
 
         var result = await SetRoles(caller).HandleAsync(new SetUserRolesCommand(administrator, [reader]), default);
 
-        Assert.Same(IdentityApplicationErrors.ExceedsOwnPermissions, result.Error);
+        Assert.Same(PermissionErrors.ExceedsOwnPermissions, result.Error);
     }
 
     [Fact]
@@ -206,7 +210,7 @@ public sealed class IdentityHandlerTests
 
         var result = await SetRoles(new FakeCaller()).HandleAsync(new SetUserRolesCommand(onlyAdmin, [reader]), default);
 
-        Assert.Same(IdentityApplicationErrors.LastAdministrator, result.Error);
+        Assert.Same(UserErrors.LastAdministrator, result.Error);
     }
 
     [Fact]
@@ -219,10 +223,10 @@ public sealed class IdentityHandlerTests
         var user = _accounts.Add();
         var handler = SetAccess(caller);
 
-        Assert.Same(IdentityApplicationErrors.ExceedsOwnScope, (await handler.HandleAsync(new(user, true, [], []), default)).Error);
-        Assert.Same(IdentityApplicationErrors.ExceedsOwnScope, (await handler.HandleAsync(new(user, false, [], [outside]), default)).Error);
-        Assert.Same(IdentityApplicationErrors.ExceedsOwnScope, (await handler.HandleAsync(new(user, false, [otherBranch], []), default)).Error);
-        Assert.Same(IdentityApplicationErrors.UnknownWarehouses, (await handler.HandleAsync(new(user, false, [], [Guid.NewGuid()]), default)).Error);
+        Assert.Same(UserAccessErrors.ExceedsOwnScope, (await handler.HandleAsync(new(user, true, [], []), default)).Error);
+        Assert.Same(UserAccessErrors.ExceedsOwnScope, (await handler.HandleAsync(new(user, false, [], [outside]), default)).Error);
+        Assert.Same(UserAccessErrors.ExceedsOwnScope, (await handler.HandleAsync(new(user, false, [otherBranch], []), default)).Error);
+        Assert.Same(UserAccessErrors.UnknownWarehouses, (await handler.HandleAsync(new(user, false, [], [Guid.NewGuid()]), default)).Error);
         Assert.Equal(0, _persistence.Saves);
 
         Assert.True((await handler.HandleAsync(new(user, false, [branch], [inBranch]), default)).IsSuccess);
@@ -234,13 +238,13 @@ public sealed class IdentityHandlerTests
     public async Task Creating_a_user_with_scope_needs_access_manage()
     {
         var caller = new FakeCaller([IdentityPermissions.UsersManage]);
-        var handler = new CreateUserHandler(caller, _accounts, _roles, _access, _organization, _organization, Catalog, _persistence,
+        var handler = new CreateUserHandler(caller, _accounts, _accounts, _roles, _access, _organization, _organization, Catalog, _persistence,
             NullLogger<CreateUserHandler>.Instance);
 
         var scoped = await handler.HandleAsync(new CreateUserCommand("u1", "U", null, "pw", [], true, [], []), default);
         var plain = await handler.HandleAsync(new CreateUserCommand("u2", "U", null, "pw", [], false, [], []), default);
 
-        Assert.Same(IdentityApplicationErrors.AccessManageRequired, scoped.Error);
+        Assert.Same(UserAccessErrors.ManageRequired, scoped.Error);
         Assert.True(plain.IsSuccess);
         Assert.False(_access.ByUser[plain.Value].IsCompanyWide);
         Assert.Equal(1, _persistence.Saves); // account, roles and scope in one save
@@ -256,7 +260,7 @@ public sealed class IdentityHandlerTests
 
         var result = await handler.HandleAsync(new CreateRoleCommand("Clerk", null, [WarehousesRead, ProductsRead]), default);
 
-        Assert.Same(IdentityApplicationErrors.ExceedsOwnPermissions, result.Error);
+        Assert.Same(PermissionErrors.ExceedsOwnPermissions, result.Error);
         Assert.Empty(_roles.Added);
     }
 
@@ -268,7 +272,7 @@ public sealed class IdentityHandlerTests
         var theirs = _sessions.StartWeb(Guid.NewGuid(), _clock.GetUtcNow().UtcDateTime);
         var handler = new RevokeSessionHandler(caller, _sessions, _persistence, _clock, NullLogger<RevokeSessionHandler>.Instance);
 
-        Assert.Same(IdentityApplicationErrors.SessionNotFound, (await handler.HandleAsync(new RevokeSessionCommand(theirs.Id), default)).Error);
+        Assert.Same(SessionErrors.NotFound, (await handler.HandleAsync(new RevokeSessionCommand(theirs.Id), default)).Error);
         Assert.True((await handler.HandleAsync(new RevokeSessionCommand(mine.Id), default)).IsSuccess);
 
         Assert.False(theirs.IsRevoked);
@@ -300,13 +304,13 @@ public sealed class IdentityHandlerTests
         new(caller, _accounts, _sessions, _persistence, _clock, NullLogger<ChangeMyPasswordHandler>.Instance);
 
     private SetUserActiveHandler SetActive(ICurrentUser caller) =>
-        new(caller, _accounts, _roles, _sessions, Catalog, _persistence, _clock, NullLogger<SetUserActiveHandler>.Instance);
+        new(caller, _accounts, _accounts, _roles, _sessions, Catalog, _persistence, _clock, NullLogger<SetUserActiveHandler>.Instance);
 
     private SetUserRolesHandler SetRoles(ICurrentUser caller) =>
-        new(caller, _accounts, _roles, Catalog, _persistence, NullLogger<SetUserRolesHandler>.Instance);
+        new(caller, _accounts, _accounts, _roles, Catalog, _persistence, NullLogger<SetUserRolesHandler>.Instance);
 
     private SetUserAccessHandler SetAccess(ICurrentUser caller) =>
-        new(caller, _accounts, _roles, _access, _organization, _organization, Catalog, _persistence, NullLogger<SetUserAccessHandler>.Instance);
+        new(caller, _accounts, _accounts, _roles, _access, _organization, _organization, Catalog, _persistence, NullLogger<SetUserAccessHandler>.Instance);
 
     private sealed class CapturingLogger<T>(ListLogger inner) : ILogger<T>
     {
@@ -318,11 +322,11 @@ public sealed class IdentityHandlerTests
 
     private sealed class SingleUserStore(Guid userId, bool any = false) : IUserReadStore
     {
-        public Task<UserDetails?> GetAsync(Guid id, CancellationToken ct) => Task.FromResult<UserDetails?>(any || id == userId
-            ? new UserDetails(id, "me", "Me", null, true, false, [], new UserAccessDetails(false, [], []))
+        public Task<UserDetailsResponse?> GetAsync(Guid id, CancellationToken ct) => Task.FromResult<UserDetailsResponse?>(any || id == userId
+            ? new UserDetailsResponse(id, "me", "Me", null, true, false, [], new UserAccessResponse(false, [], []))
             : null);
 
-        public Task<WarehouseERP.BuildingBlocks.Application.Pagination.PagedResult<UserSummary>> ListAsync(
+        public Task<WarehouseERP.BuildingBlocks.Application.Pagination.PagedResult<UserSummaryResponse>> ListAsync(
             string? search, int page, int pageSize, CancellationToken ct) => throw new NotSupportedException();
     }
 }

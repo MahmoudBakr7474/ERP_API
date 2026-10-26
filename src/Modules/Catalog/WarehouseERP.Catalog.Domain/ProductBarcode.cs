@@ -1,6 +1,7 @@
 using WarehouseERP.SharedKernel.Domain;
+
 namespace WarehouseERP.Catalog.Domain;
-public enum BarcodeType : byte { Internal = 1, Ean13 = 2, Gtin = 3, Other = 4 }
+
 public sealed class ProductBarcode : MasterEntity
 {
     public Guid ProductUnitId { get; set; }

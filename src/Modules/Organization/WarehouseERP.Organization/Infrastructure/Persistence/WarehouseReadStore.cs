@@ -1,24 +1,25 @@
 using Microsoft.EntityFrameworkCore;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
-using WarehouseERP.Organization.Application.Abstractions;
+using WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
+using WarehouseERP.Organization.Application.Contracts.Warehouses;
 using WarehouseERP.Organization.Domain;
 
 namespace WarehouseERP.Organization.Infrastructure.Persistence;
 
 internal sealed class WarehouseReadStore(DbContext db) : IWarehouseReadStore
 {
-    public Task<WarehouseDetails?> GetAsync(Guid warehouseId, CancellationToken ct) =>
+    public Task<WarehouseDetailsResponse?> GetAsync(Guid warehouseId, CancellationToken ct) =>
         db.Set<Warehouse>().AsNoTracking()
             .Where(x => x.Id == warehouseId)
-            .Select(x => new WarehouseDetails(
+            .Select(x => new WarehouseDetailsResponse(
                 x.Id, x.BranchId, x.Code, x.NameAr, x.NameEn, x.WarehouseType, x.AllowsSelling, x.IsActive,
                 x.Locations
                     .OrderByDescending(l => l.IsDefault).ThenBy(l => l.Code)
-                    .Select(l => new WarehouseLocationItem(l.Id, l.Code, l.NameAr, l.NameEn, l.IsDefault, l.IsActive))
+                    .Select(l => new WarehouseLocationResponse(l.Id, l.Code, l.NameAr, l.NameEn, l.IsDefault, l.IsActive))
                     .ToList()))
             .SingleOrDefaultAsync(ct);
 
-    public async Task<PagedResult<WarehouseSummary>> ListAsync(
+    public async Task<PagedResult<WarehouseSummaryResponse>> ListAsync(
         WarehouseListFilter filter, int page, int pageSize, CancellationToken ct)
     {
         var query = db.Set<Warehouse>().AsNoTracking();
@@ -34,9 +35,9 @@ internal sealed class WarehouseReadStore(DbContext db) : IWarehouseReadStore
         var items = await query
             .OrderBy(x => x.Code).ThenBy(x => x.Id)
             .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(x => new WarehouseSummary(
+            .Select(x => new WarehouseSummaryResponse(
                 x.Id, x.BranchId, x.Code, x.NameAr, x.NameEn, x.WarehouseType, x.AllowsSelling, x.IsActive))
             .ToListAsync(ct);
-        return new PagedResult<WarehouseSummary>(items, page, pageSize, total);
+        return new PagedResult<WarehouseSummaryResponse>(items, page, pageSize, total);
     }
 }

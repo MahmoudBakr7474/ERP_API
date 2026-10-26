@@ -4,7 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Infrastructure.Messaging;
 using WarehouseERP.BuildingBlocks.Infrastructure.Security;
-using WarehouseERP.Catalog.Application.Abstractions;
+using WarehouseERP.Catalog.Application.Abstractions.Interfaces.Products;
+using WarehouseERP.Catalog.Application.Contracts.Products;
 using WarehouseERP.Catalog.Application.Features.Products.CreateProduct;
 using WarehouseERP.Catalog.Application.Features.Products.GetProduct;
 using WarehouseERP.Catalog.Application.Features.Products.ListProducts;
@@ -26,8 +27,8 @@ public static class CatalogModule
 
         services.AddCommandHandler<CreateProductCommand, Guid, CreateProductHandler>();
         services.AddCommandHandler<UpdateProductCommand, string, UpdateProductHandler>();
-        services.AddQueryHandler<GetProductQuery, ProductDetails, GetProductHandler>();
-        services.AddQueryHandler<ListProductsQuery, PagedResult<ProductSummary>, ListProductsHandler>();
+        services.AddQueryHandler<GetProductQuery, ProductDetailsResponse, GetProductHandler>();
+        services.AddQueryHandler<ListProductsQuery, PagedResult<ProductSummaryResponse>, ListProductsHandler>();
 
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IProductReadStore, ProductReadStore>();

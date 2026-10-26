@@ -31,7 +31,7 @@ public sealed class Warehouse : MasterEntity
         ArgumentException.ThrowIfNullOrWhiteSpace(code);
         ArgumentException.ThrowIfNullOrWhiteSpace(nameAr);
         if (type == WarehouseType.Transit && allowsSelling)
-            return WarehouseErrors.TransitCannotSell;
+            return WarehouseDomainErrors.TransitCannotSell;
 
         var warehouse = new Warehouse
         {
@@ -45,10 +45,4 @@ public sealed class Warehouse : MasterEntity
         warehouse._locations.Add(WarehouseLocation.CreateDefault(warehouse));
         return warehouse;
     }
-}
-
-public static class WarehouseErrors
-{
-    public static readonly Error TransitCannotSell = Error.BusinessRule(
-        "Organization.Warehouse.TransitCannotSell", "A transit warehouse can never allow selling.");
 }

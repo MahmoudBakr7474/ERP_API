@@ -32,7 +32,7 @@ public sealed class Product : MasterEntity
         ArgumentException.ThrowIfNullOrWhiteSpace(sku);
         ArgumentException.ThrowIfNullOrWhiteSpace(nameAr);
         if (type != ProductType.StockItem && tracking != TrackingMode.None)
-            return ProductErrors.TrackingNeedsStockItem;
+            return ProductDomainErrors.TrackingNeedsStockItem;
 
         var product = new Product
         {
@@ -54,10 +54,4 @@ public sealed class Product : MasterEntity
         NameAr = nameAr.Trim();
         NameEn = Text.Optional(nameEn);
     }
-}
-
-public static class ProductErrors
-{
-    public static readonly Error TrackingNeedsStockItem = Error.BusinessRule(
-        "Catalog.Product.TrackingNeedsStockItem", "Only stock items can be tracked by batch or serial number.");
 }

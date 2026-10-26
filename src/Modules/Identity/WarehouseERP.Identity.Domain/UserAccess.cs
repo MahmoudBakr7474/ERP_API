@@ -58,23 +58,3 @@ public sealed class UserAccess : IAuditable
             _warehouses.Add(new UserWarehouseGrant(id));
     }
 }
-
-public sealed class UserBranchGrant
-{
-    private UserBranchGrant() { } // EF Core
-
-    internal UserBranchGrant(Guid branchId) => BranchId = branchId;
-
-    public Guid UserAccessId { get; private set; }
-    public Guid BranchId { get; private set; }
-}
-
-public sealed class UserWarehouseGrant
-{
-    private UserWarehouseGrant() { } // EF Core
-
-    internal UserWarehouseGrant(Guid warehouseId) => WarehouseId = warehouseId;
-
-    public Guid UserAccessId { get; private set; }
-    public Guid WarehouseId { get; private set; }
-}

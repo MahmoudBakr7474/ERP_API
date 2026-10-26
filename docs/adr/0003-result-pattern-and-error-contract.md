@@ -6,8 +6,8 @@ Status: accepted (2026-10-26)
 * Expected failures are `Result`/`Result<T>` carrying an `Error { Code, Message, Type, ValidationErrors }`
   (SharedKernel). Exceptions are for the unexpected.
 * Codes are stable and spelled `Module.Subject.Reason` (`Catalog.Product.SkuTaken`); clients branch on the code,
-  never on the message. Domain errors live in the Domain (`WarehouseErrors`), use-case errors in the Application
-  (`OrganizationErrors`), shared ones in `CommonErrors`.
+  never on the message. Domain errors live in the Domain (`WarehouseDomainErrors`), use-case errors in the
+  Application by business area (`Application/Errors/WarehouseErrors`, ADR 0011), shared ones in `CommonErrors`.
 * `ErrorType` → status, in one place (`ResultHttpMapping`): Validation 400, NotFound 404, Conflict 409,
   BusinessRule 422, Unauthorized 401, Forbidden 403.
 * A command that names a missing or inactive referenced entity (a branch, a unit) is 422 BusinessRule; 404 is

@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using WarehouseERP.BuildingBlocks.Application.Security;
-using WarehouseERP.Identity.Application.Abstractions;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
+using WarehouseERP.Identity.Application.Contracts.Roles;
 using WarehouseERP.Identity.Domain;
 
 namespace WarehouseERP.Identity.Infrastructure.Persistence;
@@ -69,13 +70,13 @@ internal sealed class RoleRepository(DbContext db, ILookupNormalizer normalizer,
     public async Task DeleteAsync(Guid roleId, CancellationToken ct) =>
         db.Set<ApplicationRole>().Remove(await db.Set<ApplicationRole>().SingleAsync(r => r.Id == roleId, ct)); // claims cascade
 
-    public async Task<IReadOnlyList<RoleSummary>> ListAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<RoleSummaryResponse>> ListAsync(CancellationToken ct)
     {
         var administrator = normalizer.NormalizeName(Role.AdministratorName);
         var catalogSize = catalog.Count();
         return await db.Set<ApplicationRole>().AsNoTracking()
             .OrderByDescending(r => r.IsSystem).ThenBy(r => r.Name)
-            .Select(r => new RoleSummary(
+            .Select(r => new RoleSummaryResponse(
                 r.Id, r.Name!, r.Description, r.IsSystem,
                 r.IsSystem && r.NormalizedName == administrator
                     ? catalogSize

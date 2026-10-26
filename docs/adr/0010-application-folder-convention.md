@@ -1,6 +1,8 @@
 # ADR 0010 — Application layout: business area, then one vertical slice per use case
 
-Status: accepted (2026-10-26). Refines the feature-folder layout of ADR 0002.
+Status: accepted (2026-10-26). Refines the feature-folder layout of ADR 0002. Extended by ADR 0011 (contracts on
+reuse, interfaces and errors by area, one type per file): use case files are now named after their type
+(`CreateProductCommand.cs`, not `Command.cs`) and `ApiTokens` became `Contracts/Authentication/ApiTokensResponse`.
 
 ## Context
 Use cases sat directly under `Application/Features/<UseCase>/`. Identity already has 24 of them and Catalog,

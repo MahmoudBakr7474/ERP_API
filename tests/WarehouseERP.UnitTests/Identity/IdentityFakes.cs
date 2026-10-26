@@ -1,7 +1,13 @@
-using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Application.Security;
-using WarehouseERP.Identity.Application;
-using WarehouseERP.Identity.Application.Abstractions;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Authentication;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Sessions;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.UserAccess;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Users;
+using WarehouseERP.Identity.Application.Contracts.Roles;
+using WarehouseERP.Identity.Application.Contracts.Sessions;
+using WarehouseERP.Identity.Application.Errors;
 using WarehouseERP.Identity.Domain;
 using WarehouseERP.Organization.Contracts;
 using WarehouseERP.SharedKernel.Results;
@@ -23,7 +29,8 @@ internal sealed class FakeCaller(IEnumerable<string>? permissions = null, bool a
     public IReadOnlySet<Guid> WarehouseIds { get; } = (warehouses ?? []).ToHashSet();
 }
 
-internal sealed class FakeAccounts : IUserAccounts
+// Accounts, credentials and role assignments in one fake: the handlers see three narrow ports over one state.
+internal sealed class FakeAccounts : IUserAccounts, IUserCredentials, IUserRoleAssignments
 {
     public Dictionary<Guid, UserAccount> Users { get; } = [];
     public Dictionary<Guid, List<Guid>> UserRoles { get; } = [];
@@ -67,7 +74,7 @@ internal sealed class FakeAccounts : IUserAccounts
     public Task<Result> SetRolesAsync(Guid userId, IReadOnlyCollection<Guid> roleIds, CancellationToken ct)
     {
         if (!Users.ContainsKey(userId))
-            return Task.FromResult<Result>(IdentityApplicationErrors.UserNotFound);
+            return Task.FromResult<Result>(UserErrors.NotFound);
         UserRoles[userId] = [.. roleIds];
         Changes.Add("roles");
         return Task.FromResult(Result.Success());
@@ -81,7 +88,7 @@ internal sealed class FakeAccounts : IUserAccounts
     private Task<Result> Change(Guid userId, string what)
     {
         if (!Users.ContainsKey(userId))
-            return Task.FromResult<Result>(IdentityApplicationErrors.UserNotFound);
+            return Task.FromResult<Result>(UserErrors.NotFound);
         Changes.Add(what);
         return Task.FromResult(Result.Success());
     }
@@ -123,7 +130,7 @@ internal sealed class FakeRoles : IRoleRepository
 
     public Task DeleteAsync(Guid roleId, CancellationToken ct) => Task.FromResult(Roles.Remove(roleId));
 
-    public Task<IReadOnlyList<RoleSummary>> ListAsync(CancellationToken ct) => throw new NotSupportedException();
+    public Task<IReadOnlyList<RoleSummaryResponse>> ListAsync(CancellationToken ct) => throw new NotSupportedException();
 }
 
 internal sealed class FakeAccess : IUserAccessRepository
@@ -164,9 +171,9 @@ internal sealed class FakeSessions : ISessionRepository
     public Task<IReadOnlyList<UserSession>> GetActiveAsync(Guid userId, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<UserSession>>(All.Where(s => s.UserId == userId && !s.IsRevoked).ToList());
 
-    public Task<IReadOnlyList<SessionItem>> ListAsync(Guid userId, CancellationToken ct) =>
-        Task.FromResult<IReadOnlyList<SessionItem>>(All.Where(s => s.UserId == userId)
-            .Select(s => new SessionItem(s.Id, s.ClientType, s.DeviceId, s.CreatedAtUtc, s.LastSeenAtUtc, s.ExpiresAtUtc, s.RevokedAtUtc, s.RevokedReason))
+    public Task<IReadOnlyList<SessionResponse>> ListAsync(Guid userId, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<SessionResponse>>(All.Where(s => s.UserId == userId)
+            .Select(s => new SessionResponse(s.Id, s.ClientType, s.DeviceId, s.CreatedAtUtc, s.LastSeenAtUtc, s.ExpiresAtUtc, s.RevokedAtUtc, s.RevokedReason))
             .ToList());
 }
 

@@ -1,5 +1,7 @@
 using WarehouseERP.BuildingBlocks.Application.Security;
-using WarehouseERP.Identity.Application.Abstractions;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.UserAccess;
+using WarehouseERP.Identity.Application.Errors;
 using WarehouseERP.Identity.Domain;
 using WarehouseERP.Organization.Contracts;
 using WarehouseERP.SharedKernel.Results;
@@ -19,7 +21,7 @@ internal static class PrivilegeGuard
         if (wanted.Count == 0)
             return Result.Success<IReadOnlyList<Role>>([]);
         var found = await roles.GetManyAsync(wanted, ct);
-        return found.Count == wanted.Count ? Result.Success(found) : IdentityApplicationErrors.UnknownRoles;
+        return found.Count == wanted.Count ? Result.Success(found) : RoleErrors.UnknownRoles;
     }
 
     public static bool HoldsAll(ICurrentUser caller, IEnumerable<string> permissions) => permissions.All(caller.HasPermission);
@@ -29,11 +31,11 @@ internal static class PrivilegeGuard
 
     /// <summary>The caller holds every permission the target user's roles grant.</summary>
     public static async Task<Result> EnsureCanManageAsync(
-        ICurrentUser caller, IUserAccounts accounts, IRoleRepository roles, IEnumerable<PermissionDefinition> catalog,
+        ICurrentUser caller, IUserRoleAssignments roleAssignments, IRoleRepository roles, IEnumerable<PermissionDefinition> catalog,
         Guid targetUserId, CancellationToken ct)
     {
-        var targetRoles = await roles.GetManyAsync(await accounts.GetRoleIdsAsync(targetUserId, ct), ct);
-        return HoldsAll(caller, targetRoles, catalog) ? Result.Success() : IdentityApplicationErrors.ExceedsOwnPermissions;
+        var targetRoles = await roles.GetManyAsync(await roleAssignments.GetRoleIdsAsync(targetUserId, ct), ct);
+        return HoldsAll(caller, targetRoles, catalog) ? Result.Success() : PermissionErrors.ExceedsOwnPermissions;
     }
 
     /// <summary>
@@ -45,23 +47,23 @@ internal static class PrivilegeGuard
         bool companyWide, IReadOnlyCollection<Guid> branchIds, IReadOnlyCollection<Guid> warehouseIds, CancellationToken ct)
     {
         if (companyWide)
-            return caller.HasAllWarehouses ? Result.Success() : IdentityApplicationErrors.ExceedsOwnScope;
+            return caller.HasAllWarehouses ? Result.Success() : UserAccessErrors.ExceedsOwnScope;
 
         var wantedBranches = branchIds.Distinct().ToList();
         if (wantedBranches.Count > 0 && (await branches.FindManyAsync(wantedBranches, ct)).Count != wantedBranches.Count)
-            return IdentityApplicationErrors.UnknownBranches;
+            return UserAccessErrors.UnknownBranches;
         var wantedWarehouses = warehouseIds.Distinct().ToList();
         if (wantedWarehouses.Count > 0 && (await warehouses.FindManyAsync(wantedWarehouses, ct)).Count != wantedWarehouses.Count)
-            return IdentityApplicationErrors.UnknownWarehouses;
+            return UserAccessErrors.UnknownWarehouses;
 
         if (caller.HasAllWarehouses)
             return Result.Success();
         if (!wantedWarehouses.TrueForAll(caller.CanAccessWarehouse))
-            return IdentityApplicationErrors.ExceedsOwnScope;
+            return UserAccessErrors.ExceedsOwnScope;
         if (wantedBranches.Count == 0)
             return Result.Success();
         var own = caller.UserId is { } callerId ? await access.GetAsync(callerId, ct) : null;
         var ownBranches = own?.Branches.Select(g => g.BranchId).ToHashSet() ?? [];
-        return wantedBranches.TrueForAll(ownBranches.Contains) ? Result.Success() : IdentityApplicationErrors.ExceedsOwnScope;
+        return wantedBranches.TrueForAll(ownBranches.Contains) ? Result.Success() : UserAccessErrors.ExceedsOwnScope;
     }
 }

@@ -6,13 +6,14 @@ using Microsoft.AspNetCore.Routing;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.BuildingBlocks.Infrastructure.Http;
+using WarehouseERP.Identity.Application.Contracts.Authentication;
 using WarehouseERP.Identity.Application.Features.Account.ChangeMyPassword;
 using WarehouseERP.Identity.Application.Features.Account.GetMe;
-using WarehouseERP.Identity.Application.Features.Authentication;
 using WarehouseERP.Identity.Application.Features.Authentication.IssueApiToken;
 using WarehouseERP.Identity.Application.Features.Authentication.Login;
 using WarehouseERP.Identity.Application.Features.Authentication.Logout;
 using WarehouseERP.Identity.Application.Features.Authentication.RefreshApiToken;
+using WarehouseERP.Identity.Presentation.Contracts.Account;
 using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Identity.Presentation;
@@ -22,14 +23,6 @@ namespace WarehouseERP.Identity.Presentation;
 internal static class AuthEndpoints
 {
     public const string Route = "/api/identity";
-
-    public sealed record LoginRequest(string UserName, string Password);
-
-    public sealed record TokenRequest(string UserName, string Password, string? DeviceId);
-
-    public sealed record RefreshRequest(string RefreshToken);
-
-    public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);
 
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
@@ -52,7 +45,7 @@ internal static class AuthEndpoints
             .AllowAnonymous()
             .WithName("IssueApiToken")
             .RequireHttps()
-            .Produces<ApiTokens>()
+            .Produces<ApiTokensResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized);
 
@@ -60,7 +53,7 @@ internal static class AuthEndpoints
             .AllowAnonymous()
             .WithName("RefreshApiToken")
             .RequireHttps()
-            .Produces<ApiTokens>()
+            .Produces<ApiTokensResponse>()
             .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         group.MapPost("/tokens/revoke", SignOutAsync)
@@ -82,9 +75,9 @@ internal static class AuthEndpoints
     }
 
     private static async Task<IResult> LoginAsync(
-        LoginRequest request, ICommandHandler<LoginCommand, WebSignIn> handler, IAntiforgery antiforgery, HttpContext http,
+        LoginCommand command, ICommandHandler<LoginCommand, LoginResponse> handler, IAntiforgery antiforgery, HttpContext http,
         CancellationToken ct) =>
-        (await handler.HandleAsync(new LoginCommand(request.UserName, request.Password), ct))
+        (await handler.HandleAsync(command, ct))
             .ToHttpResult(signIn =>
             {
                 SessionCookies.SignIn(http, antiforgery, signIn);
@@ -105,13 +98,13 @@ internal static class AuthEndpoints
     }
 
     private static async Task<IResult> IssueTokenAsync(
-        TokenRequest request, ICommandHandler<IssueApiTokenCommand, ApiTokens> handler, CancellationToken ct) =>
-        (await handler.HandleAsync(new IssueApiTokenCommand(request.UserName, request.Password, request.DeviceId), ct))
+        IssueApiTokenCommand command, ICommandHandler<IssueApiTokenCommand, ApiTokensResponse> handler, CancellationToken ct) =>
+        (await handler.HandleAsync(command, ct))
             .ToHttpResult(TypedResults.Ok);
 
     private static async Task<IResult> RefreshTokenAsync(
-        RefreshRequest request, ICommandHandler<RefreshApiTokenCommand, ApiTokens> handler, CancellationToken ct) =>
-        (await handler.HandleAsync(new RefreshApiTokenCommand(request.RefreshToken), ct)).ToHttpResult(TypedResults.Ok);
+        RefreshApiTokenCommand command, ICommandHandler<RefreshApiTokenCommand, ApiTokensResponse> handler, CancellationToken ct) =>
+        (await handler.HandleAsync(command, ct)).ToHttpResult(TypedResults.Ok);
 
     // Also renews the anti-forgery token of a cookie session: the React client calls this after signing in or reloading.
     private static async Task<IResult> GetMeAsync(

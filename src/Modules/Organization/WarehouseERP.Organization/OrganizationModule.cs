@@ -4,7 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Infrastructure.Messaging;
 using WarehouseERP.BuildingBlocks.Infrastructure.Security;
-using WarehouseERP.Organization.Application.Abstractions;
+using WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
+using WarehouseERP.Organization.Application.Contracts.Warehouses;
 using WarehouseERP.Organization.Application.Features.Warehouses.CreateWarehouse;
 using WarehouseERP.Organization.Application.Features.Warehouses.GetWarehouse;
 using WarehouseERP.Organization.Application.Features.Warehouses.ListWarehouses;
@@ -24,8 +25,8 @@ public static class OrganizationModule
         services.AddValidatorsFromAssemblyContaining<CreateWarehouseValidator>(includeInternalTypes: true);
 
         services.AddCommandHandler<CreateWarehouseCommand, Guid, CreateWarehouseHandler>();
-        services.AddQueryHandler<GetWarehouseQuery, WarehouseDetails, GetWarehouseHandler>();
-        services.AddQueryHandler<ListWarehousesQuery, PagedResult<WarehouseSummary>, ListWarehousesHandler>();
+        services.AddQueryHandler<GetWarehouseQuery, WarehouseDetailsResponse, GetWarehouseHandler>();
+        services.AddQueryHandler<ListWarehousesQuery, PagedResult<WarehouseSummaryResponse>, ListWarehousesHandler>();
 
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<IWarehouseReadStore, WarehouseReadStore>();

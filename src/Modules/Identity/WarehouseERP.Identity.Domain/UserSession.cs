@@ -1,29 +1,6 @@
-using System.Buffers.Text;
-using System.Security.Cryptography;
-using System.Text;
 using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Identity.Domain;
-
-public enum SessionClientType : byte
-{
-    /// <summary>Browser (React): the token travels in an HttpOnly cookie.</summary>
-    Web = 1,
-
-    /// <summary>POS or API tool: a short bearer access token plus a rotating refresh token.</summary>
-    Api = 2,
-}
-
-public enum SessionRevokeReason : byte
-{
-    Logout = 1,
-    RevokedByUser = 2,
-    RevokedByAdministrator = 3,
-    PasswordChanged = 4,
-    PasswordReset = 5,
-    UserDeactivated = 6,
-    RefreshTokenReused = 7,
-}
 
 /// <summary>
 /// A server-side sign-in. Only SHA-256 hashes of its tokens are stored. Web sessions slide with use until the idle
@@ -91,14 +68,14 @@ public sealed class UserSession
     public Result Refresh(byte[] presentedRefreshHash, IssuedApiTokens next, DateTime now)
     {
         if (ClientType != SessionClientType.Api || IsRevoked || now >= ExpiresAtUtc)
-            return IdentityErrors.SessionRevoked;
+            return SessionDomainErrors.Revoked;
         if (PreviousRefreshTokenHash is not null && SessionTokens.HashesEqual(PreviousRefreshTokenHash, presentedRefreshHash))
         {
             Revoke(SessionRevokeReason.RefreshTokenReused, now);
-            return IdentityErrors.RefreshTokenReused;
+            return SessionDomainErrors.RefreshTokenReused;
         }
         if (RefreshTokenHash is null || !SessionTokens.HashesEqual(RefreshTokenHash, presentedRefreshHash) || now >= RefreshExpiresAtUtc)
-            return IdentityErrors.SessionRevoked;
+            return SessionDomainErrors.Revoked;
 
         PreviousRefreshTokenHash = RefreshTokenHash;
         Use(next);
@@ -120,21 +97,4 @@ public sealed class UserSession
         RefreshTokenHash = tokens.RefreshTokenHash;
         RefreshExpiresAtUtc = tokens.RefreshExpiresAtUtc;
     }
-}
-
-/// <summary>Hashes of a freshly issued access/refresh pair and when each expires.</summary>
-public sealed record IssuedApiTokens(byte[] AccessTokenHash, DateTime AccessExpiresAtUtc, byte[] RefreshTokenHash, DateTime RefreshExpiresAtUtc);
-
-/// <summary>256-bit random tokens; only their SHA-256 hash is ever stored.</summary>
-public static class SessionTokens
-{
-    public static (string Token, byte[] Hash) Create()
-    {
-        var token = Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
-        return (token, Hash(token));
-    }
-
-    public static byte[] Hash(string token) => SHA256.HashData(Encoding.UTF8.GetBytes(token));
-
-    public static bool HashesEqual(byte[] left, byte[] right) => CryptographicOperations.FixedTimeEquals(left, right);
 }

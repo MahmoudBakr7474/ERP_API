@@ -13,31 +13,39 @@ using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.BuildingBlocks.Infrastructure.Messaging;
 using WarehouseERP.BuildingBlocks.Infrastructure.Security;
 using WarehouseERP.Identity.Application;
-using WarehouseERP.Identity.Application.Abstractions;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Authentication;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Sessions;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.UserAccess;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Users;
+using WarehouseERP.Identity.Application.Contracts.Authentication;
+using WarehouseERP.Identity.Application.Contracts.Roles;
+using WarehouseERP.Identity.Application.Contracts.Sessions;
+using WarehouseERP.Identity.Application.Contracts.Users;
 using WarehouseERP.Identity.Application.Features.Account.ChangeMyPassword;
-using WarehouseERP.Identity.Application.Features.Roles.CreateRole;
-using WarehouseERP.Identity.Application.Features.Users.CreateUser;
-using WarehouseERP.Identity.Application.Features.Roles.DeleteRole;
 using WarehouseERP.Identity.Application.Features.Account.GetMe;
-using WarehouseERP.Identity.Application.Features.Roles.GetRole;
-using WarehouseERP.Identity.Application.Features.Users.GetUser;
-using WarehouseERP.Identity.Application.Features.Authentication;
 using WarehouseERP.Identity.Application.Features.Authentication.IssueApiToken;
-using WarehouseERP.Identity.Application.Features.Permissions.ListPermissions;
-using WarehouseERP.Identity.Application.Features.Roles.ListRoles;
-using WarehouseERP.Identity.Application.Features.Sessions.ListSessions;
-using WarehouseERP.Identity.Application.Features.Users.ListUsers;
 using WarehouseERP.Identity.Application.Features.Authentication.Login;
 using WarehouseERP.Identity.Application.Features.Authentication.Logout;
 using WarehouseERP.Identity.Application.Features.Authentication.RefreshApiToken;
-using WarehouseERP.Identity.Application.Features.Users.ResetUserPassword;
+using WarehouseERP.Identity.Application.Features.Permissions.ListPermissions;
+using WarehouseERP.Identity.Application.Features.Roles.CreateRole;
+using WarehouseERP.Identity.Application.Features.Roles.DeleteRole;
+using WarehouseERP.Identity.Application.Features.Roles.GetRole;
+using WarehouseERP.Identity.Application.Features.Roles.ListRoles;
+using WarehouseERP.Identity.Application.Features.Roles.UpdateRole;
+using WarehouseERP.Identity.Application.Features.Sessions.ListSessions;
 using WarehouseERP.Identity.Application.Features.Sessions.RevokeSession;
 using WarehouseERP.Identity.Application.Features.Sessions.RevokeUserSessions;
+using WarehouseERP.Identity.Application.Features.Users.CreateUser;
+using WarehouseERP.Identity.Application.Features.Users.GetUser;
+using WarehouseERP.Identity.Application.Features.Users.ListUsers;
+using WarehouseERP.Identity.Application.Features.Users.ResetUserPassword;
 using WarehouseERP.Identity.Application.Features.Users.SetUserAccess;
 using WarehouseERP.Identity.Application.Features.Users.SetUserActive;
 using WarehouseERP.Identity.Application.Features.Users.SetUserRoles;
 using WarehouseERP.Identity.Application.Features.Users.UnlockUser;
-using WarehouseERP.Identity.Application.Features.Roles.UpdateRole;
 using WarehouseERP.Identity.Application.Features.Users.UpdateUser;
 using WarehouseERP.Identity.Contracts;
 using WarehouseERP.Identity.Infrastructure;
@@ -69,6 +77,8 @@ public static class IdentityModule
             });
 
         services.AddScoped<IUserAccounts, UserAccounts>();
+        services.AddScoped<IUserCredentials, UserCredentials>();
+        services.AddScoped<IUserRoleAssignments, UserRoleAssignments>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserAccessRepository, UserAccessRepository>();
         services.AddScoped<ISessionRepository, SessionRepository>();
@@ -106,10 +116,10 @@ public static class IdentityModule
 
     private static void AddHandlers(IServiceCollection services)
     {
-        services.AddCommandHandler<LoginCommand, WebSignIn, LoginHandler>();
+        services.AddCommandHandler<LoginCommand, LoginResponse, LoginHandler>();
         services.AddCommandHandler<LogoutCommand, Done, LogoutHandler>();
-        services.AddCommandHandler<IssueApiTokenCommand, ApiTokens, IssueApiTokenHandler>();
-        services.AddCommandHandler<RefreshApiTokenCommand, ApiTokens, RefreshApiTokenHandler>();
+        services.AddCommandHandler<IssueApiTokenCommand, ApiTokensResponse, IssueApiTokenHandler>();
+        services.AddCommandHandler<RefreshApiTokenCommand, ApiTokensResponse, RefreshApiTokenHandler>();
         services.AddCommandHandler<ChangeMyPasswordCommand, Done, ChangeMyPasswordHandler>();
         services.AddQueryHandler<GetMeQuery, MeResponse, GetMeHandler>();
 
@@ -120,17 +130,17 @@ public static class IdentityModule
         services.AddCommandHandler<UnlockUserCommand, Done, UnlockUserHandler>();
         services.AddCommandHandler<SetUserRolesCommand, Done, SetUserRolesHandler>();
         services.AddCommandHandler<SetUserAccessCommand, Done, SetUserAccessHandler>();
-        services.AddQueryHandler<GetUserQuery, UserDetails, GetUserHandler>();
-        services.AddQueryHandler<ListUsersQuery, PagedResult<UserSummary>, ListUsersHandler>();
+        services.AddQueryHandler<GetUserQuery, UserDetailsResponse, GetUserHandler>();
+        services.AddQueryHandler<ListUsersQuery, PagedResult<UserSummaryResponse>, ListUsersHandler>();
 
         services.AddCommandHandler<CreateRoleCommand, Guid, CreateRoleHandler>();
         services.AddCommandHandler<UpdateRoleCommand, Done, UpdateRoleHandler>();
         services.AddCommandHandler<DeleteRoleCommand, Done, DeleteRoleHandler>();
-        services.AddQueryHandler<GetRoleQuery, RoleDetails, GetRoleHandler>();
-        services.AddQueryHandler<ListRolesQuery, IReadOnlyList<RoleSummary>, ListRolesHandler>();
+        services.AddQueryHandler<GetRoleQuery, RoleDetailsResponse, GetRoleHandler>();
+        services.AddQueryHandler<ListRolesQuery, IReadOnlyList<RoleSummaryResponse>, ListRolesHandler>();
         services.AddQueryHandler<ListPermissionsQuery, IReadOnlyList<PermissionDefinition>, ListPermissionsHandler>();
 
-        services.AddQueryHandler<ListSessionsQuery, IReadOnlyList<SessionItem>, ListSessionsHandler>();
+        services.AddQueryHandler<ListSessionsQuery, IReadOnlyList<SessionResponse>, ListSessionsHandler>();
         services.AddCommandHandler<RevokeSessionCommand, Done, RevokeSessionHandler>();
         services.AddCommandHandler<RevokeUserSessionsCommand, Done, RevokeUserSessionsHandler>();
     }

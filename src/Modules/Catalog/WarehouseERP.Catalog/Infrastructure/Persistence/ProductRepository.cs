@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WarehouseERP.BuildingBlocks.Infrastructure.Persistence;
-using WarehouseERP.Catalog.Application;
-using WarehouseERP.Catalog.Application.Abstractions;
+using WarehouseERP.Catalog.Application.Abstractions.Interfaces.Products;
+using WarehouseERP.Catalog.Application.Errors;
 using WarehouseERP.Catalog.Domain;
 using WarehouseERP.SharedKernel.Results;
 
@@ -12,7 +12,7 @@ internal sealed class ProductRepository(DbContext db) : IProductRepository
     // Unique indexes whose violation is an expected business conflict. Names come from Migration 01.
     private static readonly Dictionary<string, Error> KnownUniqueConstraints = new(StringComparer.Ordinal)
     {
-        ["IX_Products_SKU"] = CatalogErrors.SkuTaken,
+        ["IX_Products_SKU"] = ProductErrors.SkuTaken,
     };
 
     public Task<bool> IsUnitActiveAsync(Guid unitId, CancellationToken ct) =>

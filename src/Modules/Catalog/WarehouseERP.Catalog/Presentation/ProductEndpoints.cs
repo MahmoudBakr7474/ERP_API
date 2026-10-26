@@ -4,12 +4,13 @@ using Microsoft.AspNetCore.Routing;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Infrastructure.Http;
-using WarehouseERP.Catalog.Application.Abstractions;
+using WarehouseERP.Catalog.Application.Contracts.Products;
 using WarehouseERP.Catalog.Application.Features.Products.CreateProduct;
 using WarehouseERP.Catalog.Application.Features.Products.GetProduct;
 using WarehouseERP.Catalog.Application.Features.Products.ListProducts;
 using WarehouseERP.Catalog.Application.Features.Products.UpdateProduct;
 using WarehouseERP.Catalog.Contracts;
+using WarehouseERP.Catalog.Presentation.Contracts.Products;
 
 namespace WarehouseERP.Catalog.Presentation;
 
@@ -18,15 +19,6 @@ namespace WarehouseERP.Catalog.Presentation;
 internal static class ProductEndpoints
 {
     public const string Route = "/api/catalog/products";
-
-    public sealed record CreateProductRequest(
-        string Sku, string NameAr, string? NameEn, Guid BaseUnitId, Guid? CategoryId, ProductType Type, TrackingMode TrackingMode);
-
-    public sealed record UpdateProductRequest(string NameAr, string? NameEn, string RowVersion);
-
-    public sealed record CreatedResponse(Guid Id);
-
-    public sealed record UpdatedResponse(string RowVersion);
 
     public static IEndpointRouteBuilder MapProductEndpoints(this IEndpointRouteBuilder app)
     {
@@ -43,13 +35,13 @@ internal static class ProductEndpoints
         group.MapGet("/{id:guid}", GetAsync)
             .RequireAuthorization(CatalogPermissions.ProductsRead)
             .WithName("GetProduct")
-            .Produces<ProductDetails>()
+            .Produces<ProductDetailsResponse>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
         group.MapGet("/", ListAsync)
             .RequireAuthorization(CatalogPermissions.ProductsRead)
             .WithName("ListProducts")
-            .Produces<PagedResult<ProductSummary>>()
+            .Produces<PagedResult<ProductSummaryResponse>>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
         group.MapPut("/{id:guid}", UpdateAsync)
@@ -64,20 +56,16 @@ internal static class ProductEndpoints
     }
 
     private static async Task<IResult> CreateAsync(
-        CreateProductRequest request, ICommandHandler<CreateProductCommand, Guid> handler, CancellationToken ct)
-    {
-        var command = new CreateProductCommand(
-            request.Sku, request.NameAr, request.NameEn, request.BaseUnitId, request.CategoryId, request.Type, request.TrackingMode);
-        return (await handler.HandleAsync(command, ct))
+        CreateProductCommand command, ICommandHandler<CreateProductCommand, Guid> handler, CancellationToken ct) =>
+        (await handler.HandleAsync(command, ct))
             .ToHttpResult(id => TypedResults.Created($"{Route}/{id}", new CreatedResponse(id)));
-    }
 
     private static async Task<IResult> GetAsync(
-        Guid id, IQueryHandler<GetProductQuery, ProductDetails> handler, CancellationToken ct) =>
+        Guid id, IQueryHandler<GetProductQuery, ProductDetailsResponse> handler, CancellationToken ct) =>
         (await handler.HandleAsync(new GetProductQuery(id), ct)).ToHttpResult(TypedResults.Ok);
 
     private static async Task<IResult> ListAsync(
-        IQueryHandler<ListProductsQuery, PagedResult<ProductSummary>> handler, CancellationToken ct,
+        IQueryHandler<ListProductsQuery, PagedResult<ProductSummaryResponse>> handler, CancellationToken ct,
         int page = 1, int? pageSize = null, string? search = null) =>
         (await handler.HandleAsync(new ListProductsQuery(page, pageSize, search), ct)).ToHttpResult(TypedResults.Ok);
 

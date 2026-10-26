@@ -38,7 +38,7 @@ public sealed class Role
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         var requested = permissions.ToList();
         if (Unknown(requested, knownPermissions) is { Count: > 0 } unknown)
-            return IdentityErrors.UnknownPermissions(unknown);
+            return RoleDomainErrors.UnknownPermissions(unknown);
         return new Role(Guid.Empty, name.Trim(), Text.Optional(description), isSystem: false, requested);
     }
 
@@ -50,10 +50,10 @@ public sealed class Role
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         if (IsSystem)
-            return IdentityErrors.SystemRoleLocked;
+            return RoleDomainErrors.SystemRoleLocked;
         var requested = permissions.ToList();
         if (Unknown(requested, knownPermissions) is { Count: > 0 } unknown)
-            return IdentityErrors.UnknownPermissions(unknown);
+            return RoleDomainErrors.UnknownPermissions(unknown);
 
         Name = name.Trim();
         Description = Text.Optional(description);
@@ -62,7 +62,7 @@ public sealed class Role
         return Result.Success();
     }
 
-    public Result EnsureDeletable() => IsSystem ? IdentityErrors.SystemRoleLocked : Result.Success();
+    public Result EnsureDeletable() => IsSystem ? RoleDomainErrors.SystemRoleLocked : Result.Success();
 
     private static List<string> Unknown(IEnumerable<string> requested, IReadOnlySet<string> known) =>
         requested.Where(p => !known.Contains(p)).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();

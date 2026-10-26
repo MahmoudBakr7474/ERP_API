@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Options;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
+using WarehouseERP.Identity.Application.Features.Authentication.Login;
+using WarehouseERP.Identity.Application.Features.Authentication.RefreshApiToken;
 using WarehouseERP.Identity.Application.Features.Roles.CreateRole;
 using WarehouseERP.Identity.Application.Features.Users.CreateUser;
 using WarehouseERP.Identity.Application.Features.Users.ListUsers;
-using WarehouseERP.Identity.Application.Features.Authentication.Login;
-using WarehouseERP.Identity.Application.Features.Authentication.RefreshApiToken;
 
 namespace WarehouseERP.UnitTests.Identity;
 

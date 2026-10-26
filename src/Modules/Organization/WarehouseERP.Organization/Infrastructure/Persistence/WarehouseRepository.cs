@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WarehouseERP.BuildingBlocks.Infrastructure.Persistence;
-using WarehouseERP.Organization.Application;
-using WarehouseERP.Organization.Application.Abstractions;
+using WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
+using WarehouseERP.Organization.Application.Errors;
 using WarehouseERP.Organization.Domain;
 using WarehouseERP.SharedKernel.Results;
 
@@ -12,7 +12,7 @@ internal sealed class WarehouseRepository(DbContext db) : IWarehouseRepository
     // Unique indexes whose violation is an expected business conflict. Names come from Migration 01.
     private static readonly Dictionary<string, Error> KnownUniqueConstraints = new(StringComparer.Ordinal)
     {
-        ["IX_Warehouses_BranchId_Code"] = OrganizationErrors.WarehouseCodeTaken,
+        ["IX_Warehouses_BranchId_Code"] = WarehouseErrors.CodeTaken,
     };
 
     public Task<bool> IsBranchActiveAsync(Guid branchId, CancellationToken ct) =>

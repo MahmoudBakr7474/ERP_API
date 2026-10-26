@@ -2,14 +2,15 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Application.Security;
-using WarehouseERP.Catalog.Application;
-using WarehouseERP.Catalog.Application.Abstractions;
+using WarehouseERP.Catalog.Application.Abstractions.Interfaces.Products;
+using WarehouseERP.Catalog.Application.Errors;
 using WarehouseERP.Catalog.Application.Features.Products.CreateProduct;
 using WarehouseERP.Catalog.Application.Features.Products.UpdateProduct;
 using WarehouseERP.Catalog.Contracts;
 using WarehouseERP.Catalog.Domain;
-using WarehouseERP.Organization.Application;
-using WarehouseERP.Organization.Application.Abstractions;
+using WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
+using WarehouseERP.Organization.Application.Contracts.Warehouses;
+using WarehouseERP.Organization.Application.Errors;
 using WarehouseERP.Organization.Application.Features.Warehouses.CreateWarehouse;
 using WarehouseERP.Organization.Application.Features.Warehouses.GetWarehouse;
 using WarehouseERP.Organization.Application.Features.Warehouses.ListWarehouses;
@@ -31,7 +32,7 @@ public sealed class HandlerTests
 
         var result = await new CreateWarehouseHandler(repository, NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
 
-        Assert.Same(OrganizationErrors.BranchNotActive, result.Error);
+        Assert.Same(BranchErrors.NotActive, result.Error);
         Assert.Null(repository.Added);
     }
 
@@ -40,7 +41,7 @@ public sealed class HandlerTests
     {
         var repository = new FakeWarehouseRepository { CodeExists = true };
         var result = await new CreateWarehouseHandler(repository, NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
-        Assert.Same(OrganizationErrors.WarehouseCodeTaken, result.Error);
+        Assert.Same(WarehouseErrors.CodeTaken, result.Error);
     }
 
     [Fact]
@@ -57,9 +58,9 @@ public sealed class HandlerTests
     [Fact]
     public async Task Create_warehouse_returns_the_save_points_error()
     {
-        var repository = new FakeWarehouseRepository { SaveResult = OrganizationErrors.WarehouseCodeTaken };
+        var repository = new FakeWarehouseRepository { SaveResult = WarehouseErrors.CodeTaken };
         var result = await new CreateWarehouseHandler(repository, NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
-        Assert.Same(OrganizationErrors.WarehouseCodeTaken, result.Error);
+        Assert.Same(WarehouseErrors.CodeTaken, result.Error);
     }
 
     [Fact]
@@ -70,7 +71,7 @@ public sealed class HandlerTests
 
         var result = await new GetWarehouseHandler(store, user).HandleAsync(new GetWarehouseQuery(Guid.NewGuid()), default);
 
-        Assert.Same(OrganizationErrors.WarehouseAccessDenied, result.Error);
+        Assert.Same(WarehouseErrors.AccessDenied, result.Error);
         Assert.Equal(0, store.Reads);
     }
 
@@ -80,7 +81,7 @@ public sealed class HandlerTests
         var id = Guid.NewGuid();
         var result = await new GetWarehouseHandler(new FakeWarehouseReadStore(), new FakeUser(false, id))
             .HandleAsync(new GetWarehouseQuery(id), default);
-        Assert.Same(OrganizationErrors.WarehouseNotFound, result.Error);
+        Assert.Same(WarehouseErrors.NotFound, result.Error);
     }
 
     [Fact]
@@ -107,7 +108,7 @@ public sealed class HandlerTests
 
         var result = await new CreateProductHandler(repository, NullLogger<CreateProductHandler>.Instance).HandleAsync(command, default);
 
-        Assert.Same(CatalogErrors.CategoryNotActive, result.Error);
+        Assert.Same(CategoryErrors.NotActive, result.Error);
     }
 
     [Fact]
@@ -115,7 +116,7 @@ public sealed class HandlerTests
     {
         var result = await new UpdateProductHandler(new FakeProductRepository(), NullLogger<UpdateProductHandler>.Instance)
             .HandleAsync(new UpdateProductCommand(Guid.NewGuid(), "اسم", null, "AAAAAAAAB9E="), default);
-        Assert.Same(CatalogErrors.ProductNotFound, result.Error);
+        Assert.Same(ProductErrors.NotFound, result.Error);
     }
 
     [Fact]
@@ -166,16 +167,16 @@ public sealed class HandlerTests
         public WarehouseListFilter? LastFilter { get; private set; }
         public int LastPageSize { get; private set; }
 
-        public Task<WarehouseDetails?> GetAsync(Guid warehouseId, CancellationToken ct)
+        public Task<WarehouseDetailsResponse?> GetAsync(Guid warehouseId, CancellationToken ct)
         {
             Reads++;
-            return Task.FromResult<WarehouseDetails?>(null);
+            return Task.FromResult<WarehouseDetailsResponse?>(null);
         }
 
-        public Task<PagedResult<WarehouseSummary>> ListAsync(WarehouseListFilter filter, int page, int pageSize, CancellationToken ct)
+        public Task<PagedResult<WarehouseSummaryResponse>> ListAsync(WarehouseListFilter filter, int page, int pageSize, CancellationToken ct)
         {
             (LastFilter, LastPageSize) = (filter, pageSize);
-            return Task.FromResult(new PagedResult<WarehouseSummary>([], page, pageSize, 0));
+            return Task.FromResult(new PagedResult<WarehouseSummaryResponse>([], page, pageSize, 0));
         }
     }
 

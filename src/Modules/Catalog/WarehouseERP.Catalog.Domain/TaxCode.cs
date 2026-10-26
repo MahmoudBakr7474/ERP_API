@@ -1,6 +1,7 @@
 using WarehouseERP.SharedKernel.Domain;
+
 namespace WarehouseERP.Catalog.Domain;
-public enum TaxType : byte { ValueAdded = 1, Other = 2 }
+
 public sealed class TaxCode : MasterEntity
 {
     public string Code { get; set; } = null!;

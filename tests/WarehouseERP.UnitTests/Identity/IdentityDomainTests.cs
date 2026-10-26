@@ -26,8 +26,8 @@ public sealed class IdentityDomainTests
         var administrator = Role.Restore(Guid.NewGuid(), Role.AdministratorName, null, isSystem: true, []);
         var lookalike = Role.Create(Role.AdministratorName + "s", null, [], Known).Value;
 
-        Assert.Same(IdentityErrors.SystemRoleLocked, administrator.Update("x", null, [], Known).Error);
-        Assert.Same(IdentityErrors.SystemRoleLocked, administrator.EnsureDeletable().Error);
+        Assert.Same(RoleDomainErrors.SystemRoleLocked, administrator.Update("x", null, [], Known).Error);
+        Assert.Same(RoleDomainErrors.SystemRoleLocked, administrator.EnsureDeletable().Error);
         Assert.True(administrator.GrantsAllPermissions);
         Assert.False(lookalike.GrantsAllPermissions);
         Assert.True(lookalike.EnsureDeletable().IsSuccess);
@@ -122,7 +122,7 @@ public sealed class IdentityDomainTests
 
         var reused = session.Refresh(SessionTokens.Hash(refresh1), Issue(Now).Tokens, Now.AddMinutes(2));
 
-        Assert.Same(IdentityErrors.RefreshTokenReused, reused.Error);
+        Assert.Same(SessionDomainErrors.RefreshTokenReused, reused.Error);
         Assert.Equal(SessionRevokeReason.RefreshTokenReused, session.RevokedReason);
     }
 
@@ -133,9 +133,9 @@ public sealed class IdentityDomainTests
         var api = UserSession.StartApi(Guid.NewGuid(), null, tokens, Now, TimeSpan.FromDays(30));
         var web = UserSession.StartWeb(Guid.NewGuid(), SessionTokens.Create().Hash, Now, TimeSpan.FromHours(12));
 
-        Assert.Same(IdentityErrors.SessionRevoked, api.Refresh(SessionTokens.Create().Hash, Issue(Now).Tokens, Now).Error);
-        Assert.Same(IdentityErrors.SessionRevoked, api.Refresh(SessionTokens.Hash(refresh), Issue(Now).Tokens, Now.AddDays(15)).Error);
-        Assert.Same(IdentityErrors.SessionRevoked, web.Refresh(SessionTokens.Hash(refresh), Issue(Now).Tokens, Now).Error);
+        Assert.Same(SessionDomainErrors.Revoked, api.Refresh(SessionTokens.Create().Hash, Issue(Now).Tokens, Now).Error);
+        Assert.Same(SessionDomainErrors.Revoked, api.Refresh(SessionTokens.Hash(refresh), Issue(Now).Tokens, Now.AddDays(15)).Error);
+        Assert.Same(SessionDomainErrors.Revoked, web.Refresh(SessionTokens.Hash(refresh), Issue(Now).Tokens, Now).Error);
         Assert.Null(api.RevokedAtUtc); // a wrong token alone doesn't end the session
     }
 

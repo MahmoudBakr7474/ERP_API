@@ -1,7 +1,7 @@
 using WarehouseERP.SharedKernel.Domain;
+
 namespace WarehouseERP.Catalog.Domain;
-public enum ExternalCodeType : byte { EGS = 1, GS1 = 2 }
-public enum CodeApprovalStatus : byte { Pending = 1, Approved = 2, Rejected = 3 }
+
 public sealed class ExternalItemCode : MasterEntity
 {
     public Guid ProductId { get; set; }
