@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Organization business rules. Only the shared kernel and this module's own Contracts (for enums
+       it publishes); never EF Core, ASP.NET Core or another module. -->
+  <ItemGroup>
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.SharedKernel/WarehouseERP.SharedKernel.csproj" />
+    <ProjectReference Include="../WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Organization use cases (vertical slices) and the ports they need. No EF Core, HTTP or Serilog:
+       persistence goes through ports implemented in WarehouseERP.Organization. -->
+  <ItemGroup>
+    <ProjectReference Include="../WarehouseERP.Organization.Domain/WarehouseERP.Organization.Domain.csproj" />
+    <ProjectReference Include="../WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.BuildingBlocks.Application/WarehouseERP.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+</Project>
