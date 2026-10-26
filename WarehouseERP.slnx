@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WarehouseERP.Application/WarehouseERP.Application.csproj" />
+    <Project Path="src/WarehouseERP.Domain/WarehouseERP.Domain.csproj" />
+    <Project Path="src/WarehouseERP.Persistence/WarehouseERP.Persistence.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WarehouseERP.Tests/WarehouseERP.Tests.csproj" />
+  </Folder>
+</Solution>
