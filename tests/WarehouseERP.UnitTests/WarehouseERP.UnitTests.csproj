@@ -9,6 +9,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +20,7 @@
     <ProjectReference Include="..\..\src\BuildingBlocks\WarehouseERP.BuildingBlocks.Infrastructure\WarehouseERP.BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Organization\WarehouseERP.Organization.Application\WarehouseERP.Organization.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Catalog\WarehouseERP.Catalog.Application\WarehouseERP.Catalog.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\WarehouseERP.Identity.Application\WarehouseERP.Identity.Application.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Identity & access rules: roles and their permissions, where a user may act, session lifecycle.
+       No ASP.NET Core Identity, EF Core or HTTP types: credentials live in the outer project. -->
+  <ItemGroup>
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.SharedKernel/WarehouseERP.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

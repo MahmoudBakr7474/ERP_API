@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Serilog.Events;
-using WarehouseERP.Api.Security;
+using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Persistence;
 
 namespace WarehouseERP.Api.Observability;

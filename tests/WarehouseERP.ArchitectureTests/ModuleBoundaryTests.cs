@@ -17,7 +17,7 @@ public sealed class ModuleBoundaryTests
     [Fact]
     public void Host_wires_the_known_modules()
     {
-        Assert.Equal(["WarehouseERP.Catalog", "WarehouseERP.Organization"], Modules);
+        Assert.Equal(["WarehouseERP.Catalog", "WarehouseERP.Identity", "WarehouseERP.Organization"], Modules);
     }
 
     [Theory]
@@ -86,7 +86,27 @@ public sealed class ModuleBoundaryTests
             .ToList();
 
         Assert.NotEmpty(configured);
-        Assert.All(configured, entity => Assert.Equal(module + ".Domain", entity.Assembly.GetName().Name));
+        Assert.All(configured, entity => Assert.Contains(entity.Assembly.GetName().Name, OwnEntityAssemblies(module)));
+    }
+
+    // A module's entities are its Domain's. Identity also maps ASP.NET Core Identity's own row types and its
+    // Infrastructure user/role types (ADR 0009); no other module may.
+    private static string[] OwnEntityAssemblies(string module) => module == IdentityName
+        ? [module + ".Domain", module, AspNetIdentityStores]
+        : [module + ".Domain"];
+
+    [Fact]
+    public void Only_identity_and_persistence_reference_aspnet_core_identity()
+    {
+        var offenders = All
+            .Where(a => a.GetName().Name is not (IdentityName or PersistenceName))
+            .SelectMany(a => AllReferences(a)
+                .Where(r => r.StartsWith("Microsoft.AspNetCore.Identity", StringComparison.Ordinal)
+                            || r.StartsWith("Microsoft.Extensions.Identity", StringComparison.Ordinal))
+                .Select(r => $"{a.GetName().Name} -> {r}"))
+            .ToList();
+
+        Assert.Empty(offenders);
     }
 
     [Theory]

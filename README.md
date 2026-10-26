@@ -1,6 +1,6 @@
 # Warehouse ERP
 
-Modular monolith on .NET 10 / ASP.NET Core / EF Core 10.0.13 / SQL Server, with Clean Architecture inside each
+Modular monolith on .NET 10 / ASP.NET Core / EF Core 10.0.14 / SQL Server, with Clean Architecture inside each
 module and vertical slices in the Application layer. One application, one database, one `ErpDbContext`.
 Scope: one company with branches and warehouses, trading and distribution only.
 
@@ -12,11 +12,12 @@ Scope: one company with branches and warehouses, trading and distribution only.
 
 ```
 src/
-  WarehouseERP.Api/                 composition root (security, error handling, logging, health, OpenAPI)
-  WarehouseERP.Persistence/         ErpDbContext over every module's configurations, migrations
+  WarehouseERP.Api/                 composition root (error handling, logging, health, OpenAPI)
+  WarehouseERP.Persistence/         ErpDbContext (IdentityDbContext) over every module's configurations, migrations
   BuildingBlocks/                   SharedKernel (Result, Error, MasterEntity), Application and Infrastructure plumbing
   Modules/Organization/             .Domain, .Application, outer project (Infrastructure + Presentation), .Contracts
   Modules/Catalog/                  same layout
+  Modules/Identity/                 same layout: users, roles, permissions, scope, sessions (ADR 0009)
 tests/
   WarehouseERP.UnitTests/           no database
   WarehouseERP.IntegrationTests/    SQL Server (LocalDB) + the real HTTP host
@@ -37,19 +38,30 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET | `/api/catalog/products/{id}` | `catalog.products.read` |
 | GET | `/api/catalog/products?page&pageSize&search` | `catalog.products.read` |
 | PUT | `/api/catalog/products/{id}` (names + `rowVersion`) | `catalog.products.update` |
+| POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
+| POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
+| GET | `/api/identity/me`; POST `/api/identity/me/password` | signed in |
+| GET, POST | `/api/identity/users`, GET/PUT `/users/{id}`, POST `/users/{id}/activate`, `/deactivate`, `/unlock`, `/password` | `identity.users.read` / `identity.users.manage` |
+| PUT | `/api/identity/users/{id}/roles` | `identity.users.manage` |
+| PUT | `/api/identity/users/{id}/access` (company-wide / branches / warehouses) | `identity.access.manage` |
+| GET, POST | `/api/identity/users/{id}/sessions`, `/users/{id}/sessions/revoke` | `identity.sessions.manage` |
+| GET, POST, PUT, DELETE | `/api/identity/roles`, `/roles/{id}`; GET `/api/identity/permissions` | `identity.roles.read` / `identity.roles.manage` |
+| GET, POST | `/api/identity/sessions` (own), `/sessions/{id}/revoke` | signed in (others' need `identity.sessions.manage`) |
 | GET | `/health/live`, `/health/ready`, `/api/health` | anonymous |
 | GET | `/openapi/v1.json` (Development only) | anonymous |
 
-Errors are ProblemDetails with a stable `errorCode` (see ARCHITECTURE.md). Without an identity provider configured
-(`Authentication:Jwt`), every protected endpoint answers 401: authentication validates tokens from a trusted issuer
-and never issues them (ADR 0005).
+Errors are ProblemDetails with a stable `errorCode` (see ARCHITECTURE.md). Sign-in is the API's own (ADR 0009): the
+React client uses the cookie session and echoes the `XSRF-TOKEN` cookie in an `X-XSRF-TOKEN` header on every
+POST/PUT/DELETE; the POS sends `Authorization: Bearer <accessToken>` and refreshes before it expires. Sign-in
+endpoints answer only over HTTPS. Role, permission and scope changes apply on the user's next request.
 
 ## Prerequisites
 
 - .NET 10 SDK; SQL Server 2019+ or LocalDB.
-- `dotnet-ef` 10.0.13 is a local tool (`dotnet-tools.json`): run `dotnet tool restore` once, then `dotnet dotnet-ef`.
+- `dotnet-ef` 10.0.14 is a local tool (`dotnet-tools.json`): run `dotnet tool restore` once, then `dotnet dotnet-ef`.
 - On the development laptop use **LocalDB**, not `Server=.`: the default SQL Server instance there belongs to another live system.
-- Never commit secrets. Outside Development set `Database__ConnectionString` (and `Authentication__Jwt__*`) as environment variables or in a secret store.
+- Never commit secrets. Outside Development set `Database__ConnectionString` (and, once, `Identity__Bootstrap__*`) as environment variables or in a secret store.
+- HTTPS in development too: `dotnet dev-certs https --trust` once. Behind a TLS-terminating proxy, configure forwarded headers or sign-in is refused.
 
 ## Configuration
 
@@ -57,7 +69,10 @@ and never issues them (ADR 0005).
 |---|---|---|
 | `Database` | `ConnectionString` (required), `CommandTimeoutSeconds` (5–600, default 30) | yes |
 | `Pagination` | `DefaultPageSize` (default 20), `MaxPageSize` (default 100), default ≤ max | yes |
-| `Authentication:Jwt` | `Authority` (https URL of the trusted issuer), `Audience`, `RequireHttpsMetadata` | yes, when present |
+| `Identity:Sessions` | `WebIdleTimeout` (8 h), `WebAbsoluteLifetime` (12 h), `ApiAccessTokenLifetime` (15 min), `ApiRefreshTokenLifetime` (14 d), `ApiAbsoluteLifetime` (30 d) | yes (ranges, idle ≤ absolute, access ≤ refresh ≤ absolute) |
+| `Identity:Password` | ASP.NET Core Identity password options; `RequiredLength` 10 (≥ 8), upper/lower/digit required | yes |
+| `Identity:Lockout` | `MaxFailedAccessAttempts` 5 (3–20), `DefaultLockoutTimeSpan` 15 min (≥ 1 min) | yes |
+| `Identity:Bootstrap` | `UserName`, `Password`, `DisplayName`: first administrator, only while no user exists; never in appsettings | yes (both or neither) |
 | `Serilog` | `MinimumLevel`, overrides, properties | — |
 
 `appsettings.Development.json` points `Database:ConnectionString` at LocalDB (Windows authentication, no secret).
@@ -69,12 +84,13 @@ $env:ERP_SQL_CONNECTION = 'Server=(localdb)\MSSQLLocalDB;Database=WarehouseERP_D
 dotnet tool restore
 $p = 'src/WarehouseERP.Persistence/WarehouseERP.Persistence.csproj'
 
-dotnet dotnet-ef migrations script --idempotent --project $p --startup-project $p -o Migration01_OrganizationCatalog.sql   # inspect first
+dotnet dotnet-ef migrations script --idempotent --project $p --startup-project $p -o migrations.sql   # inspect first
 dotnet dotnet-ef database update --project $p --startup-project $p
 dotnet dotnet-ef migrations has-pending-model-changes --project $p --startup-project $p                                  # must report none
 ```
 
-The design-time factory reads `ERP_SQL_CONNECTION`.
+The design-time factory reads `ERP_SQL_CONNECTION`. `Migration02_Identity` only adds the `identity` schema (and its
+`history.*History` tables); it changes no existing table and seeds the system Administrator role.
 
 ## Running the API
 
@@ -84,7 +100,13 @@ $env:ASPNETCORE_ENVIRONMENT = 'Development'
 dotnet run
 ```
 
-In Development the host validates the whole DI container at startup and serves OpenAPI.
+In Development the host validates the whole DI container at startup and serves OpenAPI. To create the first
+administrator, set it for one start while the user table is empty, then remove it:
+
+```powershell
+$env:Identity__Bootstrap__UserName = 'admin'
+$env:Identity__Bootstrap__Password = '<a password meeting Identity:Password>'
+```
 
 ## Tests
 
@@ -95,7 +117,7 @@ dotnet test WarehouseERP.slnx
 On this laptop builds can run out of memory with parallel nodes; add `-m:1` if MSBuild reports `OutOfMemoryException`.
 
 - `WarehouseERP.UnitTests`: Result and its HTTP mapping, the handler pipeline, paging rules, domain rules, validators, handlers against fakes.
-- `WarehouseERP.IntegrationTests`: each run creates `WarehouseERP_Tests_<guid>` on LocalDB, applies the migrations and drops it. Covers constraints, temporal history and audit stamps, EF model vs Migration 01, unique-key and concurrency mapping, every endpoint (validation 400, business 422, conflicts 409, scope 403, 401), sanitized 500 logged once, health, options validation, OpenAPI, DI. Set `ERP_TEST_SQL_SERVER` for another instance.
+- `WarehouseERP.IntegrationTests`: each run creates `WarehouseERP_Tests_<guid>` on LocalDB, applies the migrations and drops it. Covers constraints, temporal history and audit stamps, EF model vs migrations, unique-key and concurrency mapping, every endpoint (validation 400, business 422, conflicts 409, scope 403, 401), sanitized 500 logged once, health, options validation, OpenAPI, DI. Identity runs on real sessions over https: cookie and bearer sign-in, identical 401s, lockout, logout/revocation/deactivation/password change effective on the next request, idle expiry, anti-forgery, refresh rotation and reuse, permission removal and branch grants applied without re-login, no privilege escalation, bootstrap (own database), no secrets in logs. Set `ERP_TEST_SQL_SERVER` for another instance.
 - `WarehouseERP.ArchitectureTests`: layer and module rules, composition root, no cycles, entity ownership per schema.
 
 ## Constraints worth noting
@@ -112,7 +134,7 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 
 ## Postponed
 
-See the final report in the refactoring PR and `docs/adr/` for reasons: Identity module (users, roles, permission
-assignment, login), branch scope, OpenTelemetry exporters, outbox/inbox and idempotency store (with Inventory),
+See `docs/adr/` for reasons: sign-in rate limiting, expired-session cleanup, Data Protection key encryption at rest,
+MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, outbox/inbox and idempotency store (with Inventory),
 explicit transaction port (with Inventory), domain methods for barcodes, external codes and tax entities (with
 their features), CRUD for company/branch/unit/category.

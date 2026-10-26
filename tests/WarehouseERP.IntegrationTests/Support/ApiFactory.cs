@@ -10,17 +10,23 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Serilog.Core;
 using Serilog.Events;
-using WarehouseERP.Api.Security;
+using WarehouseERP.BuildingBlocks.Application.Security;
 
 namespace WarehouseERP.IntegrationTests;
 
-// The real API host on a test database. Authentication is the test scheme below: the request's
-// X-Test-* headers say who the user is, so tests exercise the real authorization policies and
-// warehouse checks without an identity provider.
+// The real API host on a test database. By default authentication is the test scheme below: the
+// request's X-Test-* headers say who the user is, so module tests exercise the real authorization
+// policies and warehouse checks without signing in. With realSessions the host keeps Identity's
+// session authentication (cookies, bearer tokens) and clients talk https so Secure cookies flow.
 public sealed class ApiFactory(string connectionString, string environment = "Production",
-    IReadOnlyDictionary<string, string?>? settings = null, TimeProvider? clock = null, ILogEventSink? logSink = null)
+    IReadOnlyDictionary<string, string?>? settings = null, TimeProvider? clock = null, ILogEventSink? logSink = null,
+    bool realSessions = false)
     : WebApplicationFactory<Program>
 {
+    /// <summary>A client over https; with <paramref name="handleCookies"/> it keeps its own cookie jar, like a browser.</summary>
+    public HttpClient CreateBrowser(bool handleCookies = true) =>
+        CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost"), HandleCookies = handleCookies });
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         var all = new Dictionary<string, string?>
@@ -32,7 +38,7 @@ public sealed class ApiFactory(string connectionString, string environment = "Pr
             all[key] = value;
 
         builder.UseEnvironment(environment);
-        // UseSetting: visible to Program while it builds (e.g. whether Authentication:Jwt exists).
+        // UseSetting: visible to Program while it builds.
         // In-memory source: added last, so it also wins over appsettings*.json when options bind.
         foreach (var (key, value) in all)
             builder.UseSetting(key, value);
@@ -40,15 +46,18 @@ public sealed class ApiFactory(string connectionString, string environment = "Pr
 
         builder.ConfigureTestServices(services =>
         {
-            services.AddAuthentication(TestAuthHandler.SchemeName)
-                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
-            services.PostConfigure<AuthenticationOptions>(o =>
+            if (!realSessions)
             {
-                o.DefaultScheme = TestAuthHandler.SchemeName;
-                o.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
-                o.DefaultChallengeScheme = TestAuthHandler.SchemeName;
-                o.DefaultForbidScheme = TestAuthHandler.SchemeName;
-            });
+                services.AddAuthentication(TestAuthHandler.SchemeName)
+                    .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, null);
+                services.PostConfigure<AuthenticationOptions>(o =>
+                {
+                    o.DefaultScheme = TestAuthHandler.SchemeName;
+                    o.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
+                    o.DefaultChallengeScheme = TestAuthHandler.SchemeName;
+                    o.DefaultForbidScheme = TestAuthHandler.SchemeName;
+                });
+            }
             if (clock is not null)
                 services.AddSingleton(clock);
             if (logSink is not null)

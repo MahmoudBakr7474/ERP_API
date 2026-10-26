@@ -1,6 +1,7 @@
 # ADR 0005 — Authentication and authorization foundation
 
-Status: accepted (2026-10-26)
+Status: accepted (2026-10-26); the JWT / `NoIdentityProvider` bullet and the deferred Identity module are
+superseded by [ADR 0009](0009-identity-and-access.md) (server-side sessions issued by the Identity module).
 
 ## Context
 There is no identity module or user table yet, and none may be added in this refactoring. The API must still be

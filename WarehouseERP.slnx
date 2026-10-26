@@ -14,6 +14,12 @@
     <Project Path="src/Modules/Catalog/WarehouseERP.Catalog.Contracts/WarehouseERP.Catalog.Contracts.csproj" />
     <Project Path="src/Modules/Catalog/WarehouseERP.Catalog.Domain/WarehouseERP.Catalog.Domain.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Identity/">
+    <Project Path="src/Modules/Identity/WarehouseERP.Identity/WarehouseERP.Identity.csproj" />
+    <Project Path="src/Modules/Identity/WarehouseERP.Identity.Application/WarehouseERP.Identity.Application.csproj" />
+    <Project Path="src/Modules/Identity/WarehouseERP.Identity.Contracts/WarehouseERP.Identity.Contracts.csproj" />
+    <Project Path="src/Modules/Identity/WarehouseERP.Identity.Domain/WarehouseERP.Identity.Domain.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Organization/">
     <Project Path="src/Modules/Organization/WarehouseERP.Organization/WarehouseERP.Organization.csproj" />
     <Project Path="src/Modules/Organization/WarehouseERP.Organization.Application/WarehouseERP.Organization.Application.csproj" />

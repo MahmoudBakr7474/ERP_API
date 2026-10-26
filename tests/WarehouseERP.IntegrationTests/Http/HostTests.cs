@@ -60,11 +60,14 @@ public sealed class HostTests(DatabaseFixture fx)
 
         await client.GetAsync("/api/catalog/products");
 
-        var withException = sink.Events.Where(e => e.Exception is not null).ToList();
-        var logged = Assert.Single(withException);
+        // Only this request's events: with the database down, Data Protection also logs (once, at startup) that it
+        // can't read its key ring; that is a separate failure, not a second log of this one.
+        var request = sink.Events
+            .Where(e => e.Properties.TryGetValue("CorrelationId", out var id) && id.ToString() == "\"fail-once\"")
+            .ToList();
+        var logged = Assert.Single(request, e => e.Exception is not null);
         Assert.Equal(Serilog.Events.LogEventLevel.Error, logged.Level);
-        Assert.Equal("\"fail-once\"", logged.Properties["CorrelationId"].ToString());
-        Assert.DoesNotContain(sink.Events, e => e.Level >= Serilog.Events.LogEventLevel.Error && e != logged);
+        Assert.DoesNotContain(request, e => e.Level >= Serilog.Events.LogEventLevel.Error && e != logged);
     }
 
     [Fact]
@@ -96,12 +99,14 @@ public sealed class HostTests(DatabaseFixture fx)
     [InlineData("Database:CommandTimeoutSeconds", "0")]
     [InlineData("Pagination:MaxPageSize", "0")]
     [InlineData("Pagination:DefaultPageSize", "200")]
-    [InlineData("Authentication:Jwt:Authority", "http://issuer.example.com")]
+    [InlineData("Identity:Sessions:WebIdleTimeout", "2.00:00:00")]
+    [InlineData("Identity:Sessions:ApiAccessTokenLifetime", "30.00:00:00")]
+    [InlineData("Identity:Password:RequiredLength", "4")]
+    [InlineData("Identity:Lockout:MaxFailedAccessAttempts", "0")]
+    [InlineData("Identity:Bootstrap:UserName", "admin")] // without a password
     public void Invalid_required_settings_stop_the_host_at_startup(string key, string value)
     {
         var settings = new Dictionary<string, string?> { [key] = value };
-        if (key.StartsWith("Authentication:Jwt", StringComparison.Ordinal))
-            settings["Authentication:Jwt:Audience"] = "warehouse-erp";
         var connection = key == "Database:ConnectionString" ? value : fx.ConnectionString;
 
         using var api = new ApiFactory(connection, settings: settings);
@@ -109,17 +114,14 @@ public sealed class HostTests(DatabaseFixture fx)
     }
 
     [Fact]
-    public async Task Trusted_issuer_switches_authentication_to_jwt_bearer()
+    public async Task Identity_sessions_are_the_only_authentication_scheme()
     {
-        await using var api = new ApiFactory(fx.ConnectionString, settings: new Dictionary<string, string?>
-        {
-            ["Authentication:Jwt:Authority"] = "https://issuer.example.com",
-            ["Authentication:Jwt:Audience"] = "warehouse-erp",
-        });
+        await using var api = new ApiFactory(fx.ConnectionString, realSessions: true);
         var schemes = api.Services.GetRequiredService<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>();
 
-        Assert.NotNull(await schemes.GetSchemeAsync("Bearer"));
-        Assert.Null(await schemes.GetSchemeAsync(Api.Security.SecurityRegistration.NoIdentityProviderScheme));
+        var scheme = Assert.Single(await schemes.GetAllSchemesAsync());
+        Assert.Equal("ErpSession", scheme.Name);
+        Assert.Equal("ErpSession", (await schemes.GetDefaultAuthenticateSchemeAsync())?.Name);
     }
 
     [Fact]
@@ -130,7 +132,11 @@ public sealed class HostTests(DatabaseFixture fx)
         var document = await (await api.CreateClient().GetAsync("/openapi/v1.json")).Content.ReadAsStringAsync();
         var paths = JsonDocument.Parse(document).RootElement.GetProperty("paths");
 
-        foreach (var path in new[] { "/api/organization/warehouses", "/api/organization/warehouses/{id}", "/api/catalog/products", "/api/catalog/products/{id}" })
+        foreach (var path in new[]
+                 {
+                     "/api/organization/warehouses", "/api/organization/warehouses/{id}", "/api/catalog/products", "/api/catalog/products/{id}",
+                     "/api/identity/login", "/api/identity/tokens", "/api/identity/me", "/api/identity/users", "/api/identity/roles",
+                 })
             Assert.True(paths.TryGetProperty(path, out _), $"OpenAPI has no {path}");
     }
 
