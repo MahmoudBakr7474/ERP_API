@@ -13,7 +13,9 @@ public sealed partial class UpdateProductHandler(IProductRepository products, IL
 {
     public async Task<Result<string>> HandleAsync(UpdateProductCommand command, CancellationToken ct)
     {
-        RowVersions.TryParse(command.RowVersion, out var expected); // shape already validated
+        // The validator already checked the shape; a direct caller that skipped the pipeline gets the same error.
+        if (!RowVersions.TryParse(command.RowVersion, out var expected))
+            return Error.Validation([new ValidationError(nameof(command.RowVersion), "RowVersionValidator", "Invalid row version.")]);
         var product = await products.GetForUpdateAsync(command.ProductId, expected, ct);
         if (product is null)
             return CatalogErrors.ProductNotFound;

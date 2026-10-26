@@ -65,7 +65,7 @@ public sealed class HandlerPipelineTests
 
         Assert.Equal("ABC", result.Value);
         Assert.Equal(1, inner.Calls);
-        Assert.Contains(logs.Entries, e => e.Level == LogLevel.Information && e.Message.StartsWith("Rename succeeded"));
+        Assert.Contains(logs.Entries, e => e.Level == LogLevel.Information && e.Message.StartsWith("Rename succeeded", StringComparison.Ordinal));
     }
 
     [Fact]

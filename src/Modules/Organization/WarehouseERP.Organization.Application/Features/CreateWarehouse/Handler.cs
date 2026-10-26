@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.Organization.Application.Abstractions;
+using WarehouseERP.Organization.Contracts;
 using WarehouseERP.Organization.Domain;
 using WarehouseERP.SharedKernel.Results;
 
@@ -29,11 +30,11 @@ public sealed partial class CreateWarehouseHandler(IWarehouseRepository warehous
             return saved.Error;
 
         var warehouse = created.Value;
-        WarehouseCreated(logger, warehouse.Id, warehouse.BranchId, warehouse.Code, warehouse.WarehouseType.ToString());
+        WarehouseCreated(logger, warehouse.Id, warehouse.BranchId, warehouse.Code, warehouse.WarehouseType);
         return warehouse.Id;
     }
 
     [LoggerMessage(EventId = 2001, Level = LogLevel.Information,
         Message = "Warehouse {WarehouseId} ({WarehouseCode}, {WarehouseType}) created in branch {BranchId}")]
-    private static partial void WarehouseCreated(ILogger logger, Guid warehouseId, Guid branchId, string warehouseCode, string warehouseType);
+    private static partial void WarehouseCreated(ILogger logger, Guid warehouseId, Guid branchId, string warehouseCode, WarehouseType warehouseType);
 }

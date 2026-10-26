@@ -12,9 +12,11 @@ public sealed class ProductApiTests(DatabaseFixture fx) : IAsyncLifetime
         $"{CatalogPermissions.ProductsCreate},{CatalogPermissions.ProductsRead},{CatalogPermissions.ProductsUpdate}";
     private ApiFactory _api = null!;
 
+    private readonly CollectingSink _logs = new();
+
     public Task InitializeAsync()
     {
-        _api = new ApiFactory(fx.ConnectionString);
+        _api = new ApiFactory(fx.ConnectionString, logSink: _logs);
         return Task.CompletedTask;
     }
 
@@ -23,7 +25,7 @@ public sealed class ProductApiTests(DatabaseFixture fx) : IAsyncLifetime
     private static object NewProduct(Guid unitId, string? sku = null, ProductType type = ProductType.StockItem, TrackingMode tracking = TrackingMode.None) =>
         new { sku = sku ?? DatabaseFixture.Code("SKU"), nameAr = "صنف", nameEn = "Item", baseUnitId = unitId, categoryId = (Guid?)null, type, trackingMode = tracking };
 
-    private async Task<Guid> CreateAsync(HttpClient client, Guid unitId)
+    private static async Task<Guid> CreateAsync(HttpClient client, Guid unitId)
     {
         var response = await client.PostJsonAsync(Route, NewProduct(unitId));
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -66,6 +68,8 @@ public sealed class ProductApiTests(DatabaseFixture fx) : IAsyncLifetime
         Assert.Single(responses, r => r.StatusCode == HttpStatusCode.Created);
         foreach (var conflict in responses.Where(r => r.StatusCode != HttpStatusCode.Created))
             await conflict.AssertProblemAsync(HttpStatusCode.Conflict, "Catalog.Product.SkuTaken");
+        // A handled conflict is not an error in the logs.
+        Assert.DoesNotContain(_logs.Events, e => e.Level >= Serilog.Events.LogEventLevel.Error);
     }
 
     [Fact]

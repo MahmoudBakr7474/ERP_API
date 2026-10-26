@@ -8,6 +8,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog.Core;
+using Serilog.Events;
 using WarehouseERP.Api.Security;
 
 namespace WarehouseERP.IntegrationTests;
@@ -16,7 +18,7 @@ namespace WarehouseERP.IntegrationTests;
 // X-Test-* headers say who the user is, so tests exercise the real authorization policies and
 // warehouse checks without an identity provider.
 public sealed class ApiFactory(string connectionString, string environment = "Production",
-    IReadOnlyDictionary<string, string?>? settings = null, TimeProvider? clock = null)
+    IReadOnlyDictionary<string, string?>? settings = null, TimeProvider? clock = null, ILogEventSink? logSink = null)
     : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -49,7 +51,25 @@ public sealed class ApiFactory(string connectionString, string environment = "Pr
             });
             if (clock is not null)
                 services.AddSingleton(clock);
+            if (logSink is not null)
+                services.AddSingleton(logSink); // picked up by Serilog's ReadFrom.Services
         });
+    }
+}
+
+/// <summary>Collects every Serilog event the host writes.</summary>
+public sealed class CollectingSink : ILogEventSink
+{
+    private readonly List<LogEvent> _events = [];
+
+    public IReadOnlyList<LogEvent> Events
+    {
+        get { lock (_events) return [.. _events]; }
+    }
+
+    public void Emit(LogEvent logEvent)
+    {
+        lock (_events) _events.Add(logEvent);
     }
 }
 
@@ -75,6 +95,6 @@ internal sealed class TestAuthHandler(
         return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName)));
     }
 
-    private IEnumerable<string> Split(string header) =>
+    private string[] Split(string header) =>
         Request.Headers[header].ToString().Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

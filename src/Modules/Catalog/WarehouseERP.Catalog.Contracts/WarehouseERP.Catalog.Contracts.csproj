@@ -1,3 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- What other modules may use from Catalog. No references: plain types and interfaces only. -->
+  <!-- What other modules may use from Catalog. No references: plain types and interfaces only.
+       Documented: every public member is part of the module's API (missing docs fail the build). -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
 </Project>

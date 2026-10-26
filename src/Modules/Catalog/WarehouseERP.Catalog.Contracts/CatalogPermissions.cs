@@ -6,9 +6,15 @@ namespace WarehouseERP.Catalog.Contracts;
 /// </summary>
 public static class CatalogPermissions
 {
+    /// <summary>Read products.</summary>
     public const string ProductsRead = "catalog.products.read";
+
+    /// <summary>Create products.</summary>
     public const string ProductsCreate = "catalog.products.create";
+
+    /// <summary>Change products.</summary>
     public const string ProductsUpdate = "catalog.products.update";
 
+    /// <summary>Every Catalog permission.</summary>
     public static IReadOnlyList<string> All { get; } = [ProductsRead, ProductsCreate, ProductsUpdate];
 }

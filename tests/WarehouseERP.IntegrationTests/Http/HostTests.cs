@@ -51,6 +51,23 @@ public sealed class HostTests(DatabaseFixture fx)
     }
 
     [Fact]
+    public async Task Unexpected_failure_is_logged_once_with_its_exception_and_correlation_id()
+    {
+        var sink = new CollectingSink();
+        await using var api = new ApiFactory(BrokenDatabase, logSink: sink);
+        var client = api.CreateClient().As(CatalogPermissions.ProductsRead);
+        client.DefaultRequestHeaders.Add("X-Correlation-ID", "fail-once");
+
+        await client.GetAsync("/api/catalog/products");
+
+        var withException = sink.Events.Where(e => e.Exception is not null).ToList();
+        var logged = Assert.Single(withException);
+        Assert.Equal(Serilog.Events.LogEventLevel.Error, logged.Level);
+        Assert.Equal("\"fail-once\"", logged.Properties["CorrelationId"].ToString());
+        Assert.DoesNotContain(sink.Events, e => e.Level >= Serilog.Events.LogEventLevel.Error && e != logged);
+    }
+
+    [Fact]
     public async Task Malformed_json_is_400_not_500()
     {
         await using var api = new ApiFactory(fx.ConnectionString);

@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WarehouseERP.BuildingBlocks.Infrastructure.Persistence;
 
@@ -35,6 +37,15 @@ public static class PersistenceRegistration
             var database = sp.GetRequiredService<IOptions<DatabaseOptions>>().Value;
             options.UseSqlServer(database.ConnectionString, sql => sql.CommandTimeout(database.CommandTimeoutSeconds));
             options.AddInterceptors(sp.GetRequiredService<AuditingSaveChangesInterceptor>());
+            // EF Core logs every failed command, query and save as an error. The application owns that
+            // decision: an expected failure (a taken SKU) becomes a Result at the save point and an
+            // unexpected one is logged once by the host's exception handler. EF's copies go to Debug.
+            options.ConfigureWarnings(w => w.Log(
+                (RelationalEventId.CommandError, LogLevel.Debug),
+                (RelationalEventId.ConnectionError, LogLevel.Debug),
+                (CoreEventId.QueryIterationFailed, LogLevel.Debug),
+                (CoreEventId.SaveChangesFailed, LogLevel.Debug),
+                (CoreEventId.OptimisticConcurrencyException, LogLevel.Debug)));
         });
         // Modules depend on DbContext, not ErpDbContext, so they never reference this project.
         services.AddScoped<DbContext>(sp => sp.GetRequiredService<ErpDbContext>());

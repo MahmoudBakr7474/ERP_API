@@ -17,6 +17,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\BuildingBlocks\WarehouseERP.BuildingBlocks.Infrastructure\WarehouseERP.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Organization\WarehouseERP.Organization.Application\WarehouseERP.Organization.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Catalog\WarehouseERP.Catalog.Application\WarehouseERP.Catalog.Application.csproj" />
   </ItemGroup>
 
 </Project>
