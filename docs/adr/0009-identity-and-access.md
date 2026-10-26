@@ -32,7 +32,7 @@ and resolves permissions and effective warehouses fresh (a few indexed reads), s
 apply on the next request without signing in again. `ICurrentUser` (`HttpCurrentUser`) moved from the host into the
 Identity module; permission policies are built from the catalog every module registers (`AddPermissions`).
 
-## Added during implementation (please review)
+## Added during implementation (approved by the product owner, 2026-10-26)
 * **No privilege escalation through Identity.** Nobody grants a role holding permissions they don't hold, edits a role
   to include them, or manages (edits, resets, re-roles, re-scopes, deactivates, unlocks) a user who holds more than
   they do; scope is granted only from within the caller's own scope (company-wide only by a company-wide caller, a
