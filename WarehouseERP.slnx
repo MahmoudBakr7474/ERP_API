@@ -1,10 +1,21 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/WarehouseERP.Application/WarehouseERP.Application.csproj" />
-    <Project Path="src/WarehouseERP.Domain/WarehouseERP.Domain.csproj" />
+    <Project Path="src/WarehouseERP.Api/WarehouseERP.Api.csproj" />
     <Project Path="src/WarehouseERP.Persistence/WarehouseERP.Persistence.csproj" />
   </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/WarehouseERP.SharedKernel/WarehouseERP.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Catalog/">
+    <Project Path="src/Modules/Catalog/WarehouseERP.Catalog/WarehouseERP.Catalog.csproj" />
+    <Project Path="src/Modules/Catalog/WarehouseERP.Catalog.Contracts/WarehouseERP.Catalog.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Organization/">
+    <Project Path="src/Modules/Organization/WarehouseERP.Organization/WarehouseERP.Organization.csproj" />
+    <Project Path="src/Modules/Organization/WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
+  </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/WarehouseERP.ArchitectureTests/WarehouseERP.ArchitectureTests.csproj" />
     <Project Path="tests/WarehouseERP.Tests/WarehouseERP.Tests.csproj" />
   </Folder>
 </Solution>

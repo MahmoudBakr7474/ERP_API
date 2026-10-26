@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using WarehouseERP.Application.MasterData;
-using WarehouseERP.Domain.Catalog;
+using WarehouseERP.Catalog.Application;
+using WarehouseERP.Catalog.Contracts;
+using WarehouseERP.Catalog.Domain;
 
 namespace WarehouseERP.Tests;
 
@@ -13,11 +14,11 @@ public sealed class MasterDataHistoryTests(DatabaseFixture fx)
     {
         await using var db = fx.NewDb();
         var unit = new Unit { Code = DatabaseFixture.Code("U"), NameAr = "علبة", IsActive = false };
-        db.Units.Add(unit);
+        db.Set<Unit>().Add(unit);
         await db.SaveChangesAsync();
 
         db.ChangeTracker.Clear();
-        Assert.False((await db.Units.SingleAsync(x => x.Id == unit.Id)).IsActive);
+        Assert.False((await db.Set<Unit>().SingleAsync(x => x.Id == unit.Id)).IsActive);
     }
 
     [Fact]
@@ -25,11 +26,11 @@ public sealed class MasterDataHistoryTests(DatabaseFixture fx)
     {
         var productId = await CreateProductAsync();
         await using var db = fx.NewDb();
-        var product = await db.Products.SingleAsync(x => x.Id == productId);
+        var product = await db.Set<Product>().SingleAsync(x => x.Id == productId);
         product.NameAr = "صنف معدل";
         await db.SaveChangesAsync();
 
-        var versions = await db.Products.TemporalAll().Where(x => x.Id == productId).Select(x => x.NameAr).ToListAsync();
+        var versions = await db.Set<Product>().TemporalAll().Where(x => x.Id == productId).Select(x => x.NameAr).ToListAsync();
         Assert.Equal(["صنف", "صنف معدل"], versions.Order());
         Assert.NotNull(product.UpdatedAtUtc);
     }
@@ -40,8 +41,8 @@ public sealed class MasterDataHistoryTests(DatabaseFixture fx)
         var productId = await CreateProductAsync();
         await using var first = fx.NewDb();
         await using var second = fx.NewDb();
-        var a = await first.Products.SingleAsync(x => x.Id == productId);
-        var b = await second.Products.SingleAsync(x => x.Id == productId);
+        var a = await first.Set<Product>().SingleAsync(x => x.Id == productId);
+        var b = await second.Set<Product>().SingleAsync(x => x.Id == productId);
 
         a.NameEn = "First";
         await first.SaveChangesAsync();
@@ -53,7 +54,7 @@ public sealed class MasterDataHistoryTests(DatabaseFixture fx)
     {
         var (_, unitId) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        return await new MasterDataCreation(db).CreateProductAsync(
+        return await new ProductCommands(db).CreateProductAsync(
             DatabaseFixture.Code("SKU"), "صنف", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
     }
 }

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.SharedKernel/WarehouseERP.SharedKernel.csproj" />
+    <ProjectReference Include="../WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
+  </ItemGroup>
+</Project>

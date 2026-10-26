@@ -1,11 +1,14 @@
 using Microsoft.EntityFrameworkCore;
-using WarehouseERP.Application.MasterData;
-using WarehouseERP.Domain.Catalog;
-using WarehouseERP.Domain.Organization;
+using WarehouseERP.Catalog.Application;
+using WarehouseERP.Catalog.Contracts;
+using WarehouseERP.Catalog.Domain;
+using WarehouseERP.Organization.Application;
+using WarehouseERP.Organization.Contracts;
+using WarehouseERP.Organization.Domain;
 
 namespace WarehouseERP.Tests;
 
-// Rules the database enforces on its own, even for writes that skip the application services.
+// Rules the database enforces on its own, even for writes that skip the module commands.
 [Collection(DatabaseCollection.Name)]
 public sealed class ConstraintTests(DatabaseFixture fx)
 {
@@ -14,7 +17,7 @@ public sealed class ConstraintTests(DatabaseFixture fx)
     {
         var (branchId, _) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        db.Warehouses.Add(new Warehouse
+        db.Set<Warehouse>().Add(new Warehouse
         {
             BranchId = branchId, Code = DatabaseFixture.Code("TR"), NameAr = "ترانزيت",
             WarehouseType = WarehouseType.Transit, AllowsSelling = true
@@ -28,9 +31,9 @@ public sealed class ConstraintTests(DatabaseFixture fx)
         var (_, unitId) = await fx.SeedBranchAndUnitAsync();
         var sku = DatabaseFixture.Code("SKU");
         await using var db = fx.NewDb();
-        await new MasterDataCreation(db).CreateProductAsync(sku, "صنف", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
+        await new ProductCommands(db).CreateProductAsync(sku, "صنف", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
 
-        db.Products.Add(new Product { SKU = sku, NameAr = "مكرر", BaseUnitId = unitId });
+        db.Set<Product>().Add(new Product { SKU = sku, NameAr = "مكرر", BaseUnitId = unitId });
         await DbAssert.RejectedBy(db, "IX_Products_SKU");
     }
 
@@ -39,15 +42,15 @@ public sealed class ConstraintTests(DatabaseFixture fx)
     {
         var (_, unitId) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        var creation = new MasterDataCreation(db);
-        var first = await creation.CreateProductAsync(DatabaseFixture.Code("SKU"), "صنف 1", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
-        var second = await creation.CreateProductAsync(DatabaseFixture.Code("SKU"), "صنف 2", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
-        var units = await db.ProductUnits.Where(x => x.ProductId == first || x.ProductId == second).ToListAsync();
+        var products = new ProductCommands(db);
+        var first = await products.CreateProductAsync(DatabaseFixture.Code("SKU"), "صنف 1", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
+        var second = await products.CreateProductAsync(DatabaseFixture.Code("SKU"), "صنف 2", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
+        var units = await db.Set<ProductUnit>().Where(x => x.ProductId == first || x.ProductId == second).ToListAsync();
         var barcode = DatabaseFixture.Code("622");
 
-        db.ProductBarcodes.Add(new ProductBarcode { ProductUnitId = units.Single(x => x.ProductId == first).Id, Barcode = barcode });
+        db.Set<ProductBarcode>().Add(new ProductBarcode { ProductUnitId = units.Single(x => x.ProductId == first).Id, Barcode = barcode });
         await db.SaveChangesAsync();
-        db.ProductBarcodes.Add(new ProductBarcode { ProductUnitId = units.Single(x => x.ProductId == second).Id, Barcode = barcode });
+        db.Set<ProductBarcode>().Add(new ProductBarcode { ProductUnitId = units.Single(x => x.ProductId == second).Id, Barcode = barcode });
         await DbAssert.RejectedBy(db, "IX_ProductBarcodes_Barcode");
     }
 
@@ -56,12 +59,12 @@ public sealed class ConstraintTests(DatabaseFixture fx)
     {
         var (_, unitId) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        var creation = new MasterDataCreation(db);
-        var product = await creation.CreateProductAsync(DatabaseFixture.Code("SKU"), "صنف", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
-        var other = await creation.CreateProductAsync(DatabaseFixture.Code("SKU"), "صنف تاني", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
-        var otherUnitId = await db.ProductUnits.Where(x => x.ProductId == other).Select(x => x.Id).SingleAsync();
+        var products = new ProductCommands(db);
+        var product = await products.CreateProductAsync(DatabaseFixture.Code("SKU"), "صنف", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
+        var other = await products.CreateProductAsync(DatabaseFixture.Code("SKU"), "صنف تاني", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
+        var otherUnitId = await db.Set<ProductUnit>().Where(x => x.ProductId == other).Select(x => x.Id).SingleAsync();
 
-        db.ExternalItemCodes.Add(new ExternalItemCode
+        db.Set<ExternalItemCode>().Add(new ExternalItemCode
         {
             ProductId = product, ProductUnitId = otherUnitId, CodeType = ExternalCodeType.EGS, Code = DatabaseFixture.Code("EG")
         });
@@ -73,11 +76,11 @@ public sealed class ConstraintTests(DatabaseFixture fx)
     {
         var (branchId, _) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        await new MasterDataCreation(db).CreateWarehouseAsync(
+        await new WarehouseCommands(db).CreateWarehouseAsync(
             branchId, DatabaseFixture.Code("WH"), "مخزن", null, WarehouseType.Physical, true, null, default);
 
         db.ChangeTracker.Clear();
-        db.Branches.Remove(await db.Branches.SingleAsync(x => x.Id == branchId));
+        db.Set<Branch>().Remove(await db.Set<Branch>().SingleAsync(x => x.Id == branchId));
         await DbAssert.RejectedBy(db, "FK_Warehouses_Branches_BranchId");
     }
 }

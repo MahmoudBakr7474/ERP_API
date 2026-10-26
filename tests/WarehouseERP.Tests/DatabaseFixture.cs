@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using WarehouseERP.Domain.Catalog;
-using WarehouseERP.Domain.Organization;
+using WarehouseERP.Catalog.Domain;
+using WarehouseERP.Organization.Domain;
 using WarehouseERP.Persistence;
 
 namespace WarehouseERP.Tests;
@@ -9,12 +9,12 @@ namespace WarehouseERP.Tests;
 // Tests share it, so every test creates its own rows with unique codes.
 public sealed class DatabaseFixture : IAsyncLifetime
 {
-    private readonly string _connectionString =
+    public string ConnectionString { get; } =
         $"Server={Environment.GetEnvironmentVariable("ERP_TEST_SQL_SERVER") ?? @"(localdb)\MSSQLLocalDB"};" +
         $"Database=WarehouseERP_Tests_{Guid.NewGuid():N};Trusted_Connection=True;TrustServerCertificate=True";
 
     public ErpDbContext NewDb() =>
-        new(new DbContextOptionsBuilder<ErpDbContext>().UseSqlServer(_connectionString).Options);
+        new(new DbContextOptionsBuilder<ErpDbContext>().UseSqlServer(ConnectionString).Options);
 
     public async Task InitializeAsync()
     {

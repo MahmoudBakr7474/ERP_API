@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- What other modules may use from Catalog. No references: plain types and interfaces only. -->
+</Project>

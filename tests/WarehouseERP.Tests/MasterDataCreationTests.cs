@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
-using WarehouseERP.Application.MasterData;
-using WarehouseERP.Domain.Catalog;
-using WarehouseERP.Domain.Organization;
+using WarehouseERP.Catalog.Application;
+using WarehouseERP.Catalog.Contracts;
+using WarehouseERP.Catalog.Domain;
+using WarehouseERP.Organization.Application;
+using WarehouseERP.Organization.Contracts;
+using WarehouseERP.Organization.Domain;
 
 namespace WarehouseERP.Tests;
 
@@ -13,10 +16,10 @@ public sealed class MasterDataCreationTests(DatabaseFixture fx)
     {
         var (branchId, _) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        var warehouseId = await new MasterDataCreation(db).CreateWarehouseAsync(
+        var warehouseId = await new WarehouseCommands(db).CreateWarehouseAsync(
             branchId, DatabaseFixture.Code("WH"), "مخزن", null, WarehouseType.Physical, true, null, default);
 
-        var defaults = await db.WarehouseLocations.Where(l => l.WarehouseId == warehouseId && l.IsDefault).ToListAsync();
+        var defaults = await db.Set<WarehouseLocation>().Where(l => l.WarehouseId == warehouseId && l.IsDefault).ToListAsync();
         Assert.Equal("DEFAULT", Assert.Single(defaults).Code);
     }
 
@@ -25,10 +28,10 @@ public sealed class MasterDataCreationTests(DatabaseFixture fx)
     {
         var (branchId, _) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        var warehouseId = await new MasterDataCreation(db).CreateWarehouseAsync(
+        var warehouseId = await new WarehouseCommands(db).CreateWarehouseAsync(
             branchId, DatabaseFixture.Code("WH"), "مخزن", null, WarehouseType.Physical, true, null, default);
 
-        db.WarehouseLocations.Add(new WarehouseLocation { WarehouseId = warehouseId, Code = "D2", NameAr = "تاني", IsDefault = true });
+        db.Set<WarehouseLocation>().Add(new WarehouseLocation { WarehouseId = warehouseId, Code = "D2", NameAr = "تاني", IsDefault = true });
         await DbAssert.RejectedBy(db, "UX_WarehouseLocations_OneDefault");
     }
 
@@ -37,7 +40,7 @@ public sealed class MasterDataCreationTests(DatabaseFixture fx)
     {
         var (branchId, _) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        await Assert.ThrowsAsync<ArgumentException>(() => new MasterDataCreation(db).CreateWarehouseAsync(
+        await Assert.ThrowsAsync<ArgumentException>(() => new WarehouseCommands(db).CreateWarehouseAsync(
             branchId, DatabaseFixture.Code("TR"), "ترانزيت", null, WarehouseType.Transit, true, null, default));
     }
 
@@ -46,10 +49,10 @@ public sealed class MasterDataCreationTests(DatabaseFixture fx)
     {
         var (_, unitId) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        var productId = await new MasterDataCreation(db).CreateProductAsync(
+        var productId = await new ProductCommands(db).CreateProductAsync(
             DatabaseFixture.Code("SKU"), "صنف", unitId, null, ProductType.StockItem, TrackingMode.None, null, default);
 
-        var units = await db.ProductUnits.Where(x => x.ProductId == productId).ToListAsync();
+        var units = await db.Set<ProductUnit>().Where(x => x.ProductId == productId).ToListAsync();
         var baseUnit = Assert.Single(units);
         Assert.Equal(unitId, baseUnit.UnitId);
         Assert.Equal(1m, baseUnit.ConversionFactor);
@@ -60,7 +63,7 @@ public sealed class MasterDataCreationTests(DatabaseFixture fx)
     {
         var (_, unitId) = await fx.SeedBranchAndUnitAsync();
         await using var db = fx.NewDb();
-        await Assert.ThrowsAsync<ArgumentException>(() => new MasterDataCreation(db).CreateProductAsync(
+        await Assert.ThrowsAsync<ArgumentException>(() => new ProductCommands(db).CreateProductAsync(
             DatabaseFixture.Code("SKU"), "خدمة", unitId, null, ProductType.Service, TrackingMode.Serial, null, default));
     }
 }

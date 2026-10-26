@@ -22,7 +22,7 @@ namespace WarehouseERP.Persistence.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.Category", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.Category", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -105,7 +105,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.ExternalItemCode", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.ExternalItemCode", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -192,7 +192,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.Product", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.Product", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -290,7 +290,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.ProductBarcode", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.ProductBarcode", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -367,7 +367,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.ProductTaxAssignment", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.ProductTaxAssignment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -444,7 +444,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.ProductUnit", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.ProductUnit", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -519,7 +519,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.TaxCode", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.TaxCode", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -600,7 +600,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.TaxRate", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.TaxRate", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -678,7 +678,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.Unit", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.Unit", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -756,7 +756,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.Branch", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.Branch", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -834,7 +834,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.Company", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.Company", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -924,7 +924,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.Warehouse", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.Warehouse", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -1013,7 +1013,7 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.WarehouseLocation", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.WarehouseLocation", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -1100,9 +1100,9 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.Category", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.Category", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Catalog.Category", "Parent")
+                    b.HasOne("WarehouseERP.Catalog.Domain.Category", "Parent")
                         .WithMany("Children")
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.NoAction);
@@ -1110,15 +1110,15 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("Parent");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.ExternalItemCode", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.ExternalItemCode", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Catalog.Product", "Product")
+                    b.HasOne("WarehouseERP.Catalog.Domain.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("WarehouseERP.Domain.Catalog.ProductUnit", "ProductUnit")
+                    b.HasOne("WarehouseERP.Catalog.Domain.ProductUnit", "ProductUnit")
                         .WithMany()
                         .HasForeignKey("ProductUnitId", "ProductId")
                         .HasPrincipalKey("Id", "ProductId")
@@ -1129,15 +1129,15 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("ProductUnit");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.Product", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.Product", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Catalog.Unit", "BaseUnit")
+                    b.HasOne("WarehouseERP.Catalog.Domain.Unit", "BaseUnit")
                         .WithMany()
                         .HasForeignKey("BaseUnitId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("WarehouseERP.Domain.Catalog.Category", "Category")
+                    b.HasOne("WarehouseERP.Catalog.Domain.Category", "Category")
                         .WithMany()
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.NoAction);
@@ -1147,9 +1147,9 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("Category");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.ProductBarcode", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.ProductBarcode", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Catalog.ProductUnit", "ProductUnit")
+                    b.HasOne("WarehouseERP.Catalog.Domain.ProductUnit", "ProductUnit")
                         .WithMany("Barcodes")
                         .HasForeignKey("ProductUnitId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1158,15 +1158,15 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("ProductUnit");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.ProductTaxAssignment", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.ProductTaxAssignment", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Catalog.Product", "Product")
+                    b.HasOne("WarehouseERP.Catalog.Domain.Product", "Product")
                         .WithMany()
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("WarehouseERP.Domain.Catalog.TaxCode", "TaxCode")
+                    b.HasOne("WarehouseERP.Catalog.Domain.TaxCode", "TaxCode")
                         .WithMany()
                         .HasForeignKey("TaxCodeId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1177,15 +1177,15 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("TaxCode");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.ProductUnit", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.ProductUnit", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Catalog.Product", "Product")
+                    b.HasOne("WarehouseERP.Catalog.Domain.Product", "Product")
                         .WithMany("Units")
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("WarehouseERP.Domain.Catalog.Unit", "Unit")
+                    b.HasOne("WarehouseERP.Catalog.Domain.Unit", "Unit")
                         .WithMany()
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1196,9 +1196,9 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("Unit");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.TaxRate", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.TaxRate", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Catalog.TaxCode", "TaxCode")
+                    b.HasOne("WarehouseERP.Catalog.Domain.TaxCode", "TaxCode")
                         .WithMany()
                         .HasForeignKey("TaxCodeId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1207,9 +1207,9 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("TaxCode");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.Branch", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.Branch", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Organization.Company", "Company")
+                    b.HasOne("WarehouseERP.Organization.Domain.Company", "Company")
                         .WithMany("Branches")
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1218,9 +1218,9 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("Company");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.Warehouse", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.Warehouse", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Organization.Branch", "Branch")
+                    b.HasOne("WarehouseERP.Organization.Domain.Branch", "Branch")
                         .WithMany("Warehouses")
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1229,9 +1229,9 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("Branch");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.WarehouseLocation", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.WarehouseLocation", b =>
                 {
-                    b.HasOne("WarehouseERP.Domain.Organization.Warehouse", "Warehouse")
+                    b.HasOne("WarehouseERP.Organization.Domain.Warehouse", "Warehouse")
                         .WithMany("Locations")
                         .HasForeignKey("WarehouseId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1240,32 +1240,32 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("Warehouse");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.Category", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.Category", b =>
                 {
                     b.Navigation("Children");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.Product", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.Product", b =>
                 {
                     b.Navigation("Units");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Catalog.ProductUnit", b =>
+            modelBuilder.Entity("WarehouseERP.Catalog.Domain.ProductUnit", b =>
                 {
                     b.Navigation("Barcodes");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.Branch", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.Branch", b =>
                 {
                     b.Navigation("Warehouses");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.Company", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.Company", b =>
                 {
                     b.Navigation("Branches");
                 });
 
-            modelBuilder.Entity("WarehouseERP.Domain.Organization.Warehouse", b =>
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.Warehouse", b =>
                 {
                     b.Navigation("Locations");
                 });

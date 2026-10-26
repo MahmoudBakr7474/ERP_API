@@ -1,17 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-  </PropertyGroup>
+  <!-- Composition point for the database: one ErpDbContext over every module's configurations, and the migrations. -->
   <ItemGroup>
-    <ProjectReference Include="../WarehouseERP.Domain/WarehouseERP.Domain.csproj" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+    <ProjectReference Include="../Modules/Organization/WarehouseERP.Organization/WarehouseERP.Organization.csproj" />
+    <ProjectReference Include="../Modules/Catalog/WarehouseERP.Catalog/WarehouseERP.Catalog.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <!-- Microsoft.Data.SqlClient 6.1.7 brings Pkcs 9.0.11 (GHSA-846f-f764-76mx); pin a patched version. -->
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
 </Project>
