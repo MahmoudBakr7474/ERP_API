@@ -4,18 +4,25 @@
     <Project Path="src/WarehouseERP.Persistence/WarehouseERP.Persistence.csproj" />
   </Folder>
   <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/WarehouseERP.BuildingBlocks.Application/WarehouseERP.BuildingBlocks.Application.csproj" />
+    <Project Path="src/BuildingBlocks/WarehouseERP.BuildingBlocks.Infrastructure/WarehouseERP.BuildingBlocks.Infrastructure.csproj" />
     <Project Path="src/BuildingBlocks/WarehouseERP.SharedKernel/WarehouseERP.SharedKernel.csproj" />
   </Folder>
   <Folder Name="/src/Modules/Catalog/">
     <Project Path="src/Modules/Catalog/WarehouseERP.Catalog/WarehouseERP.Catalog.csproj" />
+    <Project Path="src/Modules/Catalog/WarehouseERP.Catalog.Application/WarehouseERP.Catalog.Application.csproj" />
     <Project Path="src/Modules/Catalog/WarehouseERP.Catalog.Contracts/WarehouseERP.Catalog.Contracts.csproj" />
+    <Project Path="src/Modules/Catalog/WarehouseERP.Catalog.Domain/WarehouseERP.Catalog.Domain.csproj" />
   </Folder>
   <Folder Name="/src/Modules/Organization/">
     <Project Path="src/Modules/Organization/WarehouseERP.Organization/WarehouseERP.Organization.csproj" />
+    <Project Path="src/Modules/Organization/WarehouseERP.Organization.Application/WarehouseERP.Organization.Application.csproj" />
     <Project Path="src/Modules/Organization/WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
+    <Project Path="src/Modules/Organization/WarehouseERP.Organization.Domain/WarehouseERP.Organization.Domain.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/WarehouseERP.ArchitectureTests/WarehouseERP.ArchitectureTests.csproj" />
-    <Project Path="tests/WarehouseERP.Tests/WarehouseERP.Tests.csproj" />
+    <Project Path="tests/WarehouseERP.IntegrationTests/WarehouseERP.IntegrationTests.csproj" />
+    <Project Path="tests/WarehouseERP.UnitTests/WarehouseERP.UnitTests.csproj" />
   </Folder>
 </Solution>

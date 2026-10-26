@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Shared application-layer plumbing: handler contracts, the validation/logging pipeline, the current
+       user port and pagination. Abstractions only: no EF Core, no ASP.NET Core, no Serilog. -->
+  <ItemGroup>
+    <ProjectReference Include="../WarehouseERP.SharedKernel/WarehouseERP.SharedKernel.csproj" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options" />
+  </ItemGroup>
+</Project>

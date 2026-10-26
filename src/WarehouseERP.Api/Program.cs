@@ -1,17 +1,50 @@
+using System.Text.Json.Serialization;
+using WarehouseERP.Api.ErrorHandling;
+using WarehouseERP.Api.Observability;
+using WarehouseERP.Api.Security;
+using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.Catalog;
 using WarehouseERP.Organization;
 using WarehouseERP.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddErpObservability();
 builder.Services
-    .AddErpPersistence(builder.Configuration.GetConnectionString("Erp")
-        ?? throw new InvalidOperationException("ConnectionStrings:Erp is not set."))
+    .AddErpPersistence()
+    .AddErpSecurity(builder.Configuration)
+    .AddErpProblemDetails()
     .AddOrganizationModule()
     .AddCatalogModule();
 
+builder.Services.AddOptions<PaginationOptions>()
+    .BindConfiguration(PaginationOptions.SectionName)
+    .ValidateDataAnnotations()
+    .Validate(o => o.DefaultPageSize <= o.MaxPageSize, "Pagination:DefaultPageSize must not exceed MaxPageSize.")
+    .ValidateOnStart();
+
+// Enums travel as names ("Physical", "Batch"), which stay stable for the React client.
+builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddOpenApi();
+
 var app = builder.Build();
 
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseErpRequestLogging();
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+app.UseAuthentication();
+app.UseAuthorization();
+
+if (app.Environment.IsDevelopment())
+    app.MapOpenApi().AllowAnonymous();
+
+app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+app.MapErpHealthChecks();
+app.MapOrganizationEndpoints();
+app.MapCatalogEndpoints();
 
 app.Run();
+
+// Lets integration tests host the API with WebApplicationFactory<Program>.
+public partial class Program;

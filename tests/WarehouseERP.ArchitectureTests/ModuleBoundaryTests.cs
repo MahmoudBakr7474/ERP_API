@@ -1,53 +1,101 @@
 using System.Reflection;
+using Microsoft.EntityFrameworkCore;
+using NetArchTest.Rules;
+using static WarehouseERP.ArchitectureTests.Solution;
 
 namespace WarehouseERP.ArchitectureTests;
 
-// Module boundaries, read from the compiled assemblies. A module may use the shared kernel and
-// any module's Contracts, never another module's internals, the persistence project or the host.
-// Modules are discovered from the API host's references, so a new module is checked automatically.
+// Clean Architecture inside each module, and modules only meeting through Contracts.
 public sealed class ModuleBoundaryTests
 {
-    private const string Prefix = "WarehouseERP.";
-    private const string SharedKernel = "WarehouseERP.SharedKernel";
-    private static readonly string[] Composition = ["WarehouseERP.Api", "WarehouseERP.Persistence"];
+    private static readonly string[] Frameworks =
+        ["Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore", "Microsoft.Data.SqlClient", "Serilog"];
 
-    private static readonly Assembly Host = Assembly.Load("WarehouseERP.Api");
-
-    private static IEnumerable<string> ProjectReferences(Assembly assembly) =>
-        assembly.GetReferencedAssemblies().Select(a => a.Name!).Where(n => n.StartsWith(Prefix));
-
-    private static bool IsContracts(string name) => name.EndsWith(".Contracts");
-
-    private static IEnumerable<string> ModuleNames() =>
-        ProjectReferences(Host).Where(n => n != SharedKernel && !Composition.Contains(n) && !IsContracts(n));
-
-    public static TheoryData<string> Modules() => new(ModuleNames());
+    private static string[] Forbidden(IEnumerable<string> references, Func<string, bool> allowed) =>
+        references.Where(r => !allowed(r)).ToArray();
 
     [Fact]
     public void Host_wires_the_known_modules()
     {
-        Assert.Equal(["WarehouseERP.Catalog", "WarehouseERP.Organization"], ModuleNames().Order());
+        Assert.Equal(["WarehouseERP.Catalog", "WarehouseERP.Organization"], Modules);
     }
 
     [Theory]
-    [MemberData(nameof(Modules))]
-    public void Module_uses_only_the_shared_kernel_and_contracts(string module)
+    [MemberData(nameof(ModuleData), MemberType = typeof(Solution))]
+    public void Module_has_domain_application_and_contracts_projects(string module)
     {
-        var forbidden = ProjectReferences(Assembly.Load(module))
-            .Where(n => n != SharedKernel && !IsContracts(n));
-        Assert.Empty(forbidden);
+        foreach (var layer in new[] { ".Domain", ".Application", ".Contracts" })
+            Assert.NotNull(Assembly.Load(module + layer));
     }
 
     [Theory]
-    [MemberData(nameof(Modules))]
-    public void Contracts_reference_no_project(string module)
+    [MemberData(nameof(ModuleData), MemberType = typeof(Solution))]
+    public void Domain_uses_only_the_shared_kernel_and_its_own_contracts(string module)
     {
-        Assert.Empty(ProjectReferences(Assembly.Load(module + ".Contracts")));
+        var domain = Assembly.Load(module + ".Domain");
+
+        Assert.Empty(Forbidden(ProjectReferences(domain), r => r == SharedKernelName || r == module + ".Contracts"));
+        Assert.Empty(Forbidden(AllReferences(domain), r => !r.StartsWith("Microsoft.", StringComparison.Ordinal)
+                                                            && !r.StartsWith("FluentValidation", StringComparison.Ordinal)
+                                                            && !r.StartsWith("Serilog", StringComparison.Ordinal)));
     }
 
-    [Fact]
-    public void Shared_kernel_references_no_project()
+    [Theory]
+    [MemberData(nameof(ModuleData), MemberType = typeof(Solution))]
+    public void Application_depends_inward_and_never_on_ef_core_http_or_serilog(string module)
     {
-        Assert.Empty(ProjectReferences(Assembly.Load(SharedKernel)));
+        var application = Assembly.Load(module + ".Application");
+
+        Assert.Empty(Forbidden(ProjectReferences(application), r =>
+            r == module + ".Domain" || IsContracts(r) || r == BuildingBlocksApplicationName || r == SharedKernelName));
+        Assert.Empty(Forbidden(AllReferences(application), r => !Frameworks.Any(f => r.StartsWith(f, StringComparison.Ordinal))));
+    }
+
+    [Theory]
+    [MemberData(nameof(ModuleData), MemberType = typeof(Solution))]
+    public void Infrastructure_and_presentation_reach_no_other_module_nor_the_composition_root(string module)
+    {
+        var outer = Assembly.Load(module);
+
+        Assert.Empty(Forbidden(ProjectReferences(outer), r =>
+            r.StartsWith(module + ".", StringComparison.Ordinal) && !IsContracts(r) // own Domain/Application
+            || IsContracts(r)
+            || r is SharedKernelName or BuildingBlocksApplicationName or BuildingBlocksInfrastructureName));
+    }
+
+    [Theory]
+    [MemberData(nameof(ModuleData), MemberType = typeof(Solution))]
+    public void Presentation_goes_through_the_application_and_never_touches_ef_core(string module)
+    {
+        var result = Types.InAssembly(Assembly.Load(module))
+            .That().ResideInNamespace(module + ".Presentation")
+            .ShouldNot().HaveDependencyOnAny("Microsoft.EntityFrameworkCore", module + ".Infrastructure", module + ".Domain")
+            .GetResult();
+
+        Assert.True(result.IsSuccessful, "Offending types: " + string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Theory]
+    [MemberData(nameof(ModuleData), MemberType = typeof(Solution))]
+    public void Infrastructure_configures_only_its_own_modules_entities(string module)
+    {
+        var configured = Assembly.Load(module).GetTypes()
+            .SelectMany(t => t.GetInterfaces())
+            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IEntityTypeConfiguration<>))
+            .Select(i => i.GetGenericArguments()[0])
+            .ToList();
+
+        Assert.NotEmpty(configured);
+        Assert.All(configured, entity => Assert.Equal(module + ".Domain", entity.Assembly.GetName().Name));
+    }
+
+    [Theory]
+    [MemberData(nameof(ModuleData), MemberType = typeof(Solution))]
+    public void Contracts_are_plain_types_with_no_references(string module)
+    {
+        var contracts = Assembly.Load(module + ".Contracts");
+
+        Assert.Empty(ProjectReferences(contracts));
+        Assert.Empty(Forbidden(AllReferences(contracts), r => r.StartsWith("System", StringComparison.Ordinal) || r == "netstandard"));
     }
 }

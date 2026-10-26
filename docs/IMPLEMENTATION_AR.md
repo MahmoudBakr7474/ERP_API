@@ -16,6 +16,6 @@
 - سياسة `RequiresApproval` لكل DocumentType، والانتقال المباشر من Draft إلى Posted للمستندات القادمة من Modules أخرى، ينفذ في Inventory Migration وليست ضمن Migration 01.
 - قيد `ReservedQuantity <= OnHandSellable` **ممنوع**؛ الحجز والصرف المباشر بتحقق ذري، بينما تلف/فقد/جرد قد ينتج OverReserved Alert دون منع التصحيح.
 
-**التقسيم:** المشروع Modular Monolith: كل Module مشروع لوحده (`src/Modules/Organization` و`src/Modules/Catalog`) ومعاه مشروع `.Contracts` هو الوحيد اللي الـ Modules التانية تشوفه. الـ `ErpDbContext` في `WarehouseERP.Persistence` بيجمع configurations كل الـ Modules، و`WarehouseERP.ArchitectureTests` بيفشل لو Module لمس Module تاني.
+**التقسيم:** المشروع Modular Monolith، وكل Module فيه 4 مشاريع: `.Domain` (القواعد)، و`.Application` (الـ use cases)، والمشروع الخارجي (Infrastructure و Presentation)، و`.Contracts` (الحاجة الوحيدة اللي الـ Modules التانية تشوفها). الـ `ErpDbContext` في `WarehouseERP.Persistence` بيجمع configurations كل الـ Modules، و`WarehouseERP.ArchitectureTests` بيفشل لو Module لمس Module تاني أو طبقة لمست طبقة مش مسموحلها. التفاصيل في `docs/ARCHITECTURE.md` والقرارات في `docs/adr/`.
 
 **الحالة:** Migration 01 اتولّدت بـ `dotnet ef` واتطبقت واتجربت على LocalDB، والاختبارات في `tests/`. أوامر التشغيل في `README.md`.

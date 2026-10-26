@@ -2,7 +2,8 @@
 
 - **Business**: one company, many branches and warehouses; **trading and distribution only**. No manufacturing module/entities.
 - **Application**: ASP.NET Core / React, Modular Monolith, single SQL Server database, single `ErpDbContext`, per-module schemas.
-- **Module layout**: one project per module plus a `.Contracts` project (`src/Modules/<Name>/`). A module references only the shared kernel and Contracts; it owns its entity configurations and uses `DbContext.Set<T>()`. `Persistence` composes every module into `ErpDbContext` and holds cross-module foreign keys. `WarehouseERP.ArchitectureTests` enforces the references.
+- **Module layout**: four projects per module (`.Domain`, `.Application`, the outer project with Infrastructure + Presentation, `.Contracts`); modules meet only through Contracts; `Persistence` composes every module into `ErpDbContext` and holds cross-module foreign keys. Details and enforcement: `ARCHITECTURE.md`, ADR 0001.
+- **Application patterns**: Result + stable error codes (ADR 0003), handlers with validation/logging decorators and no mediator (ADR 0002), repository write methods as save points with known-constraint mapping (ADR 0004), identity-provider-agnostic auth with permission policies and warehouse scope (ADR 0005), Serilog in the host with one log per failure (ADR 0006), validated options (ADR 0007), outbox/inbox/idempotency designed for Inventory (ADR 0008).
 - **Master audit**: SQL Server temporal tables for all master data; operational business events go to `AuditLog` in a later migration.
 - **Location freezing**: active StockCountScope only; no WarehouseLocation.IsFrozen.
 - **Base unit**: Product.BaseUnitId only; matching ProductUnit row with factor 1, no IsBaseUnit.
