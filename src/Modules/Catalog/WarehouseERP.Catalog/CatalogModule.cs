@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Infrastructure.Messaging;
+using WarehouseERP.BuildingBlocks.Infrastructure.Security;
 using WarehouseERP.Catalog.Application.Abstractions;
 using WarehouseERP.Catalog.Application.Features.CreateProduct;
 using WarehouseERP.Catalog.Application.Features.GetProduct;
@@ -31,6 +32,8 @@ public static class CatalogModule
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IProductReadStore, ProductReadStore>();
         services.AddScoped<IProductCatalog, ProductCatalog>();
+
+        services.AddPermissions("Catalog", CatalogPermissions.All);
         return services;
     }
 

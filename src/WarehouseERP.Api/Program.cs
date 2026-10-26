@@ -1,9 +1,9 @@
 using System.Text.Json.Serialization;
 using WarehouseERP.Api.ErrorHandling;
 using WarehouseERP.Api.Observability;
-using WarehouseERP.Api.Security;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.Catalog;
+using WarehouseERP.Identity;
 using WarehouseERP.Organization;
 using WarehouseERP.Persistence;
 
@@ -12,8 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddErpObservability();
 builder.Services
     .AddErpPersistence()
-    .AddErpSecurity(builder.Configuration)
     .AddErpProblemDetails()
+    .AddIdentityModule() // authentication, permission policies and ICurrentUser for every module
     .AddOrganizationModule()
     .AddCatalogModule();
 
@@ -34,6 +34,7 @@ app.UseErpRequestLogging();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 app.UseAuthentication();
+app.UseIdentityModule(); // anti-forgery for cookie sessions, before any endpoint runs
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
@@ -41,6 +42,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapErpHealthChecks();
+app.MapIdentityEndpoints();
 app.MapOrganizationEndpoints();
 app.MapCatalogEndpoints();
 

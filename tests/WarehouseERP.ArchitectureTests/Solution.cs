@@ -13,6 +13,10 @@ internal static class Solution
     public const string SharedKernelName = "WarehouseERP.SharedKernel";
     public const string BuildingBlocksApplicationName = "WarehouseERP.BuildingBlocks.Application";
     public const string BuildingBlocksInfrastructureName = "WarehouseERP.BuildingBlocks.Infrastructure";
+    public const string IdentityName = "WarehouseERP.Identity";
+
+    /// <summary>ASP.NET Core Identity's row types (IdentityUserRole, IdentityRoleClaim, ...).</summary>
+    public const string AspNetIdentityStores = "Microsoft.Extensions.Identity.Stores";
 
     public static readonly Assembly Host = Assembly.Load(ApiName);
 

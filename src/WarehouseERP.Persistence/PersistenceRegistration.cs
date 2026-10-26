@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,6 +50,11 @@ public static class PersistenceRegistration
         });
         // Modules depend on DbContext, not ErpDbContext, so they never reference this project.
         services.AddScoped<DbContext>(sp => sp.GetRequiredService<ErpDbContext>());
+
+        // Keys in the database, so a restart or a second instance still accepts issued anti-forgery tokens.
+        services.AddDataProtection()
+            .SetApplicationName("WarehouseERP")
+            .PersistKeysToDbContext<ErpDbContext>();
         return services;
     }
 }

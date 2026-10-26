@@ -31,11 +31,11 @@ offline grants (designed in §7, built with the POS module), operational AuditLo
 | Project | Holds |
 |---|---|
 | `WarehouseERP.Identity.Domain` | `Role` (name, permissions, system flag), `UserAccess` (company-wide flag, branch and warehouse grants), `UserSession` (lifecycle: issue, touch, rotate, revoke, expire), domain errors. **No ASP.NET Core Identity types.** |
-| `WarehouseERP.Identity.Application` | Features (below), ports: `IUserAccounts` (create, find, verify password, lockout, set password, activate), `IRoleRepository`, `IUserAccessRepository`, `ISessionRepository`, `ISecretTokens` (random tokens + hashing), validators, `IdentityOptions`-free settings via our own options. |
-| `WarehouseERP.Identity` (outer) | **Infrastructure**: `ApplicationUser : IdentityUser<Guid>`, `ApplicationRole : IdentityRole<Guid>`, `UserManager`/`RoleManager` behind the ports, EF configurations, session authentication handler, `HttpCurrentUser` (moves here from the host), `PermissionAuthorizationHandler`, access cache, Data Protection key store. **Presentation**: `/api/identity/*` endpoints. |
+| `WarehouseERP.Identity.Application` | Features (below), ports: `IUserAccounts` (create, find, verify password, lockout, set password, activate), `IRoleRepository`, `IUserAccessRepository`, `ISessionRepository`, `IUserReadStore`, `IIdentityPersistence` (the one save point), validators, `IdentitySessionOptions`. Random tokens and their hashing are the domain's `SessionTokens`. |
+| `WarehouseERP.Identity` (outer) | **Infrastructure**: `ApplicationUser : IdentityUser<Guid>`, `ApplicationRole : IdentityRole<Guid>`, `UserManager`/`RoleManager` behind the ports, EF configurations, session authentication handler, `HttpCurrentUser` (moves here from the host), `PermissionAuthorizationHandler`, per-request access resolution, Data Protection key store. **Presentation**: `/api/identity/*` endpoints. |
 | `WarehouseERP.Identity.Contracts` | `IdentityPermissions`, `IUserDirectory` (user id → display name, for "created by" in other modules). |
 
-`PermissionDefinition` (name, module, description) moves to `BuildingBlocks.Application.Security`; each module
+`PermissionDefinition` (name, module) moves to `BuildingBlocks.Application.Security`; each module
 registers its own definitions in `Add<Module>Module()`. Identity validates role permissions against that catalog and
 the host builds one policy per definition, so no module (Identity included) references another to learn permissions.
 
@@ -69,7 +69,7 @@ organization.Warehouses` are configured in `ErpDbContext` (ADR 0001: cross-modul
 code validates ids through Organization's Contracts and never loads Organization entities.
 
 **Scope semantics**: company-wide → every warehouse; a branch grant → every warehouse of that branch, including ones
-created later; a warehouse grant → that warehouse. Effective scope = union, resolved per request and cached.
+created later; a warehouse grant → that warehouse. Effective scope = union, resolved on every request (no cache).
 **Model**: roles carry *what* (permissions, global), access carries *where*. Scoped role assignments ("storekeeper
 in branch A, viewer in branch B") are a possible later step; not needed for V1.
 
@@ -100,7 +100,7 @@ erDiagram
         nvarchar DisplayName
         bit IsActive
         nvarchar PasswordHash
-        nvarchar SecurityStamp "changes revoke sessions"
+        nvarchar SecurityStamp "rotated on password change/reset and deactivation"
         int AccessFailedCount
         datetimeoffset LockoutEnd
         datetime2 CreatedAtUtc
@@ -126,12 +126,12 @@ erDiagram
         uniqueidentifier UpdatedByUserId
     }
     UserBranchAccess {
-        uniqueidentifier UserId PK
-        uniqueidentifier BranchId PK
+        uniqueidentifier UserAccessId PK "FK UserAccess"
+        uniqueidentifier BranchId PK "FK organization.Branches"
     }
     UserWarehouseAccess {
-        uniqueidentifier UserId PK
-        uniqueidentifier WarehouseId PK
+        uniqueidentifier UserAccessId PK "FK UserAccess"
+        uniqueidentifier WarehouseId PK "FK organization.Warehouses"
     }
     UserSessions {
         uniqueidentifier Id PK
@@ -170,7 +170,7 @@ Plus `identity.DataProtectionKeys` (key ring for cookies, so a restart or a seco
 | External identity provider | **Not used** | One user store. SSO later = ASP.NET Core Identity external logins on the same `Users` table. The current "JWT from a trusted issuer" option is removed to avoid a second identity source. |
 
 Self-contained JWTs are not needed: the API issues and checks its own tokens, and a session lookup per request is
-one indexed read (with a short cache) that buys immediate revocation.
+one indexed read that buys immediate revocation.
 
 ## 6. Flows
 
@@ -192,7 +192,7 @@ sequenceDiagram
         A-->>R: 204 + Set-Cookie __Host-erp (session id) + XSRF-TOKEN
     end
     R->>A: GET /api/organization/warehouses/{id} (cookie)
-    A->>D: session by id (not revoked, not expired) -> user, SecurityStamp
+    A->>D: session by token hash (not revoked, not expired, not idle) -> user active?
     A->>A: resolve access: role permissions, effective warehouses (branch grants expanded)
     A->>A: policy organization.warehouses.read -> handler checks warehouse scope
     A-->>R: 200 / 403 Organization.Warehouse.AccessDenied
@@ -201,8 +201,9 @@ sequenceDiagram
 ### Logout, revocation, password change
 * `POST /api/identity/logout` → revoke current session, clear cookie.
 * `POST /api/identity/sessions/{id}/revoke`, `POST /api/identity/users/{id}/sessions/revoke` (admin) → revoked on the next request.
-* Password change/reset, deactivation, lock → **all** the user's sessions revoked and `SecurityStamp` changed.
-* Role, permission or scope change → `AccessVersion` bumps → the next request reloads the user's access (no re-login).
+* Password change (all other sessions), reset and deactivation (all sessions) → revoked in the same save. Lockout only
+  stops new sign-ins.
+* Role, permission or scope change → the next request resolves the new access (no re-login).
 
 ### POS / API client
 ```mermaid
@@ -298,3 +299,19 @@ in the temporal tables. A persistent operational AuditLog stays a later decision
 3. **Ownership**: Identity owns user access scope; Organization owns the structure; cross-module FKs in Persistence.
 4. **One context**: `ErpDbContext` derives from `IdentityDbContext`, Identity tables in the `identity` schema.
 5. **First admin** from environment settings while no user exists.
+
+## 13. Implementation notes (2026-10-26)
+
+Built as designed, with these additions and clarifications (reasons in ADR 0009):
+
+* **No privilege escalation**: nobody grants or edits a role to include permissions they don't hold, manages a user
+  who holds more than they do, or grants scope outside their own (`Identity.Access.ExceedsOwnPermissions` /
+  `ExceedsOwnScope`, 403). Creating a user with scope also needs `identity.access.manage`.
+* **HTTPS only** for login, token issue/refresh and password change (`Identity.Session.HttpsRequired`).
+* Grants are keyed by `UserAccessId` (the `UserAccess` row), not `UserId`; `UserAccess.Revision` is a concurrency
+  token. Session lookups are by token hash; the web session's last-seen time is written at most once a minute.
+* .NET 10's passkey table is not created (Identity schema version 1); `Migration02_Identity` adds 12 `identity.*`
+  tables, their temporal `history.*History` tables, two foreign keys to `organization.*`, and the Administrator
+  role row. Migration 01's SQL is unchanged.
+* Endpoints add `POST /users/{id}/activate|deactivate|unlock|password`, `GET /users/{id}/sessions` and
+  `GET /api/identity/sessions` (own) to the table in §8.

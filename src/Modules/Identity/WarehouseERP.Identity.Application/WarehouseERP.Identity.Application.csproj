@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Identity use cases (vertical slices) and the ports they need. No ASP.NET Core Identity, EF Core, HTTP or
+       Serilog: credentials and persistence go through ports implemented in WarehouseERP.Identity. -->
+  <ItemGroup>
+    <ProjectReference Include="../WarehouseERP.Identity.Domain/WarehouseERP.Identity.Domain.csproj" />
+    <ProjectReference Include="../WarehouseERP.Identity.Contracts/WarehouseERP.Identity.Contracts.csproj" />
+    <ProjectReference Include="../../Organization/WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.BuildingBlocks.Application/WarehouseERP.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+</Project>

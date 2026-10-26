@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Identity's outer ring: ASP.NET Core Identity (users, password hashing, lockout) behind the Application ports,
+       EF Core configurations of the identity schema, the session authentication handler, and the /api/identity
+       endpoints. The only module allowed to reference ASP.NET Core Identity; never references
+       WarehouseERP.Persistence (the host registers the DbContext). -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../WarehouseERP.Identity.Application/WarehouseERP.Identity.Application.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.BuildingBlocks.Infrastructure/WarehouseERP.BuildingBlocks.Infrastructure.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+  </ItemGroup>
+</Project>

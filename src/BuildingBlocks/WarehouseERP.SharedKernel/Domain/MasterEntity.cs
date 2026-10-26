@@ -4,7 +4,7 @@ namespace WarehouseERP.SharedKernel.Domain;
 // AuditLog is reserved for operational business actions (future migrations).
 // Setters are private: EF Core sets Id and RowVersion, the auditing interceptor sets the audit
 // fields, and domain methods change IsActive.
-public abstract class MasterEntity
+public abstract class MasterEntity : IAuditable
 {
     public Guid Id { get; private set; }
     public bool IsActive { get; private set; } = true;

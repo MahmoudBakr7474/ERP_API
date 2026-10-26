@@ -79,12 +79,17 @@ public sealed class CompositionTests
 
         var entities = db.Model.GetEntityTypes().Where(e => !e.IsOwned()).ToList();
         Assert.NotEmpty(entities);
-        Assert.All(entities, entity =>
-        {
-            var module = entity.ClrType.Assembly.GetName().Name!; // WarehouseERP.<Module>.Domain
-            Assert.EndsWith(".Domain", module);
-            var expectedSchema = module.Split('.')[1].ToLowerInvariant();
-            Assert.Equal(expectedSchema, entity.GetSchema());
-        });
+        Assert.All(entities, entity => Assert.Equal(ExpectedSchema(entity.ClrType), entity.GetSchema()));
+    }
+
+    // WarehouseERP.<Module>.Domain -> <module>. Identity's tables also hold ASP.NET Core Identity's rows, its
+    // Infrastructure user/role types and the Data Protection key ring.
+    private static string ExpectedSchema(Type entity)
+    {
+        var assembly = entity.Assembly.GetName().Name!;
+        if (assembly is IdentityName or AspNetIdentityStores or "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore")
+            return "identity";
+        Assert.EndsWith(".Domain", assembly);
+        return assembly.Split('.')[1].ToLowerInvariant();
     }
 }

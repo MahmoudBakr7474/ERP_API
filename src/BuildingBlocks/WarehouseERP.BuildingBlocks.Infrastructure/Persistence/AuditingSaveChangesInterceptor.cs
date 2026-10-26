@@ -5,8 +5,8 @@ using WarehouseERP.SharedKernel.Domain;
 
 namespace WarehouseERP.BuildingBlocks.Infrastructure.Persistence;
 
-// Stamps who and when on master data, so commands never pass an actor around. Creation metadata
-// can't be overwritten by a later update.
+// Stamps who and when on every audited row (master data, Identity's users, roles and access), so commands never
+// pass an actor around. Creation metadata can't be overwritten by a later update.
 public sealed class AuditingSaveChangesInterceptor(TimeProvider clock, ICurrentUser currentUser) : SaveChangesInterceptor
 {
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
@@ -26,19 +26,19 @@ public sealed class AuditingSaveChangesInterceptor(TimeProvider clock, ICurrentU
     {
         if (db is null) return;
         var now = clock.GetUtcNow().UtcDateTime;
-        foreach (var entry in db.ChangeTracker.Entries<MasterEntity>())
+        foreach (var entry in db.ChangeTracker.Entries<IAuditable>())
         {
             if (entry.State == EntityState.Added)
             {
-                entry.Property(x => x.CreatedAtUtc).CurrentValue = now;
-                entry.Property(x => x.CreatedByUserId).CurrentValue = currentUser.UserId;
+                entry.Property(nameof(IAuditable.CreatedAtUtc)).CurrentValue = now;
+                entry.Property(nameof(IAuditable.CreatedByUserId)).CurrentValue = currentUser.UserId;
             }
             else if (entry.State == EntityState.Modified)
             {
-                entry.Property(x => x.CreatedAtUtc).IsModified = false;
-                entry.Property(x => x.CreatedByUserId).IsModified = false;
-                entry.Property(x => x.UpdatedAtUtc).CurrentValue = now;
-                entry.Property(x => x.UpdatedByUserId).CurrentValue = currentUser.UserId;
+                entry.Property(nameof(IAuditable.CreatedAtUtc)).IsModified = false;
+                entry.Property(nameof(IAuditable.CreatedByUserId)).IsModified = false;
+                entry.Property(nameof(IAuditable.UpdatedAtUtc)).CurrentValue = now;
+                entry.Property(nameof(IAuditable.UpdatedByUserId)).CurrentValue = currentUser.UserId;
             }
         }
     }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Infrastructure.Messaging;
+using WarehouseERP.BuildingBlocks.Infrastructure.Security;
 using WarehouseERP.Organization.Application.Abstractions;
 using WarehouseERP.Organization.Application.Features.CreateWarehouse;
 using WarehouseERP.Organization.Application.Features.GetWarehouse;
@@ -28,7 +29,11 @@ public static class OrganizationModule
 
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<IWarehouseReadStore, WarehouseReadStore>();
-        services.AddScoped<IWarehouseDirectory, WarehouseDirectory>();
+        services.AddScoped<WarehouseDirectory>();
+        services.AddScoped<IWarehouseDirectory>(sp => sp.GetRequiredService<WarehouseDirectory>());
+        services.AddScoped<IBranchDirectory>(sp => sp.GetRequiredService<WarehouseDirectory>());
+
+        services.AddPermissions("Organization", OrganizationPermissions.All);
         return services;
     }
 
