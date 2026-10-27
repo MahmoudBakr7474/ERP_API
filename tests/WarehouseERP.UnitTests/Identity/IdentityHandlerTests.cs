@@ -14,6 +14,7 @@ using WarehouseERP.Identity.Application.Features.Account.GetMe;
 using WarehouseERP.Identity.Application.Features.Authentication.Login;
 using WarehouseERP.Identity.Application.Features.Authentication.RefreshApiToken;
 using WarehouseERP.Identity.Application.Features.Roles.CreateRole;
+using WarehouseERP.Identity.Application.Features.Roles.DeleteRole;
 using WarehouseERP.Identity.Application.Features.Roles.UpdateRole;
 using WarehouseERP.Identity.Application.Features.Sessions.RevokeSession;
 using WarehouseERP.Identity.Application.Features.Users.CreateUser;
@@ -546,6 +547,26 @@ public sealed class IdentityHandlerTests
     }
 
     // ---- roles, sessions, me ---------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Only_a_company_wide_caller_defines_roles()
+    {
+        var caller = new FakeCaller([IdentityPermissions.RolesManage, WarehousesRead], allWarehouses: false);
+        var readers = _roles.Add("Readers", permissions: WarehousesRead);
+        var roleCount = _roles.Roles.Count;
+
+        var created = await new CreateRoleHandler(caller, _roles, Catalog, _persistence, NullLogger<CreateRoleHandler>.Instance, _events)
+            .HandleAsync(new CreateRoleCommand("Clerks", null, [WarehousesRead]), default);
+        var updated = await new UpdateRoleHandler(caller, _roles, Catalog, _persistence, NullLogger<UpdateRoleHandler>.Instance, _events)
+            .HandleAsync(new UpdateRoleCommand(readers, "Readers", null, [], Version: "any"), default); // refused before the version
+        var deleted = await new DeleteRoleHandler(caller, _roles, _accounts, _persistence, NullLogger<DeleteRoleHandler>.Instance, _events)
+            .HandleAsync(new DeleteRoleCommand(readers), default);
+
+        Assert.All([created.Error, updated.Error, deleted.Error], e => Assert.Same(UserAccessErrors.ExceedsOwnScope, e));
+        Assert.Equal(roleCount, _roles.Roles.Count);
+        Assert.Equal([WarehousesRead], _roles.Roles[readers].Permissions);
+        Assert.Equal(3, _events.Recorded.Count(e => e.Type == SecurityEventType.PrivilegeEscalationBlocked));
+    }
 
     [Fact]
     public async Task Nobody_creates_a_role_with_permissions_they_lack()

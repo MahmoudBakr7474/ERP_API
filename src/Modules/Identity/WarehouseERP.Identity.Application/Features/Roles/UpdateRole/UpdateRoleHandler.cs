@@ -19,6 +19,9 @@ public sealed partial class UpdateRoleHandler(
 {
     public async Task<Result<Done>> HandleAsync(UpdateRoleCommand command, CancellationToken ct)
     {
+        // Roles apply company-wide, so only a company-wide caller edits them.
+        if (!currentUser.HasAllWarehouses)
+            return await SecurityAudit.RefuseAsync(UserAccessErrors.ExceedsOwnScope, securityEvents, persistence, ct, roleId: command.RoleId);
         if (await roles.GetAsync(command.RoleId, ct) is not { } role)
             return RoleErrors.NotFound;
         var before = role.Permissions.ToList();

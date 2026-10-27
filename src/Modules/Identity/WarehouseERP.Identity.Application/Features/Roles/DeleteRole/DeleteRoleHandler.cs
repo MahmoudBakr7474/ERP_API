@@ -5,6 +5,7 @@ using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Application.Errors;
+using WarehouseERP.Identity.Application.Shared;
 using WarehouseERP.Identity.Domain;
 using WarehouseERP.SharedKernel.Results;
 
@@ -18,6 +19,9 @@ public sealed partial class DeleteRoleHandler(
 {
     public async Task<Result<Done>> HandleAsync(DeleteRoleCommand command, CancellationToken ct)
     {
+        // Roles apply company-wide, so only a company-wide caller deletes them.
+        if (!currentUser.HasAllWarehouses)
+            return await SecurityAudit.RefuseAsync(UserAccessErrors.ExceedsOwnScope, securityEvents, persistence, ct, roleId: command.RoleId);
         if (await roles.GetAsync(command.RoleId, ct) is not { } role)
             return RoleErrors.NotFound;
         var deletable = role.EnsureDeletable();

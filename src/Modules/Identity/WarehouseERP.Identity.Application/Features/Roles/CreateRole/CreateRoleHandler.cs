@@ -18,6 +18,10 @@ public sealed partial class CreateRoleHandler(
 {
     public async Task<Result<Guid>> HandleAsync(CreateRoleCommand command, CancellationToken ct)
     {
+        // Roles apply company-wide, so only a company-wide caller defines them; assigning one to a user is checked
+        // separately, against that user's scope.
+        if (!currentUser.HasAllWarehouses)
+            return await SecurityAudit.RefuseAsync(UserAccessErrors.ExceedsOwnScope, securityEvents, persistence, ct);
         var created = Role.Create(command.Name, command.Description, command.Permissions, PermissionCatalog.Names(catalog));
         if (created.IsFailure)
             return created.Error;
