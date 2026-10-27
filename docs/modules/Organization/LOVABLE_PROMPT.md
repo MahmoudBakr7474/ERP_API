@@ -11,14 +11,32 @@ its warehouses and the storage locations inside each warehouse.
 ## Stack and ground rules
 - React + TypeScript + Vite, Redux Toolkit with **RTK Query** for every API call. No Supabase, no mock data, no local
   fake backend: every screen talks to the real ASP.NET Core API under `/api` (same origin through the Vite dev proxy).
+- In `vite.config.ts`, proxy `/api` to `https://localhost:49571` with `changeOrigin: true, secure: false`. Use no API
+  base URL env var: the code calls `/api/...`.
 - **Bilingual UI: Arabic (RTL, default) and English (LTR)** with a language switch. Set `dir` on `<html>`. Use logical
   CSS (`margin-inline-start`, etc.).
 - Every entity has `nameAr` (required) and `nameEn` (optional). Show `nameAr` in Arabic and `nameEn ?? nameAr` in
   English.
 - Send `null` for an empty optional text field. Codes are ASCII; show them `dir="ltr"`.
 
+## App Shell
+This is the first module of **one ERP application**. Build a reusable shell that later modules plug into, with:
+- A layout of a sidebar, a top bar and a content area.
+  - Sidebar: an "Organization" group with Company, Branches and Warehouses. Hide links the user has no permission
+    for. Don't add links or empty pages for modules that don't exist yet.
+  - Top bar: the company name, the language switch, and a user menu (display name, sign out).
+- Protected routes: without a session go to `/login`, and back to the requested page after sign-in.
+- Shared code that every module reuses:
+  - one RTK Query base API (cookies, XSRF header, 401 handling);
+  - session state from `/me`;
+  - a `can(permission)` helper that understands `"*"`;
+  - a ProblemDetails error helper that maps field errors to forms and shows toasts;
+  - Arabic/English translations;
+  - a server-paged table with search and a status filter;
+  - a confirm dialog, status badges and form fields.
+
 ## Authentication (cookie session)
-If the app has no sign-in yet, add a minimal one:
+Sign-in page `/login` (part of the shell):
 - `POST /api/identity/login` with `{ userName, password }` answers **204** and sets an HttpOnly session cookie plus an
   `XSRF-TOKEN` cookie. Send every request with `credentials: 'include'`.
 - `GET /api/identity/me` → `{ userId, userName, displayName, email, roles: string[], permissions: string[],

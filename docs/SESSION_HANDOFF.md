@@ -32,12 +32,23 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
 
 ## Identity status
 - Backend complete for the current milestone (ADR 0012, all decisions approved).
-- `docs/modules/Identity/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` are still pending.
+- **Lovable handoff done (2026-10-27):** `docs/modules/Identity/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md`, for the
+  users, roles, security log and own password/sessions screens. They were verified against the real API on a
+  throwaway database.
 - Production-readiness items and the backlog are in ADR 0012. Don't work on them unless they block development.
 
-## Next: Organization frontend
-- Build it in one React ERP application with a reusable App Shell and the existing Identity cookie sign-in.
-- Work from `docs/modules/Organization/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md`.
+## Next: Organization and Identity frontend
+- The ERP frontend is the Lovable project `mahmoudtaha311/screenshot-match`, cloned to `D:\ERP System\warehouse-erp-web`.
+  - Stack: TanStack Start + RTK Query; Vite on `http://localhost:8080` proxies `/api` to `https://localhost:49571`.
+  - Pushes to its `main` sync back into Lovable, so never rewrite its history.
+  - It has the App Shell, sign-in, the Organization screens and, since `86dc682`, the Identity administration screens.
+  - The Identity screens were checked in the browser on 2026-10-27 against a throwaway database. Creating roles and
+    users, the role 409, own-row limits, the security log, change password, my sessions and the employee view all
+    behaved as specified.
+- **2026-10-27: the owner tested both modules on `WarehouseERP_Dev` and accepted them.** Identity and Organization
+  are full-stack complete for V1.
+- Next: merge `feature/organization` (it includes `feature/identity-completion`) into `main` once the owner approves,
+  then start Catalog.
 - This is frontend integration work, not more backend architecture.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 - Don't start Catalog or Inventory.
