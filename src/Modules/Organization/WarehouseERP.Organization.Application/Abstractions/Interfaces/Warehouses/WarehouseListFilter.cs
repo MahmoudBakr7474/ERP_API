@@ -1,4 +1,5 @@
 namespace WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
 
 /// <param name="OnlyWarehouseIds">Restricts the list to these warehouses; null means no restriction.</param>
-public sealed record WarehouseListFilter(Guid? BranchId, IReadOnlySet<Guid>? OnlyWarehouseIds);
+/// <param name="Search">Matches the code or either name.</param>
+public sealed record WarehouseListFilter(Guid? BranchId, IReadOnlySet<Guid>? OnlyWarehouseIds, string? Search, bool? IsActive);

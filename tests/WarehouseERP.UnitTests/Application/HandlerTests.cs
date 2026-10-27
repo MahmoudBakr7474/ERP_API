@@ -30,7 +30,7 @@ public sealed class HandlerTests
     {
         var repository = new FakeWarehouseRepository { BranchActive = false };
 
-        var result = await new CreateWarehouseHandler(repository, NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
+        var result = await new CreateWarehouseHandler(repository, new FakeUser(true), NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
 
         Assert.Same(BranchErrors.NotActive, result.Error);
         Assert.Null(repository.Added);
@@ -40,7 +40,7 @@ public sealed class HandlerTests
     public async Task Create_warehouse_refuses_a_taken_code()
     {
         var repository = new FakeWarehouseRepository { CodeExists = true };
-        var result = await new CreateWarehouseHandler(repository, NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
+        var result = await new CreateWarehouseHandler(repository, new FakeUser(true), NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
         Assert.Same(WarehouseErrors.CodeTaken, result.Error);
     }
 
@@ -48,7 +48,7 @@ public sealed class HandlerTests
     public async Task Create_warehouse_saves_it_with_its_default_location_once()
     {
         var repository = new FakeWarehouseRepository();
-        var result = await new CreateWarehouseHandler(repository, NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
+        var result = await new CreateWarehouseHandler(repository, new FakeUser(true), NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(1, repository.Saves);
@@ -59,8 +59,19 @@ public sealed class HandlerTests
     public async Task Create_warehouse_returns_the_save_points_error()
     {
         var repository = new FakeWarehouseRepository { SaveResult = WarehouseErrors.CodeTaken };
-        var result = await new CreateWarehouseHandler(repository, NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
+        var result = await new CreateWarehouseHandler(repository, new FakeUser(true), NullLogger<CreateWarehouseHandler>.Instance).HandleAsync(NewWarehouse, default);
         Assert.Same(WarehouseErrors.CodeTaken, result.Error);
+    }
+
+    [Fact]
+    public async Task Create_warehouse_needs_company_wide_access()
+    {
+        var repository = new FakeWarehouseRepository();
+        var result = await new CreateWarehouseHandler(repository, new FakeUser(false, Guid.NewGuid()), NullLogger<CreateWarehouseHandler>.Instance)
+            .HandleAsync(NewWarehouse, default);
+
+        Assert.Same(CompanyErrors.CompanyWideAccessRequired, result.Error);
+        Assert.Equal(0, repository.Saves);
     }
 
     [Fact]
@@ -91,11 +102,11 @@ public sealed class HandlerTests
         var scoped = Guid.NewGuid();
         var options = Options.Create(new PaginationOptions { DefaultPageSize = 7 });
 
-        await new ListWarehousesHandler(store, new FakeUser(false, scoped), options).HandleAsync(new ListWarehousesQuery(1, null, null), default);
+        await new ListWarehousesHandler(store, new FakeUser(false, scoped), options).HandleAsync(new ListWarehousesQuery(1, null, null, null, null), default);
         Assert.Equal([scoped], store.LastFilter!.OnlyWarehouseIds!);
         Assert.Equal(7, store.LastPageSize);
 
-        await new ListWarehousesHandler(store, new FakeUser(true), options).HandleAsync(new ListWarehousesQuery(1, 3, null), default);
+        await new ListWarehousesHandler(store, new FakeUser(true), options).HandleAsync(new ListWarehousesQuery(1, 3, null, null, null), default);
         Assert.Null(store.LastFilter!.OnlyWarehouseIds);
         Assert.Equal(3, store.LastPageSize);
     }
@@ -159,6 +170,16 @@ public sealed class HandlerTests
             Saves++;
             return Task.FromResult(SaveResult);
         }
+
+        public Task<Warehouse?> GetForUpdateAsync(Guid warehouseId, byte[]? expectedRowVersion, CancellationToken ct) =>
+            Task.FromResult<Warehouse?>(null);
+
+        public Task<bool> LocationCodeExistsAsync(Guid warehouseId, string code, CancellationToken ct) => Task.FromResult(false);
+
+        public Task<WarehouseLocation?> GetLocationForUpdateAsync(Guid warehouseId, Guid locationId, byte[]? expectedRowVersion, CancellationToken ct) =>
+            Task.FromResult<WarehouseLocation?>(null);
+
+        public Task<Result> SaveChangesAsync(CancellationToken ct) => Task.FromResult(SaveResult);
     }
 
     private sealed class FakeWarehouseReadStore : IWarehouseReadStore
@@ -178,6 +199,15 @@ public sealed class HandlerTests
             (LastFilter, LastPageSize) = (filter, pageSize);
             return Task.FromResult(new PagedResult<WarehouseSummaryResponse>([], page, pageSize, 0));
         }
+
+        public Task<bool> ExistsAsync(Guid warehouseId, CancellationToken ct) => Task.FromResult(false);
+
+        public Task<WarehouseLocationResponse?> GetLocationAsync(Guid warehouseId, Guid locationId, CancellationToken ct) =>
+            Task.FromResult<WarehouseLocationResponse?>(null);
+
+        public Task<PagedResult<WarehouseLocationResponse>> ListLocationsAsync(
+            Guid warehouseId, string? search, bool? isActive, int page, int pageSize, CancellationToken ct) =>
+            Task.FromResult(new PagedResult<WarehouseLocationResponse>([], page, pageSize, 0));
     }
 
     private sealed class FakeProductRepository : IProductRepository

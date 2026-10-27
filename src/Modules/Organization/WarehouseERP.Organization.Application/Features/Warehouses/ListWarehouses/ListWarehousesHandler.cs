@@ -4,6 +4,7 @@ using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
 using WarehouseERP.Organization.Application.Contracts.Warehouses;
+using WarehouseERP.SharedKernel.Domain;
 using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Organization.Application.Features.Warehouses.ListWarehouses;
@@ -15,7 +16,8 @@ public sealed class ListWarehousesHandler(
 {
     public async Task<Result<PagedResult<WarehouseSummaryResponse>>> HandleAsync(ListWarehousesQuery query, CancellationToken ct)
     {
-        var filter = new WarehouseListFilter(query.BranchId, currentUser.HasAllWarehouses ? null : currentUser.WarehouseIds);
+        var filter = new WarehouseListFilter(
+            query.BranchId, currentUser.HasAllWarehouses ? null : currentUser.WarehouseIds, Text.Optional(query.Search), query.IsActive);
         return await warehouses.ListAsync(filter, query.Page, query.ResolvePageSize(pagination.Value), ct);
     }
 }

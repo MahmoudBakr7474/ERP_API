@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
+using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
 using WarehouseERP.Organization.Application.Errors;
 using WarehouseERP.Organization.Contracts;
@@ -10,12 +11,15 @@ namespace WarehouseERP.Organization.Application.Features.Warehouses.CreateWareho
 
 // Owns the transaction: one save point (IWarehouseRepository.AddAsync) for the warehouse and its
 // DEFAULT location. The pre-checks give clear errors; the database still guards the code if two
-// requests race.
-public sealed partial class CreateWarehouseHandler(IWarehouseRepository warehouses, ILogger<CreateWarehouseHandler> logger)
+// requests race. Company-wide users only: the new warehouse is outside any narrower scope.
+public sealed partial class CreateWarehouseHandler(
+    IWarehouseRepository warehouses, ICurrentUser currentUser, ILogger<CreateWarehouseHandler> logger)
     : ICommandHandler<CreateWarehouseCommand, Guid>
 {
     public async Task<Result<Guid>> HandleAsync(CreateWarehouseCommand command, CancellationToken ct)
     {
+        if (!currentUser.HasAllWarehouses)
+            return CompanyErrors.CompanyWideAccessRequired;
         if (!await warehouses.IsBranchActiveAsync(command.BranchId, ct))
             return BranchErrors.NotActive;
         if (await warehouses.CodeExistsAsync(command.BranchId, command.Code.Trim(), ct))

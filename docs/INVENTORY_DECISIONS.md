@@ -5,6 +5,7 @@
 
 ## Organization and catalog
 - Company -> Branch -> Warehouse -> Location. A warehouse belongs to one branch and has an automatically created default location.
+- **Integration requirement, before stock operations go live:** deactivating a warehouse or a location that holds stock must be refused. Organization's deactivate endpoints (ADR 0013) don't check stock today; Inventory supplies the check through a contract, without Organization referencing Inventory internals.
 - A Product is independent of Warehouse. Multiple barcodes and units per product; base unit is defined by **`Product.BaseUnitId` only**. The matching `ProductUnit` row has conversion factor 1; do not add `ProductUnit.IsBaseUnit`.
 - Product tracking mode defined from the start (None/Batch/Serial); product and unit display names in Arabic and English.
 - SKU is separate from tax/e-invoicing item codes such as EGS/GS1. Tax rules and effective dates are modeled separately.
@@ -43,3 +44,4 @@
 - Posted document repeated with same idempotency key — only one stock effect.
 - Adjustment can make stock over-reserved — posted successfully, explicit OverReserved alert recorded.
 - Reservations expiry worker safely releases remaining reserved quantity only once.
+- Deactivating a warehouse or location that holds stock is refused.

@@ -6,5 +6,9 @@ namespace WarehouseERP.Organization.Application.Features.Warehouses.ListWarehous
 
 public sealed class ListWarehousesValidator : AbstractValidator<ListWarehousesQuery>
 {
-    public ListWarehousesValidator(IOptions<PaginationOptions> pagination) => this.AddPagingRules(pagination.Value);
+    public ListWarehousesValidator(IOptions<PaginationOptions> pagination)
+    {
+        this.AddPagingRules(pagination.Value);
+        RuleFor(x => x.Search).MaximumLength(100);
+    }
 }

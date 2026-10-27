@@ -34,6 +34,20 @@ public sealed class Company : MasterEntity
         };
     }
 
+    /// <summary>
+    /// Code and base currency are fixed once the company is set up: documents, balances and costs are kept in
+    /// that currency.
+    /// </summary>
+    public void UpdateSettings(string nameAr, string? nameEn, string timeZoneId, string? taxRegistrationNumber)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nameAr);
+        ArgumentException.ThrowIfNullOrWhiteSpace(timeZoneId);
+        NameAr = nameAr.Trim();
+        NameEn = Text.Optional(nameEn);
+        TimeZoneId = timeZoneId.Trim();
+        TaxRegistrationNumber = Text.Optional(taxRegistrationNumber);
+    }
+
     public Branch AddBranch(string code, string nameAr, string? nameEn)
     {
         var branch = Branch.Create(this, code, nameAr, nameEn);

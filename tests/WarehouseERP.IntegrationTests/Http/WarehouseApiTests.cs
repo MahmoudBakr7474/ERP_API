@@ -11,6 +11,7 @@ public sealed class WarehouseApiTests(DatabaseFixture fx) : IAsyncLifetime
 {
     private const string Route = "/api/organization/warehouses";
     private const string AllPermissions = $"{OrganizationPermissions.WarehousesCreate},{OrganizationPermissions.WarehousesRead}";
+    private const string UpdatePermissions = $"{AllPermissions},{OrganizationPermissions.WarehousesUpdate}";
     private ApiFactory _api = null!;
 
     public Task InitializeAsync()
@@ -114,6 +115,85 @@ public sealed class WarehouseApiTests(DatabaseFixture fx) : IAsyncLifetime
         Assert.Equal((3, 2, 2, 2), (page.GetProperty("totalCount").GetInt32(), page.GetProperty("page").GetInt32(),
             page.GetProperty("pageSize").GetInt32(), page.GetProperty("totalPages").GetInt32()));
         Assert.Single(page.GetProperty("items").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Creating_needs_company_wide_access()
+    {
+        var (branchId, _) = await fx.SeedBranchAndUnitAsync();
+        var response = await _api.CreateClient().As(AllPermissions, warehouses: Guid.NewGuid().ToString())
+            .PostJsonAsync(Route, NewWarehouse(branchId));
+
+        await response.AssertProblemAsync(HttpStatusCode.Forbidden, "Organization.Company.CompanyWideAccessRequired");
+    }
+
+    [Fact]
+    public async Task Update_changes_names_and_selling_keeps_code_and_type_and_a_stale_row_version_is_409()
+    {
+        var (branchId, _) = await fx.SeedBranchAndUnitAsync();
+        var client = _api.CreateClient().As(UpdatePermissions);
+        var code = DatabaseFixture.Code("WH");
+        var id = (await (await client.PostJsonAsync(Route, NewWarehouse(branchId, code))).ReadAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var rowVersion = (await (await client.GetAsync($"{Route}/{id}")).ReadAsync<JsonElement>()).GetProperty("rowVersion").GetString();
+
+        var updated = await client.PutJsonAsync($"{Route}/{id}", new { nameAr = "مخزن الجملة", nameEn = (string?)null, allowsSelling = false, rowVersion });
+
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        var details = await (await client.GetAsync($"{Route}/{id}")).ReadAsync<JsonElement>();
+        Assert.Equal((code, "Physical", "مخزن الجملة", false), (details.GetProperty("code").GetString(), details.GetProperty("type").GetString(),
+            details.GetProperty("nameAr").GetString(), details.GetProperty("allowsSelling").GetBoolean()));
+        Assert.Equal((await updated.ReadAsync<JsonElement>()).GetProperty("rowVersion").GetString(), details.GetProperty("rowVersion").GetString());
+
+        await (await client.PutJsonAsync($"{Route}/{id}", new { nameAr = "قديم", allowsSelling = true, rowVersion }))
+            .AssertProblemAsync(HttpStatusCode.Conflict, "Common.ConcurrencyConflict");
+        await (await client.PutJsonAsync($"{Route}/{Guid.NewGuid()}", new { nameAr = "مخزن", allowsSelling = true, rowVersion }))
+            .AssertProblemAsync(HttpStatusCode.NotFound, "Organization.Warehouse.NotFound");
+    }
+
+    [Fact]
+    public async Task A_transit_warehouse_can_not_be_switched_to_selling()
+    {
+        var (branchId, _) = await fx.SeedBranchAndUnitAsync();
+        var client = _api.CreateClient().As(UpdatePermissions);
+        var created = await client.PostJsonAsync(Route, NewWarehouse(branchId, type: WarehouseType.Transit, allowsSelling: false));
+        var id = (await created.ReadAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var rowVersion = (await (await client.GetAsync($"{Route}/{id}")).ReadAsync<JsonElement>()).GetProperty("rowVersion").GetString();
+
+        var response = await client.PutJsonAsync($"{Route}/{id}", new { nameAr = "ترانزيت", allowsSelling = true, rowVersion });
+
+        await response.AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Organization.Warehouse.TransitCannotSell");
+    }
+
+    [Fact]
+    public async Task Changes_follow_the_warehouse_scope()
+    {
+        var (branchId, _) = await fx.SeedBranchAndUnitAsync();
+        var admin = _api.CreateClient().As(UpdatePermissions);
+        var mine = (await (await admin.PostJsonAsync(Route, NewWarehouse(branchId))).ReadAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var other = (await (await admin.PostJsonAsync(Route, NewWarehouse(branchId))).ReadAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var scoped = _api.CreateClient().As(UpdatePermissions, warehouses: mine.ToString());
+
+        Assert.Equal(HttpStatusCode.NoContent, (await scoped.PostAsync($"{Route}/{mine}/deactivate", null)).StatusCode);
+        await (await scoped.PostAsync($"{Route}/{other}/deactivate", null))
+            .AssertProblemAsync(HttpStatusCode.Forbidden, "Organization.Warehouse.AccessDenied");
+        await (await scoped.PutJsonAsync($"{Route}/{other}", new { nameAr = "مخزن", allowsSelling = true, rowVersion = "AAAAAAAAB9E=" }))
+            .AssertProblemAsync(HttpStatusCode.Forbidden, "Organization.Warehouse.AccessDenied");
+    }
+
+    [Fact]
+    public async Task List_searches_and_filters_by_status()
+    {
+        var (branchId, _) = await fx.SeedBranchAndUnitAsync();
+        var client = _api.CreateClient().As(UpdatePermissions);
+        var active = (await (await client.PostJsonAsync(Route, NewWarehouse(branchId))).ReadAsync<JsonElement>()).GetProperty("id").GetGuid();
+        var inactiveCode = DatabaseFixture.Code("WH");
+        var inactive = (await (await client.PostJsonAsync(Route, NewWarehouse(branchId, inactiveCode))).ReadAsync<JsonElement>()).GetProperty("id").GetGuid();
+        await client.PostAsync($"{Route}/{inactive}/deactivate", null);
+
+        var activeOnly = await (await client.GetAsync($"{Route}?branchId={branchId}&isActive=true")).ReadAsync<JsonElement>();
+        Assert.Equal(active, Assert.Single(activeOnly.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+        var searched = await (await client.GetAsync($"{Route}?search={inactiveCode}")).ReadAsync<JsonElement>();
+        Assert.Equal(inactive, Assert.Single(searched.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
     }
 
     [Fact]

@@ -59,13 +59,38 @@ public sealed class DatabaseFixture : IAsyncLifetime
 
     public static string Code(string prefix) => $"{prefix}-{Guid.NewGuid():N}"[..20];
 
+    private readonly SemaphoreSlim _companyLock = new(1, 1);
+    private Guid? _companyId;
+
+    /// <summary>The database's one company (V1 has one per installation), created on first use.</summary>
+    public async Task<Guid> EnsureCompanyAsync()
+    {
+        await _companyLock.WaitAsync();
+        try
+        {
+            if (_companyId is { } id)
+                return id;
+            await using var db = NewDb();
+            var company = Company.Create(Code("C"), "الشركة", null, "EGP", "Africa/Cairo", null);
+            db.Add(company);
+            await db.SaveChangesAsync();
+            _companyId = company.Id;
+            return company.Id;
+        }
+        finally
+        {
+            _companyLock.Release();
+        }
+    }
+
     public async Task<(Guid BranchId, Guid UnitId)> SeedBranchAndUnitAsync()
     {
+        var companyId = await EnsureCompanyAsync();
         await using var db = NewDb();
-        var company = Company.Create(Code("C"), "الشركة", null, "EGP", "Africa/Cairo", null);
+        var company = await db.Set<Company>().SingleAsync(x => x.Id == companyId);
         var branch = company.AddBranch(Code("B"), "فرع", null);
         var unit = Unit.Create(Code("U"), "قطعة", "Piece", allowsFraction: false);
-        db.AddRange(company, unit);
+        db.AddRange(branch, unit);
         await db.SaveChangesAsync();
         return (branch.Id, unit.Id);
     }

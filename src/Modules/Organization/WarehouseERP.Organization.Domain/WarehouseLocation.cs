@@ -1,4 +1,5 @@
 using WarehouseERP.SharedKernel.Domain;
+using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Organization.Domain;
 
@@ -22,4 +23,33 @@ public sealed class WarehouseLocation : MasterEntity
         NameEn = "Default location",
         IsDefault = true,
     };
+
+    internal static WarehouseLocation Create(Warehouse warehouse, string code, string nameAr, string? nameEn)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nameAr);
+        return new WarehouseLocation
+        {
+            Warehouse = warehouse, Code = code.Trim(), NameAr = nameAr.Trim(), NameEn = Text.Optional(nameEn),
+        };
+    }
+
+    /// <summary>The code is fixed once created; only the names change.</summary>
+    public void Rename(string nameAr, string? nameEn)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nameAr);
+        NameAr = nameAr.Trim();
+        NameEn = Text.Optional(nameEn);
+    }
+
+    /// <summary>The default location is where stock goes when no location is named, so it stays active.</summary>
+    public Result SetActive(bool isActive)
+    {
+        if (!isActive && IsDefault)
+            return WarehouseLocationDomainErrors.DefaultMustStayActive;
+
+        if (isActive) Activate();
+        else Deactivate();
+        return Result.Success();
+    }
 }

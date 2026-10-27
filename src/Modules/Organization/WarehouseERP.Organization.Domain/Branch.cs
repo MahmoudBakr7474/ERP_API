@@ -21,4 +21,12 @@ public sealed class Branch : MasterEntity
         ArgumentException.ThrowIfNullOrWhiteSpace(nameAr);
         return new Branch { Company = company, Code = code.Trim(), NameAr = nameAr.Trim(), NameEn = Text.Optional(nameEn) };
     }
+
+    /// <summary>The code is fixed once created; only the names change.</summary>
+    public void Rename(string nameAr, string? nameEn)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nameAr);
+        NameAr = nameAr.Trim();
+        NameEn = Text.Optional(nameEn);
+    }
 }

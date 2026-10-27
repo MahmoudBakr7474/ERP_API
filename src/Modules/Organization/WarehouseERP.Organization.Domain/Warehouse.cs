@@ -45,4 +45,28 @@ public sealed class Warehouse : MasterEntity
         warehouse._locations.Add(WarehouseLocation.CreateDefault(warehouse));
         return warehouse;
     }
+
+    /// <summary>Code, type and branch are fixed once created. A Transit warehouse still can never sell.</summary>
+    public Result Update(string nameAr, string? nameEn, bool allowsSelling)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nameAr);
+        if (WarehouseType == WarehouseType.Transit && allowsSelling)
+            return WarehouseDomainErrors.TransitCannotSell;
+
+        NameAr = nameAr.Trim();
+        NameEn = Text.Optional(nameEn);
+        AllowsSelling = allowsSelling;
+        return Result.Success();
+    }
+
+    /// <summary>Only an active warehouse gets new locations.</summary>
+    public Result<WarehouseLocation> AddLocation(string code, string nameAr, string? nameEn)
+    {
+        if (!IsActive)
+            return WarehouseDomainErrors.NotActive;
+
+        var location = WarehouseLocation.Create(this, code, nameAr, nameEn);
+        _locations.Add(location);
+        return location;
+    }
 }

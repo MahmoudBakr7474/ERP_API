@@ -31,9 +31,17 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 
 | Method | Route | Permission |
 |---|---|---|
-| POST | `/api/organization/warehouses` | `organization.warehouses.create` |
-| GET | `/api/organization/warehouses/{id}` | `organization.warehouses.read` + warehouse in scope |
-| GET | `/api/organization/warehouses?page&pageSize&branchId` | `organization.warehouses.read` (lists the scope only) |
+| GET | `/api/organization/company` (404 `Organization.Company.NotConfigured` until set up) | signed in |
+| POST, PUT | `/api/organization/company` (POST once: first-run setup; PUT settings + `rowVersion`) | `organization.company.update` + company-wide |
+| GET | `/api/organization/branches?page&pageSize&search&isActive`, `/branches/{id}` | `organization.branches.read` (company-wide: all; else branches of the user's warehouses) |
+| POST | `/api/organization/branches` | `organization.branches.create` + company-wide |
+| PUT, POST | `/api/organization/branches/{id}` (names + `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `organization.branches.update` + company-wide |
+| POST | `/api/organization/warehouses` (creates its `DEFAULT` location) | `organization.warehouses.create` + company-wide |
+| GET | `/api/organization/warehouses?page&pageSize&branchId&search&isActive`, `/warehouses/{id}` | `organization.warehouses.read` + warehouse in scope |
+| PUT, POST | `/api/organization/warehouses/{id}` (names, `allowsSelling`, `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `organization.warehouses.update` + warehouse in scope |
+| GET | `/api/organization/warehouses/{warehouseId}/locations?page&pageSize&search&isActive`, `/locations/{locationId}` | `organization.warehouses.read` + warehouse in scope |
+| POST | `/api/organization/warehouses/{warehouseId}/locations` | `organization.locations.create` + warehouse in scope |
+| PUT, POST | `/api/organization/warehouses/{warehouseId}/locations/{locationId}` (names + `rowVersion`), `/activate`, `/deactivate` | `organization.locations.update` + warehouse in scope |
 | POST | `/api/catalog/products` | `catalog.products.create` |
 | GET | `/api/catalog/products/{id}` | `catalog.products.read` |
 | GET | `/api/catalog/products?page&pageSize&search` | `catalog.products.read` |
