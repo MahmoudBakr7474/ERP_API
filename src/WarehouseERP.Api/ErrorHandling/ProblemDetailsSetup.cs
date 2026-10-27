@@ -32,6 +32,7 @@ public static class ProblemDetailsSetup
         StatusCodes.Status404NotFound => "Common.NotFound",
         StatusCodes.Status405MethodNotAllowed => "Common.MethodNotAllowed",
         StatusCodes.Status415UnsupportedMediaType => "Common.UnsupportedMediaType",
+        StatusCodes.Status429TooManyRequests => "Common.TooManyRequests",
         _ => GlobalExceptionHandler.UnexpectedCode,
     };
 }

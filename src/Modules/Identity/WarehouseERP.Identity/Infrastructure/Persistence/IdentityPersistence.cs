@@ -15,7 +15,11 @@ internal sealed class IdentityPersistence(DbContext db) : IIdentityPersistence
         ["UserNameIndex"] = UserErrors.UserNameTaken,
         ["RoleNameIndex"] = RoleErrors.NameTaken,
         ["IX_UserAccess_UserId"] = CommonErrors.ConcurrencyConflict,
+        ["PK_UserRoles"] = CommonErrors.ConcurrencyConflict,
+        ["PK_RetiredRefreshTokens"] = CommonErrors.ConcurrencyConflict,
     };
 
     public Task<Result> SaveChangesAsync(CancellationToken ct) => DbFailures.SaveAsync(db, KnownUniqueConstraints, ct);
+
+    public void DiscardChanges() => db.ChangeTracker.Clear();
 }

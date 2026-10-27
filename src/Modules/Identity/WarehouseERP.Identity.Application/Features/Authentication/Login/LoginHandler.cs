@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Authentication;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Sessions;
 using WarehouseERP.Identity.Domain;
 using WarehouseERP.SharedKernel.Results;
@@ -12,12 +13,13 @@ namespace WarehouseERP.Identity.Application.Features.Authentication.Login;
 // Browser sign-in: a server-side session whose random token the endpoint puts in an HttpOnly cookie.
 public sealed partial class LoginHandler(
     IUserCredentials credentials, ISessionRepository sessions, IIdentityPersistence persistence,
-    IOptions<IdentitySessionOptions> options, TimeProvider clock, ILogger<LoginHandler> logger)
+    IOptions<IdentitySessionOptions> options, TimeProvider clock, ILogger<LoginHandler> logger, ISecurityEventLog securityEvents)
     : ICommandHandler<LoginCommand, LoginResponse>
 {
     public async Task<Result<LoginResponse>> HandleAsync(LoginCommand command, CancellationToken ct)
     {
-        var verified = await Credentials.VerifyAsync(credentials, persistence, logger, command.UserName, command.Password, ct);
+        var verified = await Credentials.VerifyAsync(
+            credentials, securityEvents, persistence, logger, command.UserName, command.Password, "web", ct);
         if (verified.IsFailure)
             return verified.Error;
 
@@ -25,7 +27,8 @@ public sealed partial class LoginHandler(
         var (token, hash) = SessionTokens.Create();
         var session = UserSession.StartWeb(verified.Value, hash, now, options.Value.WebAbsoluteLifetime);
         sessions.Add(session);
-        var saved = await persistence.SaveChangesAsync(ct); // the session and the reset failed-attempt count
+        securityEvents.Record(SecurityEventType.SignedIn, verified.Value, sessionId: session.Id, details: new { channel = "web" });
+        var saved = await persistence.SaveChangesAsync(ct); // the session and the event
         if (saved.IsFailure)
             return saved.Error;
 

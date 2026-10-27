@@ -20,6 +20,12 @@ public interface IRoleRepository
 
     Task UpdateAsync(Role role, CancellationToken ct);
 
+    /// <summary>
+    /// Gives the role a new version in the coming save, checked against the version read now, so concurrent saves
+    /// that rely on who holds the role conflict instead of both committing.
+    /// </summary>
+    Task TouchAsync(Guid roleId, CancellationToken ct);
+
     Task DeleteAsync(Guid roleId, CancellationToken ct);
 
     Task<IReadOnlyList<RoleSummaryResponse>> ListAsync(CancellationToken ct);

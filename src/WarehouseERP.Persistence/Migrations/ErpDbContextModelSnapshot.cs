@@ -920,6 +920,74 @@ namespace WarehouseERP.Persistence.Migrations
                             }));
                 });
 
+            modelBuilder.Entity("WarehouseERP.Identity.Domain.RetiredRefreshToken", b =>
+                {
+                    b.Property<byte[]>("TokenHash")
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("RetiredAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("TokenHash");
+
+                    b.HasIndex("SessionId");
+
+                    b.ToTable("RetiredRefreshTokens", "identity");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Identity.Domain.SecurityEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CorrelationId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("nvarchar(45)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("TargetUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Type")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAtUtc");
+
+                    b.HasIndex("ActorUserId", "OccurredAtUtc");
+
+                    b.HasIndex("TargetUserId", "OccurredAtUtc");
+
+                    b.ToTable("SecurityEvents", "identity");
+                });
+
             modelBuilder.Entity("WarehouseERP.Identity.Domain.UserAccess", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1793,6 +1861,15 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("TaxCode");
                 });
 
+            modelBuilder.Entity("WarehouseERP.Identity.Domain.RetiredRefreshToken", b =>
+                {
+                    b.HasOne("WarehouseERP.Identity.Domain.UserSession", null)
+                        .WithMany("RetiredRefreshTokens")
+                        .HasForeignKey("SessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("WarehouseERP.Identity.Domain.UserAccess", b =>
                 {
                     b.HasOne("WarehouseERP.Identity.Infrastructure.ApplicationUser", null)
@@ -1894,6 +1971,11 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("Branches");
 
                     b.Navigation("Warehouses");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Identity.Domain.UserSession", b =>
+                {
+                    b.Navigation("RetiredRefreshTokens");
                 });
 
             modelBuilder.Entity("WarehouseERP.Organization.Domain.Branch", b =>

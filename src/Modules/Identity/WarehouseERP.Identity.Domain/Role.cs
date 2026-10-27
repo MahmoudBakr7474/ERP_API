@@ -32,6 +32,9 @@ public sealed class Role
     public IReadOnlySet<string> Permissions => _permissions;
     public bool GrantsAllPermissions => IsSystem && Name == AdministratorName;
 
+    /// <summary>The stored version (concurrency stamp) this role was read at; null for a new role.</summary>
+    public string? Version { get; private init; }
+
     /// <param name="knownPermissions">The permission catalog; any other name is refused.</param>
     public static Result<Role> Create(string name, string? description, IEnumerable<string> permissions, IReadOnlySet<string> knownPermissions)
     {
@@ -43,8 +46,11 @@ public sealed class Role
     }
 
     /// <summary>Rebuilds a stored role.</summary>
-    public static Role Restore(Guid id, string name, string? description, bool isSystem, IEnumerable<string> permissions) =>
-        new(id, name, description, isSystem, permissions);
+    public static Role Restore(Guid id, string name, string? description, bool isSystem, IEnumerable<string> permissions, string? version = null) =>
+        new(id, name, description, isSystem, permissions) { Version = version };
+
+    /// <summary>Whether the caller edited the role at the version it is stored at (optimistic concurrency).</summary>
+    public bool IsAtVersion(string expectedVersion) => string.Equals(Version, expectedVersion, StringComparison.Ordinal);
 
     public Result Update(string name, string? description, IEnumerable<string> permissions, IReadOnlySet<string> knownPermissions)
     {

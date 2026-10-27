@@ -2,6 +2,7 @@ using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Authentication;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Sessions;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.UserAccess;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Users;
@@ -29,13 +30,14 @@ internal sealed class FakeCaller(IEnumerable<string>? permissions = null, bool a
     public IReadOnlySet<Guid> WarehouseIds { get; } = (warehouses ?? []).ToHashSet();
 }
 
-// Accounts, credentials and role assignments in one fake: the handlers see three narrow ports over one state.
-internal sealed class FakeAccounts : IUserAccounts, IUserCredentials, IUserRoleAssignments
+// Accounts, credentials and role assignments in one fake: the handlers see three narrow ports over one state. Scope
+// (who is company-wide) comes from the FakeAccess the handlers also see.
+internal sealed class FakeAccounts(FakeAccess? access = null) : IUserAccounts, IUserCredentials, IUserRoleAssignments
 {
     public Dictionary<Guid, UserAccount> Users { get; } = [];
     public Dictionary<Guid, List<Guid>> UserRoles { get; } = [];
     public LoginCheck NextLogin { get; set; } = new(LoginOutcome.Succeeded, Guid.NewGuid());
-    public Result NextPasswordChange { get; set; } = Result.Success();
+    public PasswordChange NextPasswordChange { get; set; } = new(Result.Success());
     public List<string> Changes { get; } = [];
 
     public Guid Add(params Guid[] roleIds)
@@ -63,7 +65,7 @@ internal sealed class FakeAccounts : IUserAccounts, IUserCredentials, IUserRoleA
 
     public Task<Result> ResetPasswordAsync(Guid userId, string newPassword, CancellationToken ct) => Change(userId, "reset");
 
-    public Task<Result> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken ct) =>
+    public Task<PasswordChange> ChangePasswordAsync(Guid userId, string currentPassword, string newPassword, CancellationToken ct) =>
         Task.FromResult(NextPasswordChange);
 
     public Task<Result> UnlockAsync(Guid userId, CancellationToken ct) => Change(userId, "unlock");
@@ -80,8 +82,21 @@ internal sealed class FakeAccounts : IUserAccounts, IUserCredentials, IUserRoleA
         return Task.FromResult(Result.Success());
     }
 
-    public Task<int> CountActiveUsersInRoleAsync(Guid roleId, Guid? excludingUserId, CancellationToken ct) =>
-        Task.FromResult(UserRoles.Count(u => u.Key != excludingUserId && Users[u.Key].IsActive && u.Value.Contains(roleId)));
+    /// <summary>Called when a count of role holders starts, so a test can check what happened before it.</summary>
+    public Action? CountingStarted { get; set; }
+
+    public Task<int> CountActiveUsersInRoleAsync(Guid roleId, Guid? excludingUserId, CancellationToken ct)
+    {
+        CountingStarted?.Invoke();
+        return Task.FromResult(UserRoles.Count(u => u.Key != excludingUserId && Users[u.Key].IsActive && u.Value.Contains(roleId)));
+    }
+
+    public Task<int> CountActiveCompanyWideUsersInRoleAsync(Guid roleId, Guid? excludingUserId, CancellationToken ct)
+    {
+        CountingStarted?.Invoke();
+        return Task.FromResult(UserRoles.Count(u => u.Key != excludingUserId && Users[u.Key].IsActive && u.Value.Contains(roleId)
+            && access?.ByUser.GetValueOrDefault(u.Key)?.IsCompanyWide == true));
+    }
 
     public Task<bool> AnyUserInRoleAsync(Guid roleId, CancellationToken ct) => Task.FromResult(UserRoles.Values.Any(r => r.Contains(roleId)));
 
@@ -128,6 +143,14 @@ internal sealed class FakeRoles : IRoleRepository
 
     public Task UpdateAsync(Role role, CancellationToken ct) => Task.CompletedTask;
 
+    public List<Guid> Touched { get; } = [];
+
+    public Task TouchAsync(Guid roleId, CancellationToken ct)
+    {
+        Touched.Add(roleId);
+        return Task.CompletedTask;
+    }
+
     public Task DeleteAsync(Guid roleId, CancellationToken ct) => Task.FromResult(Roles.Remove(roleId));
 
     public Task<IReadOnlyList<RoleSummaryResponse>> ListAsync(CancellationToken ct) => throw new NotSupportedException();
@@ -168,6 +191,9 @@ internal sealed class FakeSessions : ISessionRepository
             (s.RefreshTokenHash is { } current && SessionTokens.HashesEqual(current, refreshHash))
             || (s.PreviousRefreshTokenHash is { } previous && SessionTokens.HashesEqual(previous, refreshHash))));
 
+    public Task<UserSession?> FindByRetiredRefreshHashAsync(byte[] refreshHash, CancellationToken ct) =>
+        Task.FromResult(All.FirstOrDefault(s => s.RetiredRefreshTokens.Any(r => SessionTokens.HashesEqual(r.TokenHash, refreshHash))));
+
     public Task<IReadOnlyList<UserSession>> GetActiveAsync(Guid userId, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<UserSession>>(All.Where(s => s.UserId == userId && !s.IsRevoked).ToList());
 
@@ -180,13 +206,24 @@ internal sealed class FakeSessions : ISessionRepository
 internal sealed class FakePersistence : IIdentityPersistence
 {
     public Result NextSave { get; set; } = Result.Success();
+
+    /// <summary>Results for the next saves, in order; then <see cref="NextSave"/>.</summary>
+    public Queue<Result> SaveResults { get; } = new();
+
     public int Saves { get; private set; }
+    public int Discards { get; private set; }
+
+    /// <summary>The token each save was given, in order.</summary>
+    public List<CancellationToken> SaveTokens { get; } = [];
 
     public Task<Result> SaveChangesAsync(CancellationToken ct)
     {
         Saves++;
-        return Task.FromResult(NextSave);
+        SaveTokens.Add(ct);
+        return Task.FromResult(SaveResults.TryDequeue(out var result) ? result : NextSave);
     }
+
+    public void DiscardChanges() => Discards++;
 }
 
 internal sealed class FakeOrganization : IBranchDirectory, IWarehouseDirectory
@@ -214,3 +251,15 @@ internal sealed class FakeOrganization : IBranchDirectory, IWarehouseDirectory
     public Task<IReadOnlyList<Guid>> ListIdsInBranchesAsync(IReadOnlyCollection<Guid> branchIds, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<Guid>>(WarehouseBranch.Where(w => branchIds.Contains(w.Value)).Select(w => w.Key).ToList());
 }
+
+internal sealed class FakeSecurityEvents : ISecurityEventLog
+{
+    public List<RecordedSecurityEvent> Recorded { get; } = [];
+
+    public IEnumerable<SecurityEventType> Types => Recorded.Select(e => e.Type);
+
+    public void Record(SecurityEventType type, Guid? targetUserId = null, Guid? roleId = null, Guid? sessionId = null, object? details = null) =>
+        Recorded.Add(new RecordedSecurityEvent(type, targetUserId, roleId, sessionId, details));
+}
+
+internal sealed record RecordedSecurityEvent(SecurityEventType Type, Guid? TargetUserId, Guid? RoleId, Guid? SessionId, object? Details);

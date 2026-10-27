@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Sessions;
 using WarehouseERP.Identity.Domain;
 using WarehouseERP.SharedKernel.Results;
@@ -8,7 +9,8 @@ using WarehouseERP.SharedKernel.Results;
 namespace WarehouseERP.Identity.Application.Features.Authentication.Logout;
 
 public sealed partial class LogoutHandler(
-    ISessionRepository sessions, IIdentityPersistence persistence, TimeProvider clock, ILogger<LogoutHandler> logger)
+    ISessionRepository sessions, IIdentityPersistence persistence, TimeProvider clock, ILogger<LogoutHandler> logger,
+    ISecurityEventLog securityEvents)
     : ICommandHandler<LogoutCommand, Done>
 {
     public async Task<Result<Done>> HandleAsync(LogoutCommand command, CancellationToken ct)
@@ -17,6 +19,7 @@ public sealed partial class LogoutHandler(
             return Done.Value; // already gone: logging out is idempotent
 
         session.Revoke(SessionRevokeReason.Logout, clock.GetUtcNow().UtcDateTime);
+        securityEvents.Record(SecurityEventType.SignedOut, session.UserId, sessionId: session.Id);
         var saved = await persistence.SaveChangesAsync(ct);
         if (saved.IsFailure)
             return saved.Error;

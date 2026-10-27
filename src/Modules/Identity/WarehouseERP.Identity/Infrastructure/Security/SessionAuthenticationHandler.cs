@@ -60,6 +60,10 @@ internal sealed class SessionAuthenticationHandler(
 
     private (string Token, SessionClientType Transport)? ReadToken()
     {
+        // A token sent over plain HTTP is not accepted (behind a TLS-terminating proxy: see ReverseProxy settings), so a
+        // POS configured with http:// fails at once instead of working while its tokens travel in clear text.
+        if (!Request.IsHttps)
+            return null;
         const string bearer = "Bearer ";
         var authorization = Request.Headers.Authorization.ToString();
         if (authorization.StartsWith(bearer, StringComparison.OrdinalIgnoreCase))

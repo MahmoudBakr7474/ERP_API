@@ -9,6 +9,8 @@ namespace WarehouseERP.Identity.Domain;
 /// </summary>
 public sealed class UserSession
 {
+    private readonly List<RetiredRefreshToken> _retiredRefreshTokens = [];
+
     private UserSession() { } // EF Core
 
     public Guid Id { get; private set; }
@@ -25,6 +27,9 @@ public sealed class UserSession
     public DateTime ExpiresAtUtc { get; private set; }
     public DateTime? RevokedAtUtc { get; private set; }
     public SessionRevokeReason? RevokedReason { get; private set; }
+
+    /// <summary>Refresh tokens this session exchanged (not loaded with the session; new ones are added on rotation).</summary>
+    public IReadOnlyCollection<RetiredRefreshToken> RetiredRefreshTokens => _retiredRefreshTokens;
 
     public bool IsRevoked => RevokedAtUtc.HasValue;
 
@@ -63,24 +68,33 @@ public sealed class UserSession
         };
 
     /// <summary>
-    /// Exchanges the current refresh token for new tokens. An already-used refresh token ends the session.
+    /// Exchanges the current refresh token for new tokens and retires it. An already-used refresh token (the previous
+    /// one here; an older one through <see cref="RejectRetiredRefreshToken"/>) ends the session.
     /// </summary>
     public Result Refresh(byte[] presentedRefreshHash, IssuedApiTokens next, DateTime now)
     {
         if (ClientType != SessionClientType.Api || IsRevoked || now >= ExpiresAtUtc)
             return SessionDomainErrors.Revoked;
         if (PreviousRefreshTokenHash is not null && SessionTokens.HashesEqual(PreviousRefreshTokenHash, presentedRefreshHash))
-        {
-            Revoke(SessionRevokeReason.RefreshTokenReused, now);
-            return SessionDomainErrors.RefreshTokenReused;
-        }
+            return RejectRetiredRefreshToken(now);
         if (RefreshTokenHash is null || !SessionTokens.HashesEqual(RefreshTokenHash, presentedRefreshHash) || now >= RefreshExpiresAtUtc)
             return SessionDomainErrors.Revoked;
 
+        _retiredRefreshTokens.Add(new RetiredRefreshToken(RefreshTokenHash, now));
         PreviousRefreshTokenHash = RefreshTokenHash;
         Use(next);
         LastSeenAtUtc = now;
         return Result.Success();
+    }
+
+    /// <summary>
+    /// A refresh token this session already exchanged came back (found among its retired tokens): someone kept a
+    /// copy, so the session ends for both holders.
+    /// </summary>
+    public Result RejectRetiredRefreshToken(DateTime now)
+    {
+        Revoke(SessionRevokeReason.RefreshTokenReused, now);
+        return SessionDomainErrors.RefreshTokenReused;
     }
 
     public void Revoke(SessionRevokeReason reason, DateTime now)

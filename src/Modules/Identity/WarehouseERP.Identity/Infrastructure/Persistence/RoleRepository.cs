@@ -56,8 +56,10 @@ internal sealed class RoleRepository(DbContext db, ILookupNormalizer normalizer,
         entity.Name = role.Name;
         entity.NormalizedName = normalizer.NormalizeName(role.Name);
         entity.Description = role.Description;
-        // A new stamp marks the row changed even when only permissions changed, so the role's temporal history and
-        // UpdatedBy record every permission change.
+        // ConcurrencyStamp is ASP.NET Core Identity's concurrency token: the UPDATE only applies while the row still
+        // has the version the caller edited (otherwise the save point answers Common.ConcurrencyConflict). The new
+        // stamp also marks the row changed when only permissions changed, so temporal history and UpdatedBy record it.
+        db.Entry(entity).Property(r => r.ConcurrencyStamp).OriginalValue = role.Version;
         entity.ConcurrencyStamp = Guid.NewGuid().ToString();
 
         var claims = db.Set<IdentityRoleClaim<Guid>>();
@@ -66,6 +68,10 @@ internal sealed class RoleRepository(DbContext db, ILookupNormalizer normalizer,
         foreach (var permission in role.Permissions.Except(current.Select(c => c.ClaimValue!), StringComparer.Ordinal))
             claims.Add(Claim(role.Id, permission));
     }
+
+    // The loaded stamp stays the original value, so the UPDATE only applies while nobody else changed the row.
+    public async Task TouchAsync(Guid roleId, CancellationToken ct) =>
+        (await db.Set<ApplicationRole>().SingleAsync(r => r.Id == roleId, ct)).ConcurrencyStamp = Guid.NewGuid().ToString();
 
     public async Task DeleteAsync(Guid roleId, CancellationToken ct) =>
         db.Set<ApplicationRole>().Remove(await db.Set<ApplicationRole>().SingleAsync(r => r.Id == roleId, ct)); // claims cascade
@@ -93,7 +99,7 @@ internal sealed class RoleRepository(DbContext db, ILookupNormalizer normalizer,
                 .Select(c => new { c.RoleId, c.ClaimValue })
                 .ToListAsync(ct))
             .ToLookup(c => c.RoleId, c => c.ClaimValue!);
-        return roles.Select(r => Role.Restore(r.Id, r.Name!, r.Description, r.IsSystem, permissions[r.Id])).ToList();
+        return roles.Select(r => Role.Restore(r.Id, r.Name!, r.Description, r.IsSystem, permissions[r.Id], r.ConcurrencyStamp)).ToList();
     }
 
     private static IdentityRoleClaim<Guid> Claim(Guid roleId, string permission) =>

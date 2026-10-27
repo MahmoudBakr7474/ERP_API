@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
 using WarehouseERP.Identity.Application.Errors;
+using WarehouseERP.Identity.Domain;
 using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Identity.Infrastructure.Persistence;
@@ -28,10 +29,17 @@ internal sealed class UserRoleAssignments(DbContext db) : IUserRoleAssignments
     }
 
     public Task<int> CountActiveUsersInRoleAsync(Guid roleId, Guid? excludingUserId, CancellationToken ct) =>
+        ActiveHolders(roleId, excludingUserId).CountAsync(ct);
+
+    public Task<int> CountActiveCompanyWideUsersInRoleAsync(Guid roleId, Guid? excludingUserId, CancellationToken ct) =>
+        ActiveHolders(roleId, excludingUserId)
+            .Where(userId => db.Set<UserAccess>().Any(a => a.UserId == userId && a.IsCompanyWide))
+            .CountAsync(ct);
+
+    private IQueryable<Guid> ActiveHolders(Guid roleId, Guid? excludingUserId) =>
         db.Set<IdentityUserRole<Guid>>()
             .Where(x => x.RoleId == roleId && x.UserId != excludingUserId)
-            .Join(db.Set<ApplicationUser>().Where(u => u.IsActive), x => x.UserId, u => u.Id, (x, u) => u.Id)
-            .CountAsync(ct);
+            .Join(db.Set<ApplicationUser>().Where(u => u.IsActive), x => x.UserId, u => u.Id, (x, u) => u.Id);
 
     public Task<bool> AnyUserInRoleAsync(Guid roleId, CancellationToken ct) =>
         db.Set<IdentityUserRole<Guid>>().AnyAsync(x => x.RoleId == roleId, ct);

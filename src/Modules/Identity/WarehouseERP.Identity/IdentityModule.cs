@@ -16,15 +16,18 @@ using WarehouseERP.Identity.Application;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Authentication;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Sessions;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.UserAccess;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Users;
 using WarehouseERP.Identity.Application.Contracts.Authentication;
 using WarehouseERP.Identity.Application.Contracts.Roles;
+using WarehouseERP.Identity.Application.Contracts.SecurityEvents;
 using WarehouseERP.Identity.Application.Contracts.Sessions;
 using WarehouseERP.Identity.Application.Contracts.Users;
 using WarehouseERP.Identity.Application.Features.Account.ChangeMyPassword;
 using WarehouseERP.Identity.Application.Features.Account.GetMe;
+using WarehouseERP.Identity.Application.Features.Account.GetPasswordPolicy;
 using WarehouseERP.Identity.Application.Features.Authentication.IssueApiToken;
 using WarehouseERP.Identity.Application.Features.Authentication.Login;
 using WarehouseERP.Identity.Application.Features.Authentication.Logout;
@@ -35,6 +38,7 @@ using WarehouseERP.Identity.Application.Features.Roles.DeleteRole;
 using WarehouseERP.Identity.Application.Features.Roles.GetRole;
 using WarehouseERP.Identity.Application.Features.Roles.ListRoles;
 using WarehouseERP.Identity.Application.Features.Roles.UpdateRole;
+using WarehouseERP.Identity.Application.Features.SecurityEvents.ListSecurityEvents;
 using WarehouseERP.Identity.Application.Features.Sessions.ListSessions;
 using WarehouseERP.Identity.Application.Features.Sessions.RevokeSession;
 using WarehouseERP.Identity.Application.Features.Sessions.RevokeUserSessions;
@@ -85,6 +89,9 @@ public static class IdentityModule
         services.AddScoped<IUserReadStore, UserReadStore>();
         services.AddScoped<IIdentityPersistence, IdentityPersistence>();
         services.AddScoped<IUserDirectory, UserDirectory>();
+        services.AddScoped<ISecurityEventLog, SecurityEventLog>();
+        services.AddScoped<ISecurityEventReadStore, SecurityEventReadStore>();
+        services.AddSingleton<IPasswordPolicy, PasswordPolicy>();
 
         // Authentication for every module: server-side sessions, presented as a cookie (web) or a bearer token
         // (POS/API). Authorization: one policy per registered permission, deny by default.
@@ -102,7 +109,11 @@ public static class IdentityModule
             o.Cookie.SameSite = SameSiteMode.Strict;
         });
 
+        services.AddSignInRateLimit();
+
         services.AddHostedService<IdentityBootstrapper>();
+        services.AddSingleton<ExpiredSessionCleanup>();
+        services.AddHostedService(sp => sp.GetRequiredService<ExpiredSessionCleanup>());
         services.AddPermissions("Identity", IdentityPermissions.All);
         return services;
     }
@@ -112,7 +123,7 @@ public static class IdentityModule
         app.UseMiddleware<CookieSessionAntiforgeryMiddleware>();
 
     public static IEndpointRouteBuilder MapIdentityEndpoints(this IEndpointRouteBuilder app) =>
-        app.MapAuthEndpoints().MapUserEndpoints().MapRoleEndpoints();
+        app.MapAuthEndpoints().MapUserEndpoints().MapRoleEndpoints().MapSecurityEventEndpoints();
 
     private static void AddHandlers(IServiceCollection services)
     {
@@ -122,6 +133,7 @@ public static class IdentityModule
         services.AddCommandHandler<RefreshApiTokenCommand, ApiTokensResponse, RefreshApiTokenHandler>();
         services.AddCommandHandler<ChangeMyPasswordCommand, Done, ChangeMyPasswordHandler>();
         services.AddQueryHandler<GetMeQuery, MeResponse, GetMeHandler>();
+        services.AddQueryHandler<GetPasswordPolicyQuery, PasswordPolicyResponse, GetPasswordPolicyHandler>();
 
         services.AddCommandHandler<CreateUserCommand, Guid, CreateUserHandler>();
         services.AddCommandHandler<UpdateUserCommand, Done, UpdateUserHandler>();
@@ -143,6 +155,8 @@ public static class IdentityModule
         services.AddQueryHandler<ListSessionsQuery, IReadOnlyList<SessionResponse>, ListSessionsHandler>();
         services.AddCommandHandler<RevokeSessionCommand, Done, RevokeSessionHandler>();
         services.AddCommandHandler<RevokeUserSessionsCommand, Done, RevokeUserSessionsHandler>();
+
+        services.AddQueryHandler<ListSecurityEventsQuery, PagedResult<SecurityEventResponse>, ListSecurityEventsHandler>();
     }
 
     private static void AddOptions(IServiceCollection services)

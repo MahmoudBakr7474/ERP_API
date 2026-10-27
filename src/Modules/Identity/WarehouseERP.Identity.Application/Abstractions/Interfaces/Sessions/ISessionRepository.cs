@@ -13,6 +13,9 @@ public interface ISessionRepository
     /// <summary>The session whose current or previous refresh token has this hash.</summary>
     Task<UserSession?> FindByRefreshHashAsync(byte[] refreshHash, CancellationToken ct);
 
+    /// <summary>The session that already exchanged a refresh token with this hash, at any earlier rotation.</summary>
+    Task<UserSession?> FindByRetiredRefreshHashAsync(byte[] refreshHash, CancellationToken ct);
+
     /// <summary>Active sessions of a user, tracked, to end them.</summary>
     Task<IReadOnlyList<UserSession>> GetActiveAsync(Guid userId, CancellationToken ct);
 

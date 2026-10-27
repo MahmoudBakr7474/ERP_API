@@ -17,6 +17,9 @@ internal sealed class SessionRepository(DbContext db, TimeProvider clock) : ISes
     public Task<UserSession?> FindByRefreshHashAsync(byte[] refreshHash, CancellationToken ct) =>
         db.Set<UserSession>().FirstOrDefaultAsync(s => s.RefreshTokenHash == refreshHash || s.PreviousRefreshTokenHash == refreshHash, ct);
 
+    public Task<UserSession?> FindByRetiredRefreshHashAsync(byte[] refreshHash, CancellationToken ct) =>
+        db.Set<UserSession>().FirstOrDefaultAsync(s => s.RetiredRefreshTokens.Any(r => r.TokenHash == refreshHash), ct);
+
     public async Task<IReadOnlyList<UserSession>> GetActiveAsync(Guid userId, CancellationToken ct)
     {
         var now = clock.GetUtcNow().UtcDateTime;

@@ -3,7 +3,9 @@ using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Application.Errors;
+using WarehouseERP.Identity.Domain;
 using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Identity.Application.Features.Roles.DeleteRole;
@@ -11,7 +13,7 @@ namespace WarehouseERP.Identity.Application.Features.Roles.DeleteRole;
 // Only an unused, non-system role can be deleted; its history stays in the temporal tables.
 public sealed partial class DeleteRoleHandler(
     ICurrentUser currentUser, IRoleRepository roles, IUserRoleAssignments roleAssignments, IIdentityPersistence persistence,
-    ILogger<DeleteRoleHandler> logger)
+    ILogger<DeleteRoleHandler> logger, ISecurityEventLog securityEvents)
     : ICommandHandler<DeleteRoleCommand, Done>
 {
     public async Task<Result<Done>> HandleAsync(DeleteRoleCommand command, CancellationToken ct)
@@ -25,6 +27,7 @@ public sealed partial class DeleteRoleHandler(
             return RoleErrors.InUse;
 
         await roles.DeleteAsync(role.Id, ct);
+        securityEvents.Record(SecurityEventType.RoleDeleted, roleId: role.Id, details: new { name = role.Name });
         var saved = await persistence.SaveChangesAsync(ct);
         if (saved.IsFailure)
             return saved.Error;

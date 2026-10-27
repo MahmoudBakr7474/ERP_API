@@ -110,6 +110,7 @@ public sealed class IdentityDomainTests
 
         Assert.Equal(second.AccessTokenHash, session.TokenHash);
         Assert.Equal(first.RefreshTokenHash, session.PreviousRefreshTokenHash);
+        Assert.Equal(first.RefreshTokenHash, Assert.Single(session.RetiredRefreshTokens).TokenHash); // kept to recognize a copy later
         Assert.True(session.AcceptsToken(Now.AddMinutes(21), TimeSpan.FromHours(8)));
     }
 

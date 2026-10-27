@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using WarehouseERP.BuildingBlocks.Infrastructure.Persistence;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Domain;
 
 namespace WarehouseERP.Identity.Infrastructure;
@@ -35,6 +36,8 @@ internal sealed partial class IdentityBootstrapper(
                 "Identity:Bootstrap could not create the first administrator: " + string.Join(", ", created.Errors.Select(e => e.Code)));
         db.Set<IdentityUserRole<Guid>>().Add(new IdentityUserRole<Guid> { UserId = administrator.Id, RoleId = ApplicationRole.AdministratorId });
         db.Set<UserAccess>().Add(UserAccess.Create(administrator.Id, companyWide: true, [], []));
+        scope.ServiceProvider.GetRequiredService<ISecurityEventLog>()
+            .Record(SecurityEventType.AdministratorBootstrapped, administrator.Id, ApplicationRole.AdministratorId);
 
         try
         {
@@ -54,7 +57,7 @@ internal sealed partial class IdentityBootstrapper(
         Message = "First administrator {UserId} created from Identity:Bootstrap; remove the setting now")]
     private static partial void AdministratorCreated(ILogger logger, Guid userId);
 
-    [LoggerMessage(EventId = 4041, Level = LogLevel.Information,
-        Message = "Identity:Bootstrap is set but users already exist; it was ignored and can be removed")]
+    [LoggerMessage(EventId = 4041, Level = LogLevel.Warning,
+        Message = "Identity:Bootstrap is set but users already exist; it was ignored. Remove it: the password may still be the administrator's")]
     private static partial void BootstrapIgnored(ILogger logger);
 }

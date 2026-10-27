@@ -3,7 +3,9 @@ using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Sessions;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.UserAccess;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Users;
 using WarehouseERP.Identity.Application.Errors;
 using WarehouseERP.Identity.Application.Shared;
@@ -15,21 +17,21 @@ namespace WarehouseERP.Identity.Application.Features.Users.SetUserActive;
 // Deactivation ends every session at once; the last active Administrator and the caller themselves can't be
 // deactivated.
 public sealed partial class SetUserActiveHandler(
-    ICurrentUser currentUser, IUserAccounts accounts, IUserRoleAssignments roleAssignments, IRoleRepository roles, ISessionRepository sessions,
+    ICurrentUser currentUser, IUserAccounts accounts, IUserRoleAssignments roleAssignments, IRoleRepository roles, IUserAccessRepository access, ISessionRepository sessions,
     IEnumerable<PermissionDefinition> catalog, IIdentityPersistence persistence, TimeProvider clock,
-    ILogger<SetUserActiveHandler> logger)
+    ILogger<SetUserActiveHandler> logger, ISecurityEventLog securityEvents)
     : ICommandHandler<SetUserActiveCommand, Done>
 {
     public async Task<Result<Done>> HandleAsync(SetUserActiveCommand command, CancellationToken ct)
     {
         if (!command.IsActive && command.UserId == currentUser.UserId)
             return UserErrors.CannotDeactivateSelf;
-        var allowed = await PrivilegeGuard.EnsureCanManageAsync(currentUser, roleAssignments, roles, catalog, command.UserId, ct);
+        var allowed = await PrivilegeGuard.EnsureCanManageAsync(currentUser, roleAssignments, roles, access, catalog, command.UserId, ct);
         if (allowed.IsFailure)
-            return allowed.Error;
+            return await SecurityAudit.RefuseAsync(allowed.Error, securityEvents, persistence, ct, command.UserId);
         if (!command.IsActive)
         {
-            var guarded = await AdministratorGuard.EnsureAnotherAdministratorAsync(roles, roleAssignments, command.UserId, ct);
+            var guarded = await AdministratorGuard.EnsureAnotherAdministratorAsync(roles, roleAssignments, access, command.UserId, ct);
             if (guarded.IsFailure)
                 return guarded.Error;
         }
@@ -39,6 +41,7 @@ public sealed partial class SetUserActiveHandler(
             return changed.Error;
         if (!command.IsActive)
             await SessionRevocation.RevokeAllAsync(sessions, command.UserId, SessionRevokeReason.UserDeactivated, clock.GetUtcNow().UtcDateTime, ct);
+        securityEvents.Record(command.IsActive ? SecurityEventType.UserActivated : SecurityEventType.UserDeactivated, command.UserId);
 
         var saved = await persistence.SaveChangesAsync(ct);
         if (saved.IsFailure)

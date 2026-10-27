@@ -26,4 +26,12 @@ public sealed class IdentitySessionOptions
     /// <summary>An API session ends this long after sign-in, however often it refreshes.</summary>
     [Range(typeof(TimeSpan), "00:05:00", "180.00:00:00")]
     public TimeSpan ApiAbsoluteLifetime { get; init; } = TimeSpan.FromDays(30);
+
+    /// <summary>An ended (expired or revoked) session row is deleted this long after it ended.</summary>
+    [Range(typeof(TimeSpan), "1.00:00:00", "365.00:00:00")]
+    public TimeSpan RetentionAfterEnd { get; init; } = TimeSpan.FromDays(30);
+
+    /// <summary>How often ended sessions are cleaned up.</summary>
+    [Range(typeof(TimeSpan), "00:01:00", "1.00:00:00")]
+    public TimeSpan CleanupInterval { get; init; } = TimeSpan.FromHours(1);
 }

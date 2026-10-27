@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Serilog.Context;
+using WarehouseERP.BuildingBlocks.Infrastructure.Http;
 
 namespace WarehouseERP.Api.Observability;
 
@@ -8,7 +9,7 @@ namespace WarehouseERP.Api.Observability;
 internal sealed class CorrelationIdMiddleware(RequestDelegate next)
 {
     public const string HeaderName = "X-Correlation-ID";
-    public const string ItemKey = "CorrelationId";
+    public const string ItemKey = RequestCorrelation.ItemKey;
 
     public async Task InvokeAsync(HttpContext http)
     {

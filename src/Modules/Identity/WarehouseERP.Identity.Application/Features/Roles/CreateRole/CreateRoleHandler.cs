@@ -3,6 +3,7 @@ using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Application.Errors;
 using WarehouseERP.Identity.Application.Shared;
 using WarehouseERP.Identity.Domain;
@@ -12,7 +13,7 @@ namespace WarehouseERP.Identity.Application.Features.Roles.CreateRole;
 
 public sealed partial class CreateRoleHandler(
     ICurrentUser currentUser, IRoleRepository roles, IEnumerable<PermissionDefinition> catalog,
-    IIdentityPersistence persistence, ILogger<CreateRoleHandler> logger)
+    IIdentityPersistence persistence, ILogger<CreateRoleHandler> logger, ISecurityEventLog securityEvents)
     : ICommandHandler<CreateRoleCommand, Guid>
 {
     public async Task<Result<Guid>> HandleAsync(CreateRoleCommand command, CancellationToken ct)
@@ -22,11 +23,12 @@ public sealed partial class CreateRoleHandler(
             return created.Error;
         var role = created.Value;
         if (!PrivilegeGuard.HoldsAll(currentUser, role.Permissions))
-            return PermissionErrors.ExceedsOwnPermissions;
+            return await SecurityAudit.RefuseAsync(PermissionErrors.ExceedsOwnPermissions, securityEvents, persistence, ct);
         if (await roles.NameExistsAsync(role.Name, excludingRoleId: null, ct))
             return RoleErrors.NameTaken;
 
         var roleId = await roles.AddAsync(role, ct);
+        securityEvents.Record(SecurityEventType.RoleCreated, roleId: roleId, details: new { name = role.Name, permissions = role.Permissions });
         var saved = await persistence.SaveChangesAsync(ct);
         if (saved.IsFailure)
             return saved.Error;

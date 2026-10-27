@@ -12,5 +12,8 @@ public interface IUserRoleAssignments
 
     Task<int> CountActiveUsersInRoleAsync(Guid roleId, Guid? excludingUserId, CancellationToken ct);
 
+    /// <summary>Like <see cref="CountActiveUsersInRoleAsync"/>, counting only users whose access is company-wide.</summary>
+    Task<int> CountActiveCompanyWideUsersInRoleAsync(Guid roleId, Guid? excludingUserId, CancellationToken ct);
+
     Task<bool> AnyUserInRoleAsync(Guid roleId, CancellationToken ct);
 }

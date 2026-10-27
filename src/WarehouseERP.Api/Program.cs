@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
+using WarehouseERP.Api.ApiDocumentation;
 using WarehouseERP.Api.ErrorHandling;
 using WarehouseERP.Api.Observability;
+using WarehouseERP.Api.Security;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.Catalog;
 using WarehouseERP.Identity;
@@ -13,6 +15,8 @@ builder.AddErpObservability();
 builder.Services
     .AddErpPersistence()
     .AddErpProblemDetails()
+    .AddErpRateLimiting()
+    .AddErpReverseProxy()
     .AddIdentityModule() // authentication, permission policies and ICurrentUser for every module
     .AddOrganizationModule()
     .AddCatalogModule();
@@ -23,16 +27,25 @@ builder.Services.AddOptions<PaginationOptions>()
     .Validate(o => o.DefaultPageSize <= o.MaxPageSize, "Pagination:DefaultPageSize must not exceed MaxPageSize.")
     .ValidateOnStart();
 
-// Enums travel as names ("Physical", "Batch"), which stay stable for the React client.
-builder.Services.ConfigureHttpJsonOptions(o => o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-builder.Services.AddOpenApi();
+// Enums travel as names ("Physical", "Batch"), which stay stable for the React client; numbers only as JSON numbers,
+// so the OpenAPI contract (and the generated client) says "integer", not "integer or numeric string".
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    o.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+});
+builder.Services.AddErpOpenApi();
 
 var app = builder.Build();
 
+app.UseErpForwardedHeaders(); // first: the client IP and https scheme behind a trusted TLS-terminating proxy
+if (!app.Environment.IsDevelopment())
+    app.UseHsts(); // browsers that saw the site over https never fall back to http
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseErpRequestLogging();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseRateLimiter(); // before authentication: a refused request costs no session lookup
 app.UseAuthentication();
 app.UseIdentityModule(); // anti-forgery for cookie sessions, before any endpoint runs
 app.UseAuthorization();

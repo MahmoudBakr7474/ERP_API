@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Security;
@@ -9,6 +10,7 @@ using WarehouseERP.BuildingBlocks.Infrastructure.Http;
 using WarehouseERP.Identity.Application.Contracts.Authentication;
 using WarehouseERP.Identity.Application.Features.Account.ChangeMyPassword;
 using WarehouseERP.Identity.Application.Features.Account.GetMe;
+using WarehouseERP.Identity.Application.Features.Account.GetPasswordPolicy;
 using WarehouseERP.Identity.Application.Features.Authentication.IssueApiToken;
 using WarehouseERP.Identity.Application.Features.Authentication.Login;
 using WarehouseERP.Identity.Application.Features.Authentication.Logout;
@@ -32,10 +34,11 @@ internal static class AuthEndpoints
             .AllowAnonymous()
             .WithName("Login")
             .RequireHttps()
+            .WithSignInRateLimit(SignInRateLimit.Login)
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status409Conflict); // a rehashed password meeting a parallel change: try again
 
         group.MapPost("/logout", SignOutAsync)
             .WithName("Logout")
@@ -45,16 +48,21 @@ internal static class AuthEndpoints
             .AllowAnonymous()
             .WithName("IssueApiToken")
             .RequireHttps()
+            .WithSignInRateLimit(SignInRateLimit.IssueApiToken)
             .Produces<ApiTokensResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPost("/tokens/refresh", RefreshTokenAsync)
             .AllowAnonymous()
             .WithName("RefreshApiToken")
             .RequireHttps()
+            .WithSignInRateLimit(SignInRateLimit.RefreshApiToken)
             .Produces<ApiTokensResponse>()
-            .ProducesProblem(StatusCodes.Status401Unauthorized);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPost("/tokens/revoke", SignOutAsync)
             .WithName("RevokeApiToken")
@@ -66,10 +74,18 @@ internal static class AuthEndpoints
 
         group.MapPost("/me/password", ChangePasswordAsync)
             .WithName("ChangeMyPassword")
+            .WithSignInRateLimit(SignInRateLimit.ChangeMyPassword) // guessing the current password from a stolen session
             .RequireHttps()
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        // Signed in: the change-password, create-user and reset-password forms show the rules the server enforces.
+        group.MapGet("/password-policy", async (IQueryHandler<GetPasswordPolicyQuery, PasswordPolicyResponse> handler, CancellationToken ct) =>
+                (await handler.HandleAsync(new GetPasswordPolicyQuery(), ct)).ToHttpResult(TypedResults.Ok))
+            .WithName("GetPasswordPolicy")
+            .Produces<PasswordPolicyResponse>();
 
         return app;
     }
@@ -98,13 +114,20 @@ internal static class AuthEndpoints
     }
 
     private static async Task<IResult> IssueTokenAsync(
-        IssueApiTokenCommand command, ICommandHandler<IssueApiTokenCommand, ApiTokensResponse> handler, CancellationToken ct) =>
-        (await handler.HandleAsync(command, ct))
-            .ToHttpResult(TypedResults.Ok);
+        IssueApiTokenCommand command, ICommandHandler<IssueApiTokenCommand, ApiTokensResponse> handler, HttpContext http, CancellationToken ct) =>
+        (await handler.HandleAsync(command, ct)).ToHttpResult(tokens => NotCached(http, tokens));
 
     private static async Task<IResult> RefreshTokenAsync(
-        RefreshApiTokenCommand command, ICommandHandler<RefreshApiTokenCommand, ApiTokensResponse> handler, CancellationToken ct) =>
-        (await handler.HandleAsync(command, ct)).ToHttpResult(TypedResults.Ok);
+        RefreshApiTokenCommand command, ICommandHandler<RefreshApiTokenCommand, ApiTokensResponse> handler, HttpContext http, CancellationToken ct) =>
+        (await handler.HandleAsync(command, ct)).ToHttpResult(tokens => NotCached(http, tokens));
+
+    // A body carrying tokens is never stored by a cache or proxy (RFC 6749 section 5.1).
+    private static Ok<ApiTokensResponse> NotCached(HttpContext http, ApiTokensResponse tokens)
+    {
+        http.Response.Headers.CacheControl = "no-store";
+        http.Response.Headers.Pragma = "no-cache";
+        return TypedResults.Ok(tokens);
+    }
 
     // Also renews the anti-forgery token of a cookie session: the React client calls this after signing in or reloading.
     private static async Task<IResult> GetMeAsync(

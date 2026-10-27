@@ -31,11 +31,12 @@ internal sealed class UserReadStore(DbContext db, TimeProvider clock) : IUserRea
             .Select(a => new UserAccessResponse(
                 a.IsCompanyWide,
                 a.Branches.Select(b => b.BranchId).ToList(),
-                a.Warehouses.Select(w => w.WarehouseId).ToList()))
+                a.Warehouses.Select(w => w.WarehouseId).ToList(),
+                a.Revision))
             .SingleOrDefaultAsync(ct);
         return new UserDetailsResponse(
             user.Id, user.UserName, user.DisplayName, user.Email, user.IsActive, user.IsLockedOut, roles,
-            access ?? new UserAccessResponse(false, [], []));
+            access ?? new UserAccessResponse(false, [], [], 0));
     }
 
     public async Task<PagedResult<UserSummaryResponse>> ListAsync(string? search, int page, int pageSize, CancellationToken ct)

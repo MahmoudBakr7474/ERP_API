@@ -42,7 +42,7 @@ internal static class RoleEndpoints
             .Produces<RoleDetailsResponse>()
             .ProducesProblem(StatusCodes.Status404NotFound);
 
-        roles.MapPost("/", async (RoleRequest request, ICommandHandler<CreateRoleCommand, Guid> handler, CancellationToken ct) =>
+        roles.MapPost("/", async (CreateRoleRequest request, ICommandHandler<CreateRoleCommand, Guid> handler, CancellationToken ct) =>
                 (await handler.HandleAsync(new CreateRoleCommand(request.Name, request.Description, request.Permissions ?? []), ct))
                 .ToHttpResult(id => TypedResults.Created($"{Route}/{id}", new CreatedResponse(id))))
             .RequireAuthorization(IdentityPermissions.RolesManage)
@@ -53,12 +53,14 @@ internal static class RoleEndpoints
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
-        roles.MapPut("/{id:guid}", (Guid id, RoleRequest request, ICommandHandler<UpdateRoleCommand, Done> handler, CancellationToken ct) =>
+        roles.MapPut("/{id:guid}", (Guid id, UpdateRoleRequest request, ICommandHandler<UpdateRoleCommand, Done> handler, CancellationToken ct) =>
                 UserEndpoints.NoContentAsync(handler.HandleAsync(
-                    new UpdateRoleCommand(id, request.Name, request.Description, request.Permissions ?? []), ct)))
+                    new UpdateRoleCommand(id, request.Name, request.Description, request.Permissions ?? [], request.Version), ct)))
             .RequireAuthorization(IdentityPermissions.RolesManage)
             .WithName("UpdateRole")
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
@@ -68,6 +70,7 @@ internal static class RoleEndpoints
             .RequireAuthorization(IdentityPermissions.RolesManage)
             .WithName("DeleteRole")
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 

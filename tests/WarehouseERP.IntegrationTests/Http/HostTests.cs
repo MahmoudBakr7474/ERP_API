@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using WarehouseERP.Catalog.Contracts;
@@ -104,6 +105,12 @@ public sealed class HostTests(DatabaseFixture fx)
     [InlineData("Identity:Password:RequiredLength", "4")]
     [InlineData("Identity:Lockout:MaxFailedAccessAttempts", "0")]
     [InlineData("Identity:Bootstrap:UserName", "admin")] // without a password
+    [InlineData("Identity:Sessions:RetentionAfterEnd", "00:00:01")]
+    [InlineData("Identity:SignInRateLimit:Login:PermitLimit", "0")]
+    [InlineData("Identity:SignInRateLimit:RefreshApiToken:Window", "00:00:00")]
+    [InlineData("ReverseProxy:Enabled", "true")] // without a trusted proxy
+    [InlineData("ReverseProxy:KnownProxies:0", "not-an-address")]
+    [InlineData("ReverseProxy:KnownNetworks:0", "10.0.0.0")] // not CIDR
     public void Invalid_required_settings_stop_the_host_at_startup(string key, string value)
     {
         var settings = new Dictionary<string, string?> { [key] = value };
@@ -140,11 +147,46 @@ public sealed class HostTests(DatabaseFixture fx)
             Assert.True(paths.TryGetProperty(path, out _), $"OpenAPI has no {path}");
     }
 
+    // The React client is generated from this document: any change to a path, schema name, property, enum member or
+    // status code shows up here first. After a deliberate change, regenerate the committed copy with
+    // ERP_UPDATE_OPENAPI_SNAPSHOT=1 and review its diff like code.
+    [Fact]
+    public async Task OpenApi_document_matches_the_committed_contract()
+    {
+        await using var api = new ApiFactory(fx.ConnectionString, environment: "Development");
+        var response = await api.CreateClient().GetAsync("/openapi/v1.json");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var served = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+        served.Remove("servers"); // the test server's address, not part of the contract
+        var snapshot = Path.Combine(RepositoryRoot(), "docs", "api", "openapi-v1.json");
+
+        if (Environment.GetEnvironmentVariable("ERP_UPDATE_OPENAPI_SNAPSHOT") == "1")
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(snapshot)!);
+            await File.WriteAllTextAsync(snapshot, served.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n");
+            // Never green in update mode: a variable left set would otherwise accept every later contract change.
+            Assert.Fail("docs/api/openapi-v1.json was regenerated. Review its diff, then run again without ERP_UPDATE_OPENAPI_SNAPSHOT.");
+        }
+
+        Assert.True(File.Exists(snapshot), $"No committed OpenAPI contract at {snapshot}; run with ERP_UPDATE_OPENAPI_SNAPSHOT=1.");
+        var committed = JsonNode.Parse(await File.ReadAllTextAsync(snapshot));
+        Assert.True(JsonNode.DeepEquals(committed, served),
+            "The OpenAPI document differs from docs/api/openapi-v1.json. If the change is intended, regenerate it with ERP_UPDATE_OPENAPI_SNAPSHOT=1.");
+    }
+
     [Fact]
     public async Task Production_host_does_not_serve_openapi()
     {
         await using var api = new ApiFactory(fx.ConnectionString);
         var response = await api.CreateClient().As("x").GetAsync("/openapi/v1.json");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    private static string RepositoryRoot()
+    {
+        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
+            if (File.Exists(Path.Combine(dir.FullName, "WarehouseERP.slnx")))
+                return dir.FullName;
+        throw new InvalidOperationException("WarehouseERP.slnx not found above " + AppContext.BaseDirectory);
     }
 }

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Persistence;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.SecurityEvents;
 using WarehouseERP.Identity.Application.Abstractions.Interfaces.Sessions;
 using WarehouseERP.Identity.Application.Errors;
 using WarehouseERP.Identity.Contracts;
@@ -14,7 +15,7 @@ namespace WarehouseERP.Identity.Application.Features.Sessions.RevokeSession;
 // needs identity.sessions.manage, and to everyone else it doesn't exist.
 public sealed partial class RevokeSessionHandler(
     ICurrentUser currentUser, ISessionRepository sessions, IIdentityPersistence persistence, TimeProvider clock,
-    ILogger<RevokeSessionHandler> logger)
+    ILogger<RevokeSessionHandler> logger, ISecurityEventLog securityEvents)
     : ICommandHandler<RevokeSessionCommand, Done>
 {
     public async Task<Result<Done>> HandleAsync(RevokeSessionCommand command, CancellationToken ct)
@@ -25,6 +26,7 @@ public sealed partial class RevokeSessionHandler(
             return SessionErrors.NotFound;
 
         session.Revoke(own ? SessionRevokeReason.RevokedByUser : SessionRevokeReason.RevokedByAdministrator, clock.GetUtcNow().UtcDateTime);
+        securityEvents.Record(SecurityEventType.SessionRevoked, session.UserId, sessionId: session.Id, details: new { own });
         var saved = await persistence.SaveChangesAsync(ct);
         if (saved.IsFailure)
             return saved.Error;

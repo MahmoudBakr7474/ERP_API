@@ -14,5 +14,6 @@ internal static class HttpsOnly
 
     public static RouteHandlerBuilder RequireHttps(this RouteHandlerBuilder builder) =>
         builder.AddEndpointFilter(async (context, next) =>
-            context.HttpContext.Request.IsHttps ? await next(context) : Required.ToProblem());
+                context.HttpContext.Request.IsHttps ? await next(context) : Required.ToProblem())
+            .ProducesProblem(StatusCodes.Status403Forbidden);
 }

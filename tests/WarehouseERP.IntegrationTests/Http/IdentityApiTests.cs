@@ -1,8 +1,13 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
+using WarehouseERP.Identity.Application.Abstractions.Interfaces.Roles;
 using WarehouseERP.Identity.Contracts;
+using WarehouseERP.Identity.Domain;
 using WarehouseERP.Identity.Infrastructure;
+using WarehouseERP.Identity.Infrastructure.Persistence;
 using WarehouseERP.Organization.Contracts;
 using static WarehouseERP.IntegrationTests.IdentityTesting;
 
@@ -104,6 +109,57 @@ public sealed class IdentityApiTests(DatabaseFixture fx) : IAsyncLifetime
         var admin = await _api.AdministratorAsync();
         Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"{Users}/{account.Id}/unlock", null)).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await _api.CreateBrowser().LoginAsync(account)).StatusCode);
+    }
+
+    // A reset and an unlock each take several UserManager steps on one tracked user before the single save.
+    [Fact]
+    public async Task An_administrator_resets_a_password_that_had_failed_attempts_and_every_session_ends()
+    {
+        var account = await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead]);
+        var before = await _api.SignedInAsync(account);
+        for (var i = 0; i < 2; i++)
+            await _api.CreateBrowser().LoginAsync(account, "Wrong-password-1");
+        var admin = await _api.AdministratorAsync();
+
+        Assert.Equal(HttpStatusCode.NoContent,
+            (await admin.PostJsonAsync($"{Users}/{account.Id}/password", new { newPassword = "Reset-by-admin-7" })).StatusCode);
+
+        Assert.Equal(0, (await UserRowAsync(account.Id)).AccessFailedCount);
+        await (await before.GetAsync(Me)).AssertProblemAsync(HttpStatusCode.Unauthorized, "Common.Unauthorized");
+        await (await _api.CreateBrowser().LoginAsync(account)).AssertProblemAsync(HttpStatusCode.Unauthorized, "Identity.Login.Failed");
+        Assert.Equal(HttpStatusCode.NoContent, (await _api.CreateBrowser().LoginAsync(account, "Reset-by-admin-7")).StatusCode);
+    }
+
+    // The database is shared by the whole run, so this measures the difference its own users make.
+    [Fact]
+    public async Task Only_active_company_wide_administrators_count_as_company_wide()
+    {
+        var (branchId, _) = await fx.SeedBranchAndUnitAsync();
+        await using var scope = _api.Services.CreateAsyncScope();
+        var holders = scope.ServiceProvider.GetRequiredService<IUserRoleAssignments>();
+        var admin = ApplicationRole.AdministratorId;
+        var anyBefore = await holders.CountActiveUsersInRoleAsync(admin, null, default);
+        var companyWideBefore = await holders.CountActiveCompanyWideUsersInRoleAsync(admin, null, default);
+
+        await _api.SeedUserAsync(administrator: true);
+        await _api.SeedUserAsync(administrator: true, companyWide: false, branches: [branchId]);
+        await _api.SeedUserAsync(administrator: true, active: false);
+
+        Assert.Equal(anyBefore + 2, await holders.CountActiveUsersInRoleAsync(admin, null, default));
+        Assert.Equal(companyWideBefore + 1, await holders.CountActiveCompanyWideUsersInRoleAsync(admin, null, default));
+    }
+
+    [Fact]
+    public async Task An_administrator_clears_failed_attempts_of_a_user_who_is_not_locked_out()
+    {
+        var account = await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead]);
+        for (var i = 0; i < 2; i++)
+            await _api.CreateBrowser().LoginAsync(account, "Wrong-password-1");
+        var admin = await _api.AdministratorAsync();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PostAsync($"{Users}/{account.Id}/unlock", null)).StatusCode);
+
+        Assert.Equal(0, (await UserRowAsync(account.Id)).AccessFailedCount);
     }
 
     [Fact]
@@ -235,7 +291,8 @@ public sealed class IdentityApiTests(DatabaseFixture fx) : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, (await user.GetAsync(Warehouses)).StatusCode);
 
         var admin = await _api.AdministratorAsync();
-        var updated = await admin.PutJsonAsync($"{Roles}/{account.RoleId}", new { name = DatabaseFixture.Code("role"), permissions = Array.Empty<string>() });
+        var version = await RoleVersionAsync(admin, account.RoleId!.Value);
+        var updated = await admin.PutJsonAsync($"{Roles}/{account.RoleId}", new { name = DatabaseFixture.Code("role"), permissions = Array.Empty<string>(), version });
         Assert.Equal(HttpStatusCode.NoContent, updated.StatusCode);
 
         await (await user.GetAsync(Warehouses)).AssertProblemAsync(HttpStatusCode.Forbidden, "Common.Forbidden");
@@ -271,10 +328,10 @@ public sealed class IdentityApiTests(DatabaseFixture fx) : IAsyncLifetime
         var account = await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead], companyWide: false);
         var access = $"{Users}/{account.Id}/access";
 
-        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutJsonAsync(access, new { isCompanyWide = false, warehouseIds = new[] { granted } })).StatusCode);
-        await (await admin.PutJsonAsync(access, new { warehouseIds = new[] { Guid.NewGuid() } }))
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutJsonAsync(access, new { isCompanyWide = false, warehouseIds = new[] { granted }, revision = 0 })).StatusCode);
+        await (await admin.PutJsonAsync(access, new { warehouseIds = new[] { Guid.NewGuid() }, revision = 1 }))
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Identity.Access.UnknownWarehouse");
-        await (await admin.PutJsonAsync(access, new { branchIds = new[] { Guid.NewGuid() } }))
+        await (await admin.PutJsonAsync(access, new { branchIds = new[] { Guid.NewGuid() }, revision = 1 }))
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Identity.Access.UnknownBranch");
 
         var user = await _api.SignedInAsync(account);
@@ -298,11 +355,11 @@ public sealed class IdentityApiTests(DatabaseFixture fx) : IAsyncLifetime
         var client = await _api.SignedInAsync(manager);
         var access = $"{Users}/{target.Id}/access";
 
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutJsonAsync(access, new { warehouseIds = new[] { inside } })).StatusCode);
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutJsonAsync(access, new { branchIds = new[] { branchId } })).StatusCode);
-        await (await client.PutJsonAsync(access, new { warehouseIds = new[] { outside } }))
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutJsonAsync(access, new { warehouseIds = new[] { inside }, revision = 0 })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutJsonAsync(access, new { branchIds = new[] { branchId }, revision = 1 })).StatusCode);
+        await (await client.PutJsonAsync(access, new { warehouseIds = new[] { outside }, revision = 2 }))
             .AssertProblemAsync(HttpStatusCode.Forbidden, "Identity.Access.ExceedsOwnScope");
-        await (await client.PutJsonAsync(access, new { branchIds = new[] { otherBranchId } }))
+        await (await client.PutJsonAsync(access, new { branchIds = new[] { otherBranchId }, revision = 2 }))
             .AssertProblemAsync(HttpStatusCode.Forbidden, "Identity.Access.ExceedsOwnScope");
     }
 
@@ -343,6 +400,122 @@ public sealed class IdentityApiTests(DatabaseFixture fx) : IAsyncLifetime
             .AssertProblemAsync(HttpStatusCode.Unauthorized, "Identity.Session.Revoked");
     }
 
+    // Whichever request commits first, the outcome is the same: one rotation, then the other request ends the session.
+    [Fact]
+    public async Task Two_refreshes_racing_with_one_token_end_the_session()
+    {
+        var issued = await IssueTokensAsync(await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead]));
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 2)
+            .Select(_ => Bare().PostJsonAsync($"{Tokens}/refresh", new { refreshToken = issued.RefreshToken })));
+
+        var winner = Assert.Single(responses, r => r.StatusCode == HttpStatusCode.OK);
+        await Assert.Single(responses, r => r != winner)
+            .AssertProblemAsync(HttpStatusCode.Unauthorized, "Identity.Session.RefreshTokenReused");
+        var rotated = Read(await winner.ReadAsync<JsonElement>());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Bare().SendAsBearerAsync(HttpMethod.Get, Me, rotated.AccessToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_refresh_token_from_two_rotations_ago_ends_the_session()
+    {
+        var first = await IssueTokensAsync(await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead]));
+        var third = await RefreshAsync((await RefreshAsync(first.RefreshToken)).RefreshToken);
+
+        await (await Bare().PostJsonAsync($"{Tokens}/refresh", new { refreshToken = first.RefreshToken }))
+            .AssertProblemAsync(HttpStatusCode.Unauthorized, "Identity.Session.RefreshTokenReused");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Bare().SendAsBearerAsync(HttpMethod.Get, Me, third.AccessToken)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Session_cleanup_deletes_only_sessions_that_ended_before_the_retention()
+    {
+        var account = await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead]);
+        var now = DateTime.UtcNow;
+        var longAgo = now.AddDays(-60); // Identity:Sessions:RetentionAfterEnd is 30 days
+        var expired = UserSession.StartWeb(account.Id, SessionTokens.Create().Hash, now.AddDays(-32), TimeSpan.FromDays(1)); // ended 31 days ago
+        var revokedWithinRetention = UserSession.StartWeb(account.Id, SessionTokens.Create().Hash, now.AddDays(-30), TimeSpan.FromDays(7));
+        revokedWithinRetention.Revoke(SessionRevokeReason.Logout, now.AddDays(-29)); // ended 29 days ago: kept
+        var live = UserSession.StartWeb(account.Id, SessionTokens.Create().Hash, now, TimeSpan.FromHours(12));
+        var refreshHash = SessionTokens.Create().Hash;
+        var rotated = UserSession.StartApi(account.Id, "POS-01",
+            new IssuedApiTokens(SessionTokens.Create().Hash, longAgo.AddMinutes(15), refreshHash, longAgo.AddDays(10)), longAgo, TimeSpan.FromDays(20));
+        Assert.True(rotated.Refresh(refreshHash,
+            new IssuedApiTokens(SessionTokens.Create().Hash, longAgo.AddMinutes(30), SessionTokens.Create().Hash, longAgo.AddDays(10)), longAgo.AddMinutes(10)).IsSuccess);
+        await using (var db = fx.NewDb())
+        {
+            db.AddRange(expired, revokedWithinRetention, live, rotated);
+            await db.SaveChangesAsync();
+        }
+
+        await _api.Services.GetRequiredService<ExpiredSessionCleanup>().CleanUpAsync(default);
+
+        await using var check = fx.NewDb();
+        var left = await check.Set<UserSession>().Where(s => s.UserId == account.Id).Select(s => s.Id).ToListAsync();
+        Assert.Equal(new[] { live.Id, revokedWithinRetention.Id }.Order(), left.Order());
+        Assert.False(await check.Set<RetiredRefreshToken>().AnyAsync(r => r.SessionId == rotated.Id)); // gone with its session
+    }
+
+    [Fact]
+    public async Task A_stale_access_revision_is_refused()
+    {
+        var admin = await _api.AdministratorAsync();
+        var target = await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead]);
+        var revision = await AccessRevisionAsync(admin, target.Id);
+        var access = $"{Users}/{target.Id}/access";
+
+        Assert.Equal(HttpStatusCode.NoContent, (await admin.PutJsonAsync(access, new { isCompanyWide = true, revision })).StatusCode);
+
+        await (await admin.PutJsonAsync(access, new { isCompanyWide = true, revision }))
+            .AssertProblemAsync(HttpStatusCode.Conflict, "Common.ConcurrencyConflict");
+    }
+
+    [Fact]
+    public async Task Guessing_the_current_password_locks_the_account_and_records_the_lockout()
+    {
+        var account = await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead]);
+        var browser = await _api.SignedInAsync(account);
+        var guess = new { currentPassword = "Wrong-password-1", newPassword = "New-Password-42" };
+
+        for (var i = 0; i < 5; i++) // Identity:Lockout:MaxFailedAccessAttempts
+            await (await browser.PostJsonAsync("/api/identity/me/password", guess))
+                .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Identity.Password.Incorrect");
+
+        await (await browser.PostJsonAsync("/api/identity/me/password", new { currentPassword = account.Password, newPassword = "New-Password-42" }))
+            .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Identity.Password.LockedOut");
+        await using var db = fx.NewDb();
+        Assert.Single(await db.Set<SecurityEvent>()
+            .Where(e => e.TargetUserId == account.Id && e.Type == SecurityEventType.UserLockedOut).ToListAsync());
+    }
+
+    [Fact]
+    public async Task The_audit_trail_needs_identity_audit_read()
+    {
+        var reader = await _api.SignedInAsync(await _api.SeedUserAsync([IdentityPermissions.UsersRead]));
+        var auditor = await _api.SignedInAsync(await _api.SeedUserAsync([IdentityPermissions.AuditRead]));
+
+        await (await reader.GetAsync("/api/identity/security-events")).AssertProblemAsync(HttpStatusCode.Forbidden, "Common.Forbidden");
+        var page = await auditor.GetAsync("/api/identity/security-events?type=SignedIn");
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.All((await page.ReadAsync<JsonElement>()).GetProperty("items").EnumerateArray(),
+            e => Assert.Equal("SignedIn", e.GetProperty("type").GetString()));
+    }
+
+    [Fact]
+    public async Task The_password_policy_is_shown_to_signed_in_users()
+    {
+        await (await _api.CreateBrowser().GetAsync("/api/identity/password-policy"))
+            .AssertProblemAsync(HttpStatusCode.Unauthorized, "Common.Unauthorized");
+        var browser = await _api.SignedInAsync(await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead]));
+
+        var policy = await (await browser.GetAsync("/api/identity/password-policy")).ReadAsync<JsonElement>();
+
+        Assert.Equal(10, policy.GetProperty("requiredLength").GetInt32());
+        Assert.True(policy.GetProperty("requireDigit").GetBoolean());
+    }
+
     [Fact]
     public async Task Bearer_session_needs_no_anti_forgery_token_and_can_be_revoked()
     {
@@ -377,7 +550,12 @@ public sealed class IdentityApiTests(DatabaseFixture fx) : IAsyncLifetime
         var userName = DatabaseFixture.Code("new").ToLowerInvariant();
         var userId = await CreatedIdAsync(await admin.PostJsonAsync(Users, new
         {
-            userName, displayName = "مستخدم جديد", password = Password, roleIds = new[] { roleId }, isCompanyWide = false, branchIds = new[] { branchId },
+            userName,
+            displayName = "مستخدم جديد",
+            password = Password,
+            roleIds = new[] { roleId },
+            isCompanyWide = false,
+            branchIds = new[] { branchId },
         }));
 
         var details = await (await admin.GetAsync($"{Users}/{userId}")).ReadAsync<JsonElement>();
@@ -413,7 +591,8 @@ public sealed class IdentityApiTests(DatabaseFixture fx) : IAsyncLifetime
         var admin = await _api.SignedInAsync(adminAccount);
         var holder = await _api.SeedUserAsync([OrganizationPermissions.WarehousesRead]);
 
-        await (await admin.PutJsonAsync($"{Roles}/{ApplicationRole.AdministratorId}", new { name = "Administrator", permissions = Array.Empty<string>() }))
+        await (await admin.PutJsonAsync($"{Roles}/{ApplicationRole.AdministratorId}",
+                new { name = "Administrator", permissions = Array.Empty<string>(), version = await RoleVersionAsync(admin, ApplicationRole.AdministratorId) }))
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Identity.Role.SystemRoleLocked");
         await (await admin.PostJsonAsync(Roles, new { name = DatabaseFixture.Code("role"), permissions = UnknownPermission }))
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Identity.Role.UnknownPermission");
@@ -495,6 +674,12 @@ public sealed class IdentityApiTests(DatabaseFixture fx) : IAsyncLifetime
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(response.StatusCode == HttpStatusCode.Created, $"Expected 201, got {(int)response.StatusCode}: {body}");
         return JsonDocument.Parse(body).RootElement.GetProperty("id").GetGuid();
+    }
+
+    private async Task<ApplicationUser> UserRowAsync(Guid userId)
+    {
+        await using var db = fx.NewDb();
+        return await db.Set<ApplicationUser>().AsNoTracking().SingleAsync(u => u.Id == userId);
     }
 }
 

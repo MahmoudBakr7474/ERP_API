@@ -12,5 +12,6 @@ public sealed class UpdateRoleValidator : AbstractValidator<UpdateRoleCommand>
         RuleFor(x => x.Description).MaximumLength(500);
         RuleFor(x => x.Permissions).NotNull();
         RuleForEach(x => x.Permissions).NotEmpty();
+        RuleFor(x => x.Version).NotEmpty().MaximumLength(100);
     }
 }

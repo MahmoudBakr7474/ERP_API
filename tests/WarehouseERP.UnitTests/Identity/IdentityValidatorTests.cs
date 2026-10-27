@@ -3,8 +3,11 @@ using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.Identity.Application.Features.Authentication.Login;
 using WarehouseERP.Identity.Application.Features.Authentication.RefreshApiToken;
 using WarehouseERP.Identity.Application.Features.Roles.CreateRole;
+using WarehouseERP.Identity.Application.Features.Roles.UpdateRole;
+using WarehouseERP.Identity.Application.Features.SecurityEvents.ListSecurityEvents;
 using WarehouseERP.Identity.Application.Features.Users.CreateUser;
 using WarehouseERP.Identity.Application.Features.Users.ListUsers;
+using WarehouseERP.Identity.Domain;
 
 namespace WarehouseERP.UnitTests.Identity;
 
@@ -58,6 +61,24 @@ public sealed class IdentityValidatorTests
         Assert.False(new CreateRoleValidator().Validate(new CreateRoleCommand(" ", null, [])).IsValid);
         Assert.False(new CreateRoleValidator().Validate(new CreateRoleCommand("Clerk", null, [""])).IsValid);
         Assert.True(new CreateRoleValidator().Validate(new CreateRoleCommand("Clerk", null, [])).IsValid);
+    }
+
+    [Fact]
+    public void A_role_edit_carries_the_version_it_was_made_from()
+    {
+        Assert.False(new UpdateRoleValidator().Validate(new UpdateRoleCommand(Guid.NewGuid(), "Clerk", null, [], "")).IsValid);
+        Assert.True(new UpdateRoleValidator().Validate(new UpdateRoleCommand(Guid.NewGuid(), "Clerk", null, [], "v1")).IsValid);
+    }
+
+    [Fact]
+    public void Security_event_filters_need_a_known_type_and_an_ordered_period()
+    {
+        var validator = new ListSecurityEventsValidator(Options.Create(new PaginationOptions()));
+        var from = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        Assert.False(validator.Validate(new ListSecurityEventsQuery(1, null, null, (SecurityEventType)200, null, null)).IsValid);
+        Assert.False(validator.Validate(new ListSecurityEventsQuery(1, null, null, null, from, from.AddDays(-1))).IsValid);
+        Assert.True(validator.Validate(new ListSecurityEventsQuery(1, null, null, SecurityEventType.SignInFailed, from, from.AddDays(1))).IsValid);
     }
 
     [Fact]

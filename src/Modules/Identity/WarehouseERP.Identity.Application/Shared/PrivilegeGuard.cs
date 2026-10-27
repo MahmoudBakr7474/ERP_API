@@ -9,8 +9,9 @@ using WarehouseERP.SharedKernel.Results;
 namespace WarehouseERP.Identity.Application.Shared;
 
 // No privilege escalation through Identity itself: nobody hands out permissions or scope they don't hold, or takes
-// over (resets, edits, re-roles) an account that holds more than they do. Without this, identity.users.manage alone
-// would be enough to become Administrator. Revoking sessions is exempt: it never grants anything.
+// over (resets, edits, re-roles, re-scopes) an account that holds more permissions or reaches further than they do.
+// Without this, identity.users.manage alone would be enough to become Administrator, and a branch manager could take
+// over a company-wide account. Revoking sessions is exempt: it never grants anything.
 internal static class PrivilegeGuard
 {
     /// <summary>The existing roles among the ids; any unknown id fails.</summary>
@@ -26,16 +27,30 @@ internal static class PrivilegeGuard
 
     public static bool HoldsAll(ICurrentUser caller, IEnumerable<string> permissions) => permissions.All(caller.HasPermission);
 
+    // A role granting every permission (Administrator) also grants the ones later modules add, so holding today's
+    // catalog is not enough: only a holder of every permission ("*") hands it out or manages its holders.
     public static bool HoldsAll(ICurrentUser caller, IEnumerable<Role> roles, IEnumerable<PermissionDefinition> catalog) =>
-        roles.All(role => HoldsAll(caller, role.GrantsAllPermissions ? catalog.Select(p => p.Name) : role.Permissions));
+        roles.All(role => role.GrantsAllPermissions
+            ? caller.HasPermission(ErpClaimTypes.AllPermissions)
+            : HoldsAll(caller, role.Permissions));
 
-    /// <summary>The caller holds every permission the target user's roles grant.</summary>
+    /// <summary>
+    /// The caller holds every permission the target user's roles grant, and the target's current scope lies within
+    /// the caller's own (as if the caller were granting it now).
+    /// </summary>
     public static async Task<Result> EnsureCanManageAsync(
-        ICurrentUser caller, IUserRoleAssignments roleAssignments, IRoleRepository roles, IEnumerable<PermissionDefinition> catalog,
-        Guid targetUserId, CancellationToken ct)
+        ICurrentUser caller, IUserRoleAssignments roleAssignments, IRoleRepository roles, IUserAccessRepository access,
+        IEnumerable<PermissionDefinition> catalog, Guid targetUserId, CancellationToken ct)
     {
         var targetRoles = await roles.GetManyAsync(await roleAssignments.GetRoleIdsAsync(targetUserId, ct), ct);
-        return HoldsAll(caller, targetRoles, catalog) ? Result.Success() : PermissionErrors.ExceedsOwnPermissions;
+        if (!HoldsAll(caller, targetRoles, catalog))
+            return PermissionErrors.ExceedsOwnPermissions;
+        if (caller.HasAllWarehouses || await access.GetAsync(targetUserId, ct) is not { } target)
+            return Result.Success(); // no access row: the user reaches nothing
+        return await WithinOwnScopeAsync(caller, access, target.IsCompanyWide,
+            target.Branches.Select(b => b.BranchId).ToList(), target.Warehouses.Select(w => w.WarehouseId).ToList(), ct)
+            ? Result.Success()
+            : UserAccessErrors.ExceedsOwnScope;
     }
 
     /// <summary>
@@ -56,14 +71,23 @@ internal static class PrivilegeGuard
         if (wantedWarehouses.Count > 0 && (await warehouses.FindManyAsync(wantedWarehouses, ct)).Count != wantedWarehouses.Count)
             return UserAccessErrors.UnknownWarehouses;
 
+        return await WithinOwnScopeAsync(caller, access, companyWide: false, wantedBranches, wantedWarehouses, ct)
+            ? Result.Success()
+            : UserAccessErrors.ExceedsOwnScope;
+    }
+
+    private static async Task<bool> WithinOwnScopeAsync(
+        ICurrentUser caller, IUserAccessRepository access, bool companyWide, List<Guid> branchIds, List<Guid> warehouseIds,
+        CancellationToken ct)
+    {
         if (caller.HasAllWarehouses)
-            return Result.Success();
-        if (!wantedWarehouses.TrueForAll(caller.CanAccessWarehouse))
-            return UserAccessErrors.ExceedsOwnScope;
-        if (wantedBranches.Count == 0)
-            return Result.Success();
+            return true;
+        if (companyWide || !warehouseIds.TrueForAll(caller.CanAccessWarehouse))
+            return false;
+        if (branchIds.Count == 0)
+            return true;
         var own = caller.UserId is { } callerId ? await access.GetAsync(callerId, ct) : null;
         var ownBranches = own?.Branches.Select(g => g.BranchId).ToHashSet() ?? [];
-        return wantedBranches.TrueForAll(ownBranches.Contains) ? Result.Success() : UserAccessErrors.ExceedsOwnScope;
+        return branchIds.TrueForAll(ownBranches.Contains);
     }
 }

@@ -16,6 +16,6 @@ public sealed class GetRoleHandler(IRoleRepository roles, IEnumerable<Permission
         var permissions = role.GrantsAllPermissions ? catalog.Select(p => p.Name) : role.Permissions;
         return new RoleDetailsResponse(
             role.Id, role.Name, role.Description, role.IsSystem, role.GrantsAllPermissions,
-            permissions.Order(StringComparer.Ordinal).ToList());
+            permissions.Order(StringComparer.Ordinal).ToList(), role.Version ?? "");
     }
 }

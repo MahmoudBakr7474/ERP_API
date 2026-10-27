@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using WarehouseERP.BuildingBlocks.Application.Security;
@@ -24,7 +26,7 @@ internal static class IdentityTesting
     public const string Password = "Correct-horse-9";
 
     public static async Task<TestAccount> SeedUserAsync(
-        this ApiFactory api, IEnumerable<string>? permissions = null, bool administrator = false, bool companyWide = true,
+        this WebApplicationFactory<Program> api, IEnumerable<string>? permissions = null, bool administrator = false, bool companyWide = true,
         Guid[]? branches = null, Guid[]? warehouses = null, bool active = true)
     {
         await using var scope = api.Services.CreateAsyncScope();
@@ -85,6 +87,20 @@ internal static class IdentityTesting
     /// <summary>The value this response sets for the cookie, or null.</summary>
     public static string? Cookie(HttpResponseMessage response, string name) =>
         SetCookie(response, name) is { } header ? Uri.UnescapeDataString(header.Split(';')[0][(name.Length + 1)..]) : null;
+
+    /// <summary>The role's current version, as an edit screen reads it before saving.</summary>
+    public static async Task<string> RoleVersionAsync(HttpClient client, Guid roleId)
+    {
+        var role = await (await client.GetAsync($"/api/identity/roles/{roleId}")).ReadAsync<JsonElement>();
+        return role.GetProperty("version").GetString()!;
+    }
+
+    /// <summary>The user's current scope revision, as the access screen reads it before saving.</summary>
+    public static async Task<int> AccessRevisionAsync(HttpClient client, Guid userId)
+    {
+        var user = await (await client.GetAsync($"/api/identity/users/{userId}")).ReadAsync<JsonElement>();
+        return user.GetProperty("access").GetProperty("revision").GetInt32();
+    }
 
     public static Task<HttpResponseMessage> SendAsBearerAsync(this HttpClient client, HttpMethod method, string url, string token)
     {

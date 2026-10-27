@@ -21,7 +21,10 @@ public static class IdentityPermissions
     /// <summary>See and revoke other users' sessions.</summary>
     public const string SessionsManage = "identity.sessions.manage";
 
+    /// <summary>Read the security audit trail (sign-ins, role, permission and scope changes, revocations).</summary>
+    public const string AuditRead = "identity.audit.read";
+
     /// <summary>Every Identity permission.</summary>
     public static IReadOnlyList<string> All { get; } =
-        [UsersRead, UsersManage, AccessManage, RolesRead, RolesManage, SessionsManage];
+        [UsersRead, UsersManage, AccessManage, RolesRead, RolesManage, SessionsManage, AuditRead];
 }

@@ -24,12 +24,15 @@ internal sealed class UserSessionConfiguration : IEntityTypeConfiguration<UserSe
                      nameof(UserSession.TokenExpiresAtUtc), nameof(UserSession.RefreshExpiresAtUtc), nameof(UserSession.CreatedAtUtc),
                      nameof(UserSession.LastSeenAtUtc), nameof(UserSession.ExpiresAtUtc), nameof(UserSession.RevokedAtUtc),
                  })
-            builder.Property(time).HasColumnType("datetime2(3)");
+            builder.Property(time).IsUtcTimestamp();
 
         // Every authenticated request looks its session up by token hash; a refresh by the current or previous
         // refresh-token hash (the previous one to detect reuse).
         builder.HasIndex(x => x.TokenHash).IsUnique();
         builder.HasIndex(x => x.RefreshTokenHash).IsUnique().HasFilter("[RefreshTokenHash] IS NOT NULL");
         builder.HasIndex(x => x.PreviousRefreshTokenHash).HasFilter("[PreviousRefreshTokenHash] IS NOT NULL");
+
+        builder.HasMany(x => x.RetiredRefreshTokens).WithOne().HasForeignKey(r => r.SessionId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(x => x.RetiredRefreshTokens).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

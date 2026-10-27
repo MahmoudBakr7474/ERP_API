@@ -47,44 +47,63 @@ internal static class UserEndpoints
         group.MapPost("/", CreateAsync)
             .RequireAuthorization(IdentityPermissions.UsersManage)
             .WithName("CreateUser")
+            .RequireHttps() // carries the initial password
             .Produces<CreatedResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
+        // 409 on every change to an existing user: it was changed since it was loaded (a counted sign-in attempt
+        // included), so reload and try again.
         group.MapPut("/{id:guid}", UpdateAsync)
             .RequireAuthorization(IdentityPermissions.UsersManage)
             .WithName("UpdateUser")
             .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPost("/{id:guid}/activate", (Guid id, ICommandHandler<SetUserActiveCommand, Done> handler, CancellationToken ct) =>
                 NoContentAsync(handler.HandleAsync(new SetUserActiveCommand(id, IsActive: true), ct)))
             .RequireAuthorization(IdentityPermissions.UsersManage)
             .WithName("ActivateUser")
-            .Produces(StatusCodes.Status204NoContent);
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapPost("/{id:guid}/deactivate", (Guid id, ICommandHandler<SetUserActiveCommand, Done> handler, CancellationToken ct) =>
                 NoContentAsync(handler.HandleAsync(new SetUserActiveCommand(id, IsActive: false), ct)))
             .RequireAuthorization(IdentityPermissions.UsersManage)
             .WithName("DeactivateUser")
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPost("/{id:guid}/unlock", (Guid id, ICommandHandler<UnlockUserCommand, Done> handler, CancellationToken ct) =>
                 NoContentAsync(handler.HandleAsync(new UnlockUserCommand(id), ct)))
             .RequireAuthorization(IdentityPermissions.UsersManage)
             .WithName("UnlockUser")
-            .Produces(StatusCodes.Status204NoContent);
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPost("/{id:guid}/password", (Guid id, ResetPasswordRequest request, ICommandHandler<ResetUserPasswordCommand, Done> handler,
                     CancellationToken ct) =>
                 NoContentAsync(handler.HandleAsync(new ResetUserPasswordCommand(id, request.NewPassword), ct)))
             .RequireAuthorization(IdentityPermissions.UsersManage)
             .WithName("ResetUserPassword")
+            .RequireHttps()
             .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPut("/{id:guid}/roles", (Guid id, SetRolesRequest request, ICommandHandler<SetUserRolesCommand, Done> handler,
                     CancellationToken ct) =>
@@ -92,17 +111,23 @@ internal static class UserEndpoints
             .RequireAuthorization(IdentityPermissions.UsersManage)
             .WithName("SetUserRoles")
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapPut("/{id:guid}/access", (Guid id, SetAccessRequest request, ICommandHandler<SetUserAccessCommand, Done> handler,
                     CancellationToken ct) =>
                 NoContentAsync(handler.HandleAsync(
-                    new SetUserAccessCommand(id, request.IsCompanyWide, request.BranchIds ?? [], request.WarehouseIds ?? []), ct)))
+                    new SetUserAccessCommand(id, request.IsCompanyWide, request.BranchIds ?? [], request.WarehouseIds ?? [], request.Revision), ct)))
             .RequireAuthorization(IdentityPermissions.AccessManage)
             .WithName("SetUserAccess")
             .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict) // a stale revision: reload the access screen
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
 
         group.MapGet("/{id:guid}/sessions", async (Guid id, IQueryHandler<ListSessionsQuery, IReadOnlyList<SessionResponse>> handler,
@@ -116,7 +141,8 @@ internal static class UserEndpoints
                 NoContentAsync(handler.HandleAsync(new RevokeUserSessionsCommand(id), ct)))
             .RequireAuthorization(IdentityPermissions.SessionsManage)
             .WithName("RevokeUserSessions")
-            .Produces(StatusCodes.Status204NoContent);
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound);
 
         return app;
     }

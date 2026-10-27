@@ -20,7 +20,7 @@ namespace WarehouseERP.IntegrationTests;
 // session authentication (cookies, bearer tokens) and clients talk https so Secure cookies flow.
 public sealed class ApiFactory(string connectionString, string environment = "Production",
     IReadOnlyDictionary<string, string?>? settings = null, TimeProvider? clock = null, ILogEventSink? logSink = null,
-    bool realSessions = false)
+    bool realSessions = false, Action<IServiceCollection>? testServices = null)
     : WebApplicationFactory<Program>
 {
     /// <summary>A client over https; with <paramref name="handleCookies"/> it keeps its own cookie jar, like a browser.</summary>
@@ -62,6 +62,7 @@ public sealed class ApiFactory(string connectionString, string environment = "Pr
                 services.AddSingleton(clock);
             if (logSink is not null)
                 services.AddSingleton(logSink); // picked up by Serilog's ReadFrom.Services
+            testServices?.Invoke(services);
         });
     }
 }
