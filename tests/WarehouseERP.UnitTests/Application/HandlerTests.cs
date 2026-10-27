@@ -126,7 +126,7 @@ public sealed class HandlerTests
     public async Task Update_product_that_does_not_exist_is_not_found()
     {
         var result = await new UpdateProductHandler(new FakeProductRepository(), NullLogger<UpdateProductHandler>.Instance)
-            .HandleAsync(new UpdateProductCommand(Guid.NewGuid(), "اسم", null, "AAAAAAAAB9E="), default);
+            .HandleAsync(new UpdateProductCommand(Guid.NewGuid(), "اسم", null, null, "AAAAAAAAB9E="), default);
         Assert.Same(ProductErrors.NotFound, result.Error);
     }
 
@@ -137,7 +137,7 @@ public sealed class HandlerTests
         var repository = new FakeProductRepository { Stored = product, SaveResult = CommonErrors.ConcurrencyConflict };
 
         var result = await new UpdateProductHandler(repository, NullLogger<UpdateProductHandler>.Instance)
-            .HandleAsync(new UpdateProductCommand(product.Id, "اسم جديد", null, "AAAAAAAAB9E="), default);
+            .HandleAsync(new UpdateProductCommand(product.Id, "اسم جديد", null, null, "AAAAAAAAB9E="), default);
 
         Assert.Same(CommonErrors.ConcurrencyConflict, result.Error);
         Assert.Equal("اسم جديد", product.NameAr);
@@ -219,14 +219,19 @@ public sealed class HandlerTests
 
         public Task<bool> IsUnitActiveAsync(Guid unitId, CancellationToken ct) => Task.FromResult(true);
         public Task<bool> IsCategoryActiveAsync(Guid categoryId, CancellationToken ct) => Task.FromResult(CategoryActive);
+        public Task<UnitState?> GetUnitStateAsync(Guid unitId, CancellationToken ct) =>
+            Task.FromResult<UnitState?>(new UnitState(IsActive: true, AllowsFraction: false));
         public Task<bool> SkuExistsAsync(string sku, CancellationToken ct) => Task.FromResult(false);
+        public Task<bool> BarcodeExistsAsync(string barcode, CancellationToken ct) => Task.FromResult(false);
         public Task<Result> AddAsync(Product product, CancellationToken ct) => Task.FromResult(SaveResult);
 
-        public Task<Product?> GetForUpdateAsync(Guid productId, byte[] expectedRowVersion, CancellationToken ct)
+        public Task<Product?> GetForUpdateAsync(Guid productId, byte[]? expectedRowVersion, CancellationToken ct)
         {
             ExpectedRowVersion = expectedRowVersion;
             return Task.FromResult(Stored);
         }
+
+        public Task<Product?> GetWithUnitsForUpdateAsync(Guid productId, CancellationToken ct) => Task.FromResult(Stored);
 
         public Task<Result> SaveChangesAsync(CancellationToken ct) => Task.FromResult(SaveResult);
     }

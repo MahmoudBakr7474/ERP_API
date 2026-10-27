@@ -44,9 +44,9 @@ public sealed class ConstraintTests(DatabaseFixture fx)
         await db.SaveChangesAsync();
         var barcode = DatabaseFixture.Code("622");
 
-        db.Add(new ProductBarcode { ProductUnitId = first.Units.Single().Id, Barcode = barcode });
+        first.AddBarcode(first.Units.Single(), barcode, BarcodeType.Internal);
         await db.SaveChangesAsync();
-        db.Add(new ProductBarcode { ProductUnitId = second.Units.Single().Id, Barcode = barcode });
+        second.AddBarcode(second.Units.Single(), barcode, BarcodeType.Internal);
         await DbAssert.RejectedBy(db, "IX_ProductBarcodes_Barcode");
     }
 

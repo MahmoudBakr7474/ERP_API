@@ -8,9 +8,12 @@ using WarehouseERP.Catalog.Application.Contracts.Products;
 using WarehouseERP.Catalog.Application.Features.Products.CreateProduct;
 using WarehouseERP.Catalog.Application.Features.Products.GetProduct;
 using WarehouseERP.Catalog.Application.Features.Products.ListProducts;
+using WarehouseERP.Catalog.Application.Features.Products.LookupProduct;
+using WarehouseERP.Catalog.Application.Features.Products.SetProductActive;
 using WarehouseERP.Catalog.Application.Features.Products.UpdateProduct;
 using WarehouseERP.Catalog.Contracts;
 using WarehouseERP.Catalog.Presentation.Contracts.Products;
+using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Catalog.Presentation;
 
@@ -44,11 +47,37 @@ internal static class ProductEndpoints
             .Produces<PagedResult<ProductSummaryResponse>>()
             .ProducesProblem(StatusCodes.Status400BadRequest);
 
+        // What a till or a sales screen asks when it scans a barcode.
+        group.MapGet("/lookup", LookupAsync)
+            .RequireAuthorization(CatalogPermissions.ProductsRead)
+            .WithName("LookupProductByBarcode")
+            .Produces<ProductLookupResponse>()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound);
+
         group.MapPut("/{id:guid}", UpdateAsync)
             .RequireAuthorization(CatalogPermissions.ProductsUpdate)
             .WithName("UpdateProduct")
             .Produces<UpdatedResponse>()
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost("/{id:guid}/activate", (Guid id, ICommandHandler<SetProductActiveCommand, Done> handler, CancellationToken ct) =>
+                NoContentAsync(handler.HandleAsync(new SetProductActiveCommand(id, IsActive: true), ct)))
+            .RequireAuthorization(CatalogPermissions.ProductsUpdate)
+            .WithName("ActivateProduct")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost("/{id:guid}/deactivate", (Guid id, ICommandHandler<SetProductActiveCommand, Done> handler, CancellationToken ct) =>
+                NoContentAsync(handler.HandleAsync(new SetProductActiveCommand(id, IsActive: false), ct)))
+            .RequireAuthorization(CatalogPermissions.ProductsUpdate)
+            .WithName("DeactivateProduct")
+            .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
@@ -66,11 +95,21 @@ internal static class ProductEndpoints
 
     private static async Task<IResult> ListAsync(
         IQueryHandler<ListProductsQuery, PagedResult<ProductSummaryResponse>> handler, CancellationToken ct,
-        int page = 1, int? pageSize = null, string? search = null) =>
-        (await handler.HandleAsync(new ListProductsQuery(page, pageSize, search), ct)).ToHttpResult(TypedResults.Ok);
+        int page = 1, int? pageSize = null, string? search = null, Guid? categoryId = null, ProductType? type = null,
+        bool? isActive = null) =>
+        (await handler.HandleAsync(new ListProductsQuery(page, pageSize, search, categoryId, type, isActive), ct))
+            .ToHttpResult(TypedResults.Ok);
+
+    private static async Task<IResult> LookupAsync(
+        IQueryHandler<LookupProductQuery, ProductLookupResponse> handler, CancellationToken ct, string barcode = "") =>
+        (await handler.HandleAsync(new LookupProductQuery(barcode), ct)).ToHttpResult(TypedResults.Ok);
 
     private static async Task<IResult> UpdateAsync(
         Guid id, UpdateProductRequest request, ICommandHandler<UpdateProductCommand, string> handler, CancellationToken ct) =>
-        (await handler.HandleAsync(new UpdateProductCommand(id, request.NameAr, request.NameEn, request.RowVersion), ct))
+        (await handler.HandleAsync(
+                new UpdateProductCommand(id, request.NameAr, request.NameEn, request.CategoryId, request.RowVersion), ct))
             .ToHttpResult(rowVersion => TypedResults.Ok(new UpdatedResponse(rowVersion)));
+
+    private static async Task<IResult> NoContentAsync(Task<Result<Done>> pending) =>
+        (await pending).ToHttpResult(_ => TypedResults.NoContent());
 }

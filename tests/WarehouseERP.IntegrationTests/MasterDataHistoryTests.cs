@@ -29,7 +29,7 @@ public sealed class MasterDataHistoryTests(DatabaseFixture fx)
         var editor = new TestCurrentUser(Guid.NewGuid(), allWarehouses: true);
         await using var db = fx.NewDb(editor);
         var product = await db.Set<Product>().SingleAsync(x => x.Id == productId);
-        product.Rename("صنف معدل", "Edited");
+        product.Update("صنف معدل", "Edited", product.CategoryId);
         await db.SaveChangesAsync();
 
         var versions = await db.Set<Product>().TemporalAll().Where(x => x.Id == productId).Select(x => x.NameAr).ToListAsync();
@@ -49,9 +49,9 @@ public sealed class MasterDataHistoryTests(DatabaseFixture fx)
         var a = await first.Set<Product>().SingleAsync(x => x.Id == productId);
         var b = await second.Set<Product>().SingleAsync(x => x.Id == productId);
 
-        a.Rename("أول", null);
+        a.Update("أول", null, a.CategoryId);
         await first.SaveChangesAsync();
-        b.Rename("تاني", null);
+        b.Update("تاني", null, b.CategoryId);
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync());
     }
 

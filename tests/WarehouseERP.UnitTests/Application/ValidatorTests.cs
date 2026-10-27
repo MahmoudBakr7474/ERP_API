@@ -66,7 +66,7 @@ public sealed class ValidatorTests
     [InlineData("", false)]
     public void Row_version_must_be_the_8_byte_value_read_with_the_product(string rowVersion, bool valid)
     {
-        var result = new UpdateProductValidator().Validate(new UpdateProductCommand(Guid.NewGuid(), "صنف", null, rowVersion));
+        var result = new UpdateProductValidator().Validate(new UpdateProductCommand(Guid.NewGuid(), "صنف", null, null, rowVersion));
         Assert.Equal(valid, result.IsValid);
     }
 

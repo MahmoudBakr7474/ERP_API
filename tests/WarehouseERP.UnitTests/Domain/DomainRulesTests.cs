@@ -84,14 +84,14 @@ public sealed class DomainRulesTests
     }
 
     [Fact]
-    public void Rename_trims_and_keeps_an_optional_english_name_absent_when_blank()
+    public void Update_trims_and_keeps_an_optional_english_name_absent_when_blank()
     {
         var product = Product.Create("SKU-1", "صنف", "Item", Guid.NewGuid(), null, ProductType.StockItem, TrackingMode.None).Value;
 
-        product.Rename(" اسم جديد ", " ");
+        product.Update(" اسم جديد ", " ", categoryId: null);
 
         Assert.Equal(("اسم جديد", null), (product.NameAr, product.NameEn));
-        Assert.Throws<ArgumentException>(() => product.Rename(" ", null));
+        Assert.Throws<ArgumentException>(() => product.Update(" ", null, categoryId: null));
     }
 
     [Fact]

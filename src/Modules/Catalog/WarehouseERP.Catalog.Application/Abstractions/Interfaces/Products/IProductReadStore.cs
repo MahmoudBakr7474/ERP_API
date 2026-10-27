@@ -8,5 +8,8 @@ public interface IProductReadStore
 {
     Task<ProductDetailsResponse?> GetAsync(Guid productId, CancellationToken ct);
 
-    Task<PagedResult<ProductSummaryResponse>> ListAsync(string? search, int page, int pageSize, CancellationToken ct);
+    Task<PagedResult<ProductSummaryResponse>> ListAsync(ProductListFilter filter, int page, int pageSize, CancellationToken ct);
+
+    /// <summary>The sellable item behind an active barcode: its product, product unit and unit all active. Null otherwise.</summary>
+    Task<ProductLookupResponse?> FindByBarcodeAsync(string barcode, CancellationToken ct);
 }

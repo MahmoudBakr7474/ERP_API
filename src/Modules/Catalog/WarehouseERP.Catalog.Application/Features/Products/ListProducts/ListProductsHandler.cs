@@ -12,5 +12,7 @@ public sealed class ListProductsHandler(IProductReadStore products, IOptions<Pag
     : IQueryHandler<ListProductsQuery, PagedResult<ProductSummaryResponse>>
 {
     public async Task<Result<PagedResult<ProductSummaryResponse>>> HandleAsync(ListProductsQuery query, CancellationToken ct) =>
-        await products.ListAsync(Text.Optional(query.Search), query.Page, query.ResolvePageSize(pagination.Value), ct);
+        await products.ListAsync(
+            new ProductListFilter(Text.Optional(query.Search), query.CategoryId, query.Type, query.IsActive),
+            query.Page, query.ResolvePageSize(pagination.Value), ct);
 }

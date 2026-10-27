@@ -105,6 +105,37 @@ public sealed class ProductApiTests(DatabaseFixture fx) : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Products_are_filtered_by_category_type_and_status_and_can_be_retired()
+    {
+        var client = _api.CreateClient().As(CatalogTesting.AllPermissions);
+        var unitId = await CatalogTesting.CreateUnitAsync(client);
+        var category = await CatalogTesting.CreateCategoryAsync(client);
+        var stock = await CatalogTesting.CreateProductAsync(client, unitId, category);
+        var service = await client.PostJsonAsync(Route, new
+        {
+            sku = DatabaseFixture.Code("SVC"), nameAr = "خدمة", baseUnitId = unitId, categoryId = category,
+            type = ProductType.Service, trackingMode = TrackingMode.None,
+        }).CreatedIdAsync();
+
+        var inCategory = await client.GetJsonAsync($"{Route}?categoryId={category}");
+        Assert.Equal(2, inCategory.GetProperty("totalCount").GetInt32());
+        var services = await client.GetJsonAsync($"{Route}?categoryId={category}&type=Service");
+        var row = Assert.Single(services.GetProperty("items").EnumerateArray());
+        Assert.Equal((service, category, unitId), (row.GetProperty("id").GetGuid(), row.GetProperty("categoryId").GetGuid(),
+            row.GetProperty("baseUnitId").GetGuid()));
+
+        await client.PostEmptyAsync($"{Route}/{stock}/deactivate").AssertNoContentAsync();
+        var inactive = await client.GetJsonAsync($"{Route}?categoryId={category}&isActive=false");
+        Assert.Equal(stock, Assert.Single(inactive.GetProperty("items").EnumerateArray()).GetProperty("id").GetGuid());
+        await client.PostEmptyAsync($"{Route}/{stock}/activate").AssertNoContentAsync();
+        Assert.True((await client.GetJsonAsync($"{Route}/{stock}")).GetProperty("isActive").GetBoolean());
+
+        await (await client.GetAsync($"{Route}?type=Nope")).AssertProblemAsync(HttpStatusCode.BadRequest, "Common.BadRequest");
+        await (await client.PostAsync($"{Route}/{Guid.NewGuid()}/activate", null))
+            .AssertProblemAsync(HttpStatusCode.NotFound, "Catalog.Product.NotFound");
+    }
+
+    [Fact]
     public async Task Search_matches_sku_or_names()
     {
         var (_, unitId) = await fx.SeedBranchAndUnitAsync();

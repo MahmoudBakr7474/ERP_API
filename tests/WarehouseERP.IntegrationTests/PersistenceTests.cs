@@ -62,8 +62,8 @@ public sealed class PersistenceTests(DatabaseFixture fx)
 
         await using var first = fx.NewDb();
         await using var second = fx.NewDb();
-        (await first.Set<Product>().SingleAsync(x => x.Id == product.Id)).Rename("أول", null);
-        (await second.Set<Product>().SingleAsync(x => x.Id == product.Id)).Rename("تاني", null);
+        (await first.Set<Product>().SingleAsync(x => x.Id == product.Id)).Update("أول", null, categoryId: null);
+        (await second.Set<Product>().SingleAsync(x => x.Id == product.Id)).Update("تاني", null, categoryId: null);
         await first.SaveChangesAsync();
 
         var result = await DbFailures.SaveAsync(second, new Dictionary<string, Error>(), default);

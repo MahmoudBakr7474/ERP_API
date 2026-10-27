@@ -10,5 +10,7 @@ public sealed class ListProductsValidator : AbstractValidator<ListProductsQuery>
     {
         this.AddPagingRules(pagination.Value);
         RuleFor(x => x.Search).MaximumLength(100);
+        RuleFor(x => x.CategoryId).NotEqual(Guid.Empty).When(x => x.CategoryId.HasValue);
+        RuleFor(x => x.Type).IsInEnum().When(x => x.Type.HasValue);
     }
 }
