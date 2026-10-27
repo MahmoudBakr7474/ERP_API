@@ -3,8 +3,10 @@
 Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
 
 ## Where things stand
-- Branch `feature/organization`, cut from `feature/identity-completion` HEAD `a29c3b5`. Neither is merged
-  (`main` = `67a7473`). Merging into `main` needs the owner's approval.
+- **`main` holds Identity and Organization (2026-10-27).** With the owner's approval it was fast-forwarded from
+  `67a7473` to `4b1048d` (`feature/organization`, which includes `feature/identity-completion`). There is no merge
+  commit and no remote.
+- Start new modules from `main` on their own `feature/...` branch. Merging into `main` needs the owner's approval.
 - Organization's approved baseline: `fde5e28` (code, tests, ADR 0013, frontend handoff).
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
@@ -23,8 +25,8 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
   update and activate/deactivate (README table).
 - Seven new permissions in `OrganizationPermissions.All`.
 - No migration. The OpenAPI contract changed additively only.
-- **Lovable handoff done:** `docs/modules/Organization/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md`. The frontend
-  isn't built yet, so the module is not full-stack complete.
+- **Frontend built and accepted (2026-10-27)** from `docs/modules/Organization/LOVABLE_PROMPT.md` and
+  `FRONTEND_HANDOFF.md`.
 - Not done (ADR 0013 *Not done*): changing the default location, a DB check that it stays active, moving a warehouse
   between branches.
 - **Inventory integration requirement:** deactivating a warehouse or location that holds stock must be refused before
@@ -37,7 +39,7 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
   throwaway database.
 - Production-readiness items and the backlog are in ADR 0012. Don't work on them unless they block development.
 
-## Next: Organization and Identity frontend
+## Frontend and next step
 - The ERP frontend is the Lovable project `mahmoudtaha311/screenshot-match`, cloned to `D:\ERP System\warehouse-erp-web`.
   - Stack: TanStack Start + RTK Query; Vite on `http://localhost:8080` proxies `/api` to `https://localhost:49571`.
   - Pushes to its `main` sync back into Lovable, so never rewrite its history.
@@ -47,11 +49,8 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
     behaved as specified.
 - **2026-10-27: the owner tested both modules on `WarehouseERP_Dev` and accepted them.** Identity and Organization
   are full-stack complete for V1.
-- Next: merge `feature/organization` (it includes `feature/identity-completion`) into `main` once the owner approves,
-  then start Catalog.
-- This is frontend integration work, not more backend architecture.
+- Next: Catalog, on a new branch from `main`, when the owner asks. Don't start Inventory.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
-- Don't start Catalog or Inventory.
 
 ## Approved conventions
 - `CLAUDE.md` is the rulebook:
