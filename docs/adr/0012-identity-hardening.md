@@ -1,8 +1,9 @@
 # ADR 0012 — Identity completion: audit trail, credential limits, token rotation, scope guards, stable contract
 
 Status: accepted (2026-10-27), on `feature/identity-completion`. Extends ADR 0009 and closes most of its *Deferred*
-list. The product owner approved the decisions that change visible behavior on 2026-10-27; they are marked
-**(approved)**. Two guards added by the pre-commit review are marked **(new)** and await the owner's confirmation.
+list. The product owner approved every decision that changes visible behavior on 2026-10-27; they are marked
+**(approved)**. With them the Identity backend is complete for the current development milestone; the
+production-readiness items and the backlog below remain.
 
 ## Context
 The Identity sign-off review found that the ADR 0011 refactor changed no behavior, and it listed gaps that already
@@ -62,6 +63,7 @@ unsaved stamp as the original value.
    * The `UPDATE`s ignore the request's cancellation: once a password has been checked, its outcome is written.
    * Password change answers `Identity.Password.LockedOut` (422) while the account is locked out. A wrong current
      password counts, and the one that starts a lockout records `UserLockedOut`.
+   * **(approved)** A successful password change keeps earlier failed attempts; only a successful sign-in clears them.
    * A refused sign-in of an inactive user saves only its event; a pending rehash of the right password is dropped.
    * An administrative reset or unlock makes several UserManager steps; its single save is checked against the stamp
      it loaded, so it still refuses a change another request made.
@@ -82,11 +84,15 @@ unsaved stamp as the original value.
      (`Identity.Access.ExceedsOwnScope`).
    * Granting Administrator, or managing its holders, requires `*`.
    * A role edit checks both the old and the new permission sets.
+   * **(approved)** Defining roles (create, update, delete; `identity.roles.manage`) needs company-wide scope
+     (`Identity.Access.ExceedsOwnScope`, 403), because a role applies company-wide. Assigning a role to a user stays
+     under `identity.users.manage` and the target-scope checks above.
    * **(approved)** Self-service password changes need the current password. Administration can't reset the caller's
      own password (`Identity.User.CannotResetOwnPassword`, 422).
-   * **(new)** Administration can't unlock the caller's own account (`Identity.User.CannotUnlockSelf`, 422): the
-     lockout is what stops a stolen session from guessing the current password.
-   * **(new)** The last active Administrator, and the last active company-wide one, can't lose the role or be
+   * **(approved)** Administration can't unlock the caller's own account (`Identity.User.CannotUnlockSelf`, 422): the
+     lockout is what stops a stolen session from guessing the current password. Production needs an independent
+     administrative recovery procedure (see *Production readiness*).
+   * **(approved)** The last active Administrator, and the last active company-wide one, can't lose the role or be
      deactivated, and the last company-wide one can't lose that scope (`Identity.User.LastAdministrator`). A
      branch-scoped Administrator can't manage company-wide users or grant company-wide scope, so nobody could bring
      that scope back.
@@ -139,10 +145,19 @@ the session and a rehashed password follow in the use case's single save. `Login
 * Behind an unconfigured TLS-terminating proxy, sign-in is refused and every client shares one budget per operation.
 * The POS must follow the refresh rules of decision 4.
 
-## Known limitations
+## Production readiness (before going live)
+* An independent administrative recovery procedure: administrators can't unlock themselves, the last company-wide
+  Administrator is protected, and the bootstrap only runs on an empty user table. For example, keep a second
+  company-wide Administrator for emergencies, and document an audited database procedure for the case where no
+  Administrator can sign in.
+* Data Protection key encryption at rest.
+* Retention or cleanup for `identity.SecurityEvents` (it grows without bound).
+* The deployment's `ReverseProxy` settings and per-operation rate limits, sized for its real branches.
+
+## Backlog (low priority, not in this milestone)
 * A sign-in whose password was checked just before a password change commits can still create its session after
-  the change has revoked the others (a window of about one hash). A later fix stores a password version on the
-  session, which needs a migration.
+  the change has revoked the others (a window of about one hash). A fix stores a password version on the session,
+  which needs a migration.
 * Lockout bounds sequential guessing. A parallel burst that loaded the account before the lockout gets one check per
   request, bounded only by the per-address limits.
 * The Administrator guards serialize changes to Administrators through the role's version, but a change to a user
@@ -151,23 +166,12 @@ the session and a rehashed password follow in the use case's single save. `Login
   its temporal history with empty versions.
 * A deactivated user's previous refresh token is recorded as `SessionRevoked` (deactivation), not as
   `RefreshTokenReused`; the session ends either way.
-* `identity.SecurityEvents` has no retention or cleanup yet.
 * Event details record the id lists as sent (bounded by the request size; needs a manage permission).
 * A huge `page` number answers 500 instead of 400 on every list endpoint (the shared paging rule).
 * OpenAPI does not declare the global 401 and 403 of authenticated endpoints.
-
-## Pending owner decisions
-* Whether `identity.roles.manage` must be company-wide. Today a branch-scoped holder can edit roles that company-wide
-  users hold.
-* Whether a successful self-service password change should clear earlier failed attempts. Today it keeps them, as
-  ASP.NET Core Identity does.
-* The two **(new)** guards of decision 5.
+* Padding refused logins to a fixed duration; a per-user session cap; versions for user profile and role-assignment
+  edits; step-up re-authentication for user creation and password reset.
 
 ## Still deferred
-* Data Protection key encryption at rest.
-* Padding refused logins to a fixed duration.
-* A per-user session cap.
 * Branch scope on warehouse creation (an Organization decision).
-* Versions for user profile and role-assignment edits.
-* Step-up re-authentication for user creation and password reset.
 * MFA, SSO, and POS device registration.
