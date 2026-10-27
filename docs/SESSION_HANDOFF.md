@@ -5,6 +5,7 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
 ## Where things stand
 - Branch `feature/organization`, cut from `feature/identity-completion` HEAD `a29c3b5`. Neither is merged
   (`main` = `67a7473`). Merging into `main` needs the owner's approval.
+- Organization's approved baseline: `fde5e28` (code, tests, ADR 0013, frontend handoff).
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
 - `src/WarehouseERP.Api/Properties/launchSettings.json` is the owner's untracked file: never commit or edit it.
