@@ -133,8 +133,9 @@ WarehouseERP.Identity.Application/
 └── IdentitySessionOptions.cs         the module's options
 ```
 
-Organization: `Features/Warehouses`, `Contracts/Warehouses`, `Abstractions/Interfaces/Warehouses`, `Errors/{Warehouse,Branch}Errors`.
-Catalog: `Features/Products`, `Contracts/Products`, `Abstractions/Interfaces/Products`, `Errors/{Product,Unit,Category}Errors`.
+Organization: `Features/{Companies,Branches,Warehouses,WarehouseLocations}`, `Errors/{Company,Branch,Warehouse,WarehouseLocation,RowVersion}Errors`.
+Catalog: `Features/{Units,Categories,Products,ProductUnits,ProductBarcodes}`, `Contracts/{Units,Categories,Products}`,
+`Abstractions/Interfaces/{Units,Categories,Products}`, `Errors/{Unit,Category,Product,ProductUnit,ProductBarcode,RowVersion}Errors`.
 
 ### Where each type belongs
 

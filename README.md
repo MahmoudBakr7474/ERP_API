@@ -42,10 +42,16 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET | `/api/organization/warehouses/{warehouseId}/locations?page&pageSize&search&isActive`, `/locations/{locationId}` | `organization.warehouses.read` + warehouse in scope |
 | POST | `/api/organization/warehouses/{warehouseId}/locations` | `organization.locations.create` + warehouse in scope |
 | PUT, POST | `/api/organization/warehouses/{warehouseId}/locations/{locationId}` (names + `rowVersion`), `/activate`, `/deactivate` | `organization.locations.update` + warehouse in scope |
+| GET | `/api/catalog/units?page&pageSize&search&isActive`, `/units/{id}` | `catalog.products.read` |
+| POST, PUT | `/api/catalog/units` (code fixed), `/units/{id}` (names, `allowsFraction`, `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `catalog.units.manage` |
+| GET | `/api/catalog/categories?isActive` (flat list, `parentId`), `/categories/{id}` | `catalog.products.read` |
+| POST, PUT | `/api/catalog/categories` (code fixed), `/categories/{id}` (names, `parentId`, `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `catalog.categories.manage` |
 | POST | `/api/catalog/products` | `catalog.products.create` |
-| GET | `/api/catalog/products/{id}` | `catalog.products.read` |
-| GET | `/api/catalog/products?page&pageSize&search` | `catalog.products.read` |
-| PUT | `/api/catalog/products/{id}` (names + `rowVersion`) | `catalog.products.update` |
+| GET | `/api/catalog/products/{id}` (with units and barcodes), `/products?page&pageSize&search&categoryId&type&isActive` (search also matches a barcode exactly) | `catalog.products.read` |
+| GET | `/api/catalog/products/lookup?barcode=` (sellable item: active barcode, unit and product) | `catalog.products.read` |
+| PUT, POST | `/api/catalog/products/{id}` (names, `categoryId`, `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `catalog.products.update` |
+| POST | `/api/catalog/products/{id}/units` (`unitId`, `conversionFactor`), `/units/{productUnitId}/activate`, `/deactivate` | `catalog.products.update` |
+| POST | `/api/catalog/products/{id}/units/{productUnitId}/barcodes`, `/products/{id}/barcodes/{barcodeId}/activate`, `/deactivate` | `catalog.products.update` |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
 | GET | `/api/identity/me`; POST `/api/identity/me/password`; GET `/api/identity/password-policy` | signed in |
@@ -153,7 +159,7 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 3. **Temporal master history**: `ValidFrom/ValidTo` are SQL Server-generated; `history.*History` versions master changes. `CreatedBy/UpdatedBy` are stamped by `AuditingSaveChangesInterceptor` from `ICurrentUser`.
 4. **No cascade deletes**: master data is retired with `Deactivate()`.
 5. **Tax periods**: `[EffectiveFrom, EffectiveTo)`; overlapping ranges need serialized validation in the future tax commands.
-6. **Category cycles**: the database refuses only a self-parent; deeper loops are for the category commands.
+6. **Category cycles**: the database refuses only a self-parent; `UpdateCategory` refuses deeper loops.
 7. **Sequential GUID keys**: never assign `Guid.NewGuid()` to a key; EF Core generates SQL Server-ordered values.
 8. **ExternalItemCode**: optional `ProductUnitId` must belong to the same product (composite FK).
 9. **Known unique constraints** are mapped to business codes by name (`IX_Products_SKU`, `IX_Warehouses_BranchId_Code`); renaming an index means updating its repository map.
@@ -161,5 +167,5 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 ## Postponed
 
 See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, outbox/inbox and idempotency store (with Inventory),
-explicit transaction port (with Inventory), domain methods for barcodes, external codes and tax entities (with
-their features), CRUD for company/branch/unit/category.
+explicit transaction port (with Inventory), management of tax codes, rates, product tax assignments and EGS/GS1
+external item codes (Sales/e-invoicing phase, ADR 0014).

@@ -7,6 +7,8 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
   `67a7473` to `4b1048d` (`feature/organization`, which includes `feature/identity-completion`). There is no merge
   commit and no remote.
 - Start new modules from `main` on their own `feature/...` branch. Merging into `main` needs the owner's approval.
+- **Current branch: `feature/catalog`**, cut from `main` at `383d5be`. Ancestry was checked on 2026-10-27: it holds
+  every approved Identity and Organization commit (including `63ec342`). Not merged.
 - Organization's approved baseline: `fde5e28` (code, tests, ADR 0013, frontend handoff).
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
@@ -32,6 +34,23 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
 - **Inventory integration requirement:** deactivating a warehouse or location that holds stock must be refused before
   stock operations go live. It's recorded in ADR 0013 and `docs/INVENTORY_DECISIONS.md`.
 
+## Catalog status
+- **Backend V1 complete (2026-10-27), on `feature/catalog`: code and tests `adf4a7d`.** The owner approved the scope and decisions before
+  implementation; they are in `docs/adr/0014-catalog-module.md` (accepted). In short:
+  * units, categories (tree), products, product units with conversion factors, barcodes, and a barcode lookup;
+  * permission-only management, with no company-wide scope; new `catalog.units.manage` and
+    `catalog.categories.manage`;
+  * fixed after creation: SKU, type, tracking, base unit, unit/category codes, conversion factor, barcode value;
+  * retired barcode values stay reserved;
+  * deactivation guards: a unit in use, a category with active children, the base product unit;
+  * GS1 check digit for EAN-13/GTIN only;
+  * lookup returns only fully active items.
+- Tax codes/rates/assignments and EGS/GS1 external codes are deferred to Sales/e-invoicing; their tables are untouched.
+- No migration; `BarcodeType` moved to `Catalog.Contracts` (same `tinyint`). The OpenAPI contract changed additively
+  (21 new operations).
+- **Lovable handoff done:** `docs/modules/Catalog/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md`. The frontend isn't
+  built yet.
+
 ## Identity status
 - Backend complete for the current milestone (ADR 0012, all decisions approved).
 - **Lovable handoff done (2026-10-27):** `docs/modules/Identity/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md`, for the
@@ -49,7 +68,8 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
     behaved as specified.
 - **2026-10-27: the owner tested both modules on `WarehouseERP_Dev` and accepted them.** Identity and Organization
   are full-stack complete for V1.
-- Next: Catalog, on a new branch from `main`, when the owner asks. Don't start Inventory.
+- Next: the owner reviews Catalog, then pastes `docs/modules/Catalog/LOVABLE_PROMPT.md` into the same Lovable project.
+  Merging `feature/catalog` into `main` needs approval. Don't start Inventory.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -69,12 +89,16 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
 ## Latest verified tests (2026-10-27, LocalDB, `-m:1`, each project separately)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 145/145 | 54/54 | 156/156 |
+| 186/186 | 54/54 | 171/171 |
 
 Build: 0 warnings, 0 errors. `has-pending-model-changes`: none.
 
-The real host was also checked end to end: Identity cookie sessions, a role and a branch-scoped user, a throwaway
-LocalDB database, then dropped.
+The real host was also checked end to end for Catalog on a throwaway LocalDB database, then dropped:
+- cookie sessions;
+- every Catalog endpoint and rule;
+- a branch-scoped catalog manager and a read-only cashier.
+
+The API log had no 500s and no passwords.
 
 ## Frontend facts
 - Cookie session `__Host-erp` (HttpOnly). Send the `XSRF-TOKEN` cookie back as `X-XSRF-TOKEN` on POST, PUT and
