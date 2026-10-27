@@ -83,7 +83,8 @@ Arrows point inward. No cycles (checked). The module's outer project never refer
 ## A request, end to end
 
 ```
-HTTP ─► CorrelationIdMiddleware ─► Serilog request logging ─► ExceptionHandler ─► StatusCodePages
+HTTP ─► ForwardedHeaders (only with ReverseProxy enabled) ─► HSTS (outside Development) ─► CorrelationIdMiddleware
+    ─► Serilog request logging ─► ExceptionHandler ─► StatusCodePages ─► RateLimiter (credential endpoints)
     ─► Authentication (Identity session: cookie or bearer, access resolved for this request)
     ─► anti-forgery check (cookie sessions, unsafe methods) ─► Authorization (permission policy) ─► endpoint
         maps request DTO -> command/query (explicit, never an entity)
@@ -98,6 +99,11 @@ HTTP ─► CorrelationIdMiddleware ─► Serilog request logging ─► Except
   one database transaction). Known unique-index violations become business errors there (ADR 0004).
 * Handlers see the user through `ICurrentUser`; warehouse scope is checked in the handler, permissions by
   endpoint policies (ADR 0005). The Identity module authenticates every request against its sessions (ADR 0009).
+* Security-sensitive Identity changes add a row to `identity.SecurityEvents` in the same save (ADR 0012). Two writes
+  are deliberately outside the save point: a session's last-seen time, and the failed-attempt count, lockout or reset
+  of a checked password. They are atomic `UPDATE`s that commit first; the count's also renews the user's
+  `ConcurrencyStamp`, so a user row loaded before it can't be saved over it. ADR 0012 describes what a login leaves
+  behind when its save fails.
 
 ## Application layer organization (ADR 0010, ADR 0011)
 
@@ -105,7 +111,7 @@ Business area first, then one vertical slice per use case; a few folders for wha
 
 ```text
 WarehouseERP.Identity.Application/
-├── Features/                         Authentication/, Account/, Users/, Roles/, Permissions/, Sessions/
+├── Features/                         Authentication/, Account/, Users/, Roles/, Permissions/, Sessions/, SecurityEvents/
 │   ├── Authentication/
 │   │   ├── Login/                    LoginCommand.cs, LoginHandler.cs, LoginValidator.cs, LoginResponse.cs
 │   │   ├── IssueApiToken/  RefreshApiToken/  Logout/
@@ -115,14 +121,15 @@ WarehouseERP.Identity.Application/
 ├── Contracts/                        reused by several use cases or returned by a port
 │   ├── Users/                        UserDetailsResponse.cs, UserSummaryResponse.cs, UserRoleResponse.cs
 │   ├── Authentication/               ApiTokensResponse.cs (IssueApiToken + RefreshApiToken)
-│   └── Roles/  Sessions/  UserAccess/
+│   └── Roles/  Sessions/  UserAccess/  SecurityEvents/
 ├── Abstractions/Interfaces/          one interface (or port model) per file
 │   ├── Users/                        IUserAccounts, IUserReadStore, UserAccount, NewUserAccount
-│   ├── Authentication/               IUserCredentials, LoginCheck, LoginOutcome
+│   ├── Authentication/               IUserCredentials, IPasswordPolicy, LoginCheck, LoginOutcome
 │   ├── Roles/                        IRoleRepository, IUserRoleAssignments
+│   ├── SecurityEvents/               ISecurityEventLog (write, in the use case's save), ISecurityEventReadStore, SecurityEventFilter
 │   └── Sessions/  UserAccess/  Persistence/ (IIdentityPersistence)
 ├── Errors/                           AuthenticationErrors, UserErrors, RoleErrors, PermissionErrors, UserAccessErrors, SessionErrors
-├── Shared/                           IdentityRules, PrivilegeGuard, SessionRevocation (used by several areas)
+├── Shared/                           IdentityRules, PrivilegeGuard, SecurityAudit, SessionRevocation (used by several areas)
 └── IdentitySessionOptions.cs         the module's options
 ```
 
@@ -183,12 +190,22 @@ Inventory must follow `docs/INVENTORY_DECISIONS.md`.
 | Status | When | `errorCode` examples |
 |---|---|---|
 | 400 | input shape (`errors[]` lists `{ property, code, message }`, property in camelCase) | `Validation.Failed`, `Common.BadRequest` |
-| 401 | no valid session; sign-in refused (same code for every reason); refresh token ended | `Common.Unauthorized`, `Identity.Login.Failed`, `Identity.Session.Revoked`, `Identity.Session.RefreshTokenReused` |
-| 403 | missing permission, out-of-scope warehouse, anti-forgery token missing, granting beyond own rights, plain HTTP sign-in | `Common.Forbidden`, `Organization.Warehouse.AccessDenied`, `Identity.Session.CsrfTokenInvalid`, `Identity.Access.ExceedsOwnPermissions`, `Identity.Session.HttpsRequired` |
+| 401 | no valid session (or a token over plain HTTP); sign-in refused (same code for every reason); refresh token ended | `Common.Unauthorized`, `Identity.Login.Failed`, `Identity.Session.Revoked`, `Identity.Session.RefreshTokenReused` |
+| 403 | missing permission, out-of-scope warehouse, anti-forgery token missing, granting or managing beyond own rights or scope, plain HTTP sign-in | `Common.Forbidden`, `Organization.Warehouse.AccessDenied`, `Identity.Session.CsrfTokenInvalid`, `Identity.Access.ExceedsOwnPermissions`, `Identity.Access.ExceedsOwnScope`, `Identity.Session.HttpsRequired` |
 | 404 | the resource in the URL does not exist | `Organization.Warehouse.NotFound`, `Catalog.Product.NotFound` |
-| 409 | taken key, stale row version | `Catalog.Product.SkuTaken`, `Organization.Warehouse.CodeTaken`, `Common.ConcurrencyConflict` |
-| 422 | a business rule, or a referenced entity missing/inactive | `Organization.Warehouse.TransitCannotSell`, `Organization.Branch.NotActive` |
+| 409 | taken key, stale row version / role `version` / scope `revision`, a user changed since it was loaded (reload and retry) | `Catalog.Product.SkuTaken`, `Organization.Warehouse.CodeTaken`, `Common.ConcurrencyConflict` |
+| 422 | a business rule, or a referenced entity missing/inactive | `Organization.Warehouse.TransitCannotSell`, `Organization.Branch.NotActive`, `Identity.Password.LockedOut`, `Identity.User.LastAdministrator` |
+| 429 | too many attempts at one credential operation from one client address (`Retry-After` header) | `Common.TooManyRequests` |
 | 500 | anything unexpected | `Common.Unexpected` |
 
-Lists return `{ items, page, pageSize, totalCount, totalPages }`; enums travel as names; updates send back the
-`rowVersion` they read. OpenAPI: `/openapi/v1.json` in Development.
+Lists return `{ items, page, pageSize, totalCount, totalPages }`; enums travel as names; numbers only as JSON numbers;
+Identity times carry `Z`; updates send back the `rowVersion` (or `version`/`revision`) they read.
+
+**The contract is public API.** OpenAPI is served at `/openapi/v1.json` in Development and committed as
+`docs/api/openapi-v1.json`; `HostTests.OpenApi_document_matches_the_committed_contract` fails on any difference.
+Paths, schema names, operation ids, tags, JSON property names, enum members, status codes and error codes change only
+deliberately: regenerate the copy (`ERP_UPDATE_OPENAPI_SNAPSHOT=1`; that run fails on purpose) and review its diff
+like code. Schema names are the CLR type names, so renaming any request or response type is a contract change.
+`OpenApiSetup` publishes a command bound from a body as `...Request`, fails the document when two types claim one
+name, shows query parameters (including `[AsParameters]` queries) in camelCase, and declares the ProblemDetails
+extensions (`errorCode`, `traceId`, `correlationId`, `errors[]`).

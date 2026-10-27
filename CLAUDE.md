@@ -59,6 +59,11 @@ layer organization*; reasons and alternatives: `docs/adr/0011-application-layer-
   module's Infrastructure. Application never references EF Core, SQL Server or Infrastructure.
 - **Errors** by business area in `Application/Errors/<Area>Errors.cs`; domain invariant errors stay in the Domain as
   `<Entity>DomainErrors`. Error codes never change. `Result`/`Error` stay in BuildingBlocks.
+- **API contract**: like error codes, OpenAPI paths, schema names, operation ids, tags, JSON property names and enum
+  members are public API. `docs/api/openapi-v1.json` is the committed contract (checked by `HostTests`); change it
+  only deliberately (`ERP_UPDATE_OPENAPI_SNAPSHOT=1`) and review its diff. Schema names are the CLR type names
+  (`OpenApiSetup` publishes a body-bound command as `...Request`), so renaming a request or response type is a
+  contract change.
 - **Files**: one top-level type per file, file named after it, namespace = folder (IDE0130 is an error in modules).
   Domain enums stay in Domain; helpers sit next to their owner (use case, area, or `Shared/` when several areas use them).
 - **Before writing a feature**: owning module → business area → `Features/<Area>/<UseCase>/` → its types beside it →

@@ -40,12 +40,13 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | PUT | `/api/catalog/products/{id}` (names + `rowVersion`) | `catalog.products.update` |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
-| GET | `/api/identity/me`; POST `/api/identity/me/password` | signed in |
+| GET | `/api/identity/me`; POST `/api/identity/me/password`; GET `/api/identity/password-policy` | signed in |
 | GET, POST | `/api/identity/users`, GET/PUT `/users/{id}`, POST `/users/{id}/activate`, `/deactivate`, `/unlock`, `/password` | `identity.users.read` / `identity.users.manage` |
 | PUT | `/api/identity/users/{id}/roles` | `identity.users.manage` |
-| PUT | `/api/identity/users/{id}/access` (company-wide / branches / warehouses) | `identity.access.manage` |
+| PUT | `/api/identity/users/{id}/access` (company-wide / branches / warehouses + `revision` from GET) | `identity.access.manage` |
 | GET, POST | `/api/identity/users/{id}/sessions`, `/users/{id}/sessions/revoke` | `identity.sessions.manage` |
-| GET, POST, PUT, DELETE | `/api/identity/roles`, `/roles/{id}`; GET `/api/identity/permissions` | `identity.roles.read` / `identity.roles.manage` |
+| GET, POST, PUT, DELETE | `/api/identity/roles`, `/roles/{id}` (PUT + `version` from GET); GET `/api/identity/permissions` | `identity.roles.read` / `identity.roles.manage` |
+| GET | `/api/identity/security-events?page&pageSize&userId&type&fromUtc&toUtc` (audit trail) | `identity.audit.read` |
 | GET, POST | `/api/identity/sessions` (own), `/sessions/{id}/revoke` | signed in (others' need `identity.sessions.manage`) |
 | GET | `/health/live`, `/health/ready`, `/api/health` | anonymous |
 | GET | `/openapi/v1.json` (Development only) | anonymous |
@@ -53,7 +54,20 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 Errors are ProblemDetails with a stable `errorCode` (see ARCHITECTURE.md). Sign-in is the API's own (ADR 0009): the
 React client uses the cookie session and echoes the `XSRF-TOKEN` cookie in an `X-XSRF-TOKEN` header on every
 POST/PUT/DELETE; the POS sends `Authorization: Bearer <accessToken>` and refreshes before it expires. Sign-in
-endpoints answer only over HTTPS. Role, permission and scope changes apply on the user's next request.
+endpoints answer only over HTTPS, and tokens are accepted only over HTTPS. Role, permission and scope changes apply on
+the user's next request. Login, token issue, token refresh and password change each have their own limit per client
+address (429 `Common.TooManyRequests` with `Retry-After`); sign-ins, refused attempts, lockouts, password, role, scope
+and session changes and refused escalation attempts are recorded in `identity.SecurityEvents` (ADR 0012).
+
+Any second use of a refresh token ends the session, so the POS keeps one refresh in flight for all its callers,
+refreshes shortly before `accessTokenExpiresAtUtc` (not on every 401), never resends a refresh automatically (a
+refresh that timed out means signing in again), and treats 401 `Identity.Session.RefreshTokenReused` or
+`Identity.Session.Revoked` as signed out.
+
+The API contract is [`docs/api/openapi-v1.json`](docs/api/openapi-v1.json) (the Development `/openapi/v1.json`, checked
+by `HostTests`): schema names, operation ids, tags, property names, enum members and status codes are public API.
+After a deliberate change, run the integration tests once with `$env:ERP_UPDATE_OPENAPI_SNAPSHOT = '1'` (the contract
+test rewrites the file and then fails on purpose), review the diff, remove the variable and run them again.
 
 ## Prerequisites
 
@@ -61,7 +75,7 @@ endpoints answer only over HTTPS. Role, permission and scope changes apply on th
 - `dotnet-ef` 10.0.14 is a local tool (`dotnet-tools.json`): run `dotnet tool restore` once, then `dotnet dotnet-ef`.
 - On the development laptop use **LocalDB**, not `Server=.`: the default SQL Server instance there belongs to another live system.
 - Never commit secrets. Outside Development set `Database__ConnectionString` (and, once, `Identity__Bootstrap__*`) as environment variables or in a secret store.
-- HTTPS in development too: `dotnet dev-certs https --trust` once. Behind a TLS-terminating proxy, configure forwarded headers or sign-in is refused.
+- HTTPS in development too: `dotnet dev-certs https --trust` once. Behind a TLS-terminating proxy, enable `ReverseProxy` with the proxy's address, or sign-in is refused and every client shares one rate limit.
 
 ## Configuration
 
@@ -69,10 +83,12 @@ endpoints answer only over HTTPS. Role, permission and scope changes apply on th
 |---|---|---|
 | `Database` | `ConnectionString` (required), `CommandTimeoutSeconds` (5–600, default 30) | yes |
 | `Pagination` | `DefaultPageSize` (default 20), `MaxPageSize` (default 100), default ≤ max | yes |
-| `Identity:Sessions` | `WebIdleTimeout` (8 h), `WebAbsoluteLifetime` (12 h), `ApiAccessTokenLifetime` (15 min), `ApiRefreshTokenLifetime` (14 d), `ApiAbsoluteLifetime` (30 d) | yes (ranges, idle ≤ absolute, access ≤ refresh ≤ absolute) |
+| `Identity:Sessions` | `WebIdleTimeout` (8 h), `WebAbsoluteLifetime` (12 h), `ApiAccessTokenLifetime` (15 min), `ApiRefreshTokenLifetime` (14 d), `ApiAbsoluteLifetime` (30 d), `RetentionAfterEnd` (30 d: ended sessions are then deleted), `CleanupInterval` (1 h) | yes (ranges, idle ≤ absolute, access ≤ refresh ≤ absolute) |
+| `Identity:SignInRateLimit` | One section per operation: `Login`, `IssueApiToken`, `RefreshApiToken`, `ChangeMyPassword`, each with `PermitLimit` (60, 60, 300, 30; 1–100000) attempts per client address per `Window` (1 min, 1 s–1 h). An IPv6 address counts as its /64, so one IPv6 LAN segment is one address. Size each for the busiest address a branch shares: about twice its clients that use the operation. Read at startup: restart after a change | yes |
 | `Identity:Password` | ASP.NET Core Identity password options; `RequiredLength` 10 (≥ 8), upper/lower/digit required | yes |
 | `Identity:Lockout` | `MaxFailedAccessAttempts` 5 (3–20), `DefaultLockoutTimeSpan` 15 min (≥ 1 min) | yes |
 | `Identity:Bootstrap` | `UserName`, `Password`, `DisplayName`: first administrator, only while no user exists; never in appsettings | yes (both or neither) |
+| `ReverseProxy` | `Enabled` (false), `KnownProxies` (IP addresses), `KnownNetworks` (CIDR), `ForwardLimit` (1, 1–10): trust X-Forwarded-For/-Proto from these proxies only | yes (at least one proxy when enabled, parsable entries) |
 | `Serilog` | `MinimumLevel`, overrides, properties | — |
 
 `appsettings.Development.json` points `Database:ConnectionString` at LocalDB (Windows authentication, no secret).
@@ -91,6 +107,8 @@ dotnet dotnet-ef migrations has-pending-model-changes --project $p --startup-pro
 
 The design-time factory reads `ERP_SQL_CONNECTION`. `Migration02_Identity` only adds the `identity` schema (and its
 `history.*History` tables); it changes no existing table and seeds the system Administrator role.
+`Migration03_IdentitySecurity` only adds `identity.SecurityEvents` (append-only audit trail, no foreign keys) and
+`identity.RetiredRefreshTokens` (hashes of exchanged refresh tokens, cascading with their session).
 
 ## Running the API
 
@@ -117,7 +135,7 @@ dotnet test WarehouseERP.slnx
 On this laptop builds can run out of memory with parallel nodes; add `-m:1` if MSBuild reports `OutOfMemoryException`.
 
 - `WarehouseERP.UnitTests`: Result and its HTTP mapping, the handler pipeline, paging rules, domain rules, validators, handlers against fakes.
-- `WarehouseERP.IntegrationTests`: each run creates `WarehouseERP_Tests_<guid>` on LocalDB, applies the migrations and drops it. Covers constraints, temporal history and audit stamps, EF model vs migrations, unique-key and concurrency mapping, every endpoint (validation 400, business 422, conflicts 409, scope 403, 401), sanitized 500 logged once, health, options validation, OpenAPI, DI. Identity runs on real sessions over https: cookie and bearer sign-in, identical 401s, lockout, logout/revocation/deactivation/password change effective on the next request, idle expiry, anti-forgery, refresh rotation and reuse, permission removal and branch grants applied without re-login, no privilege escalation, bootstrap (own database), no secrets in logs. Set `ERP_TEST_SQL_SERVER` for another instance.
+- `WarehouseERP.IntegrationTests`: each run creates `WarehouseERP_Tests_<guid>` on LocalDB, applies the migrations and drops it. Covers constraints, temporal history and audit stamps, EF model vs migrations, unique-key and concurrency mapping, the endpoints' validation 400, business 422, conflicts 409, scope 403 and 401, sanitized 500 logged once, health, options validation, OpenAPI, DI. Identity runs on real sessions over https: cookie and bearer sign-in, identical 401s, lockout (also under parallel guesses), stale user saves refused after a counted attempt, what a failed login save leaves behind, administrative reset and unlock, logout/revocation/deactivation/password change effective on the next request, idle expiry, session cleanup, anti-forgery, refresh rotation, reuse and racing refreshes, permission removal and branch grants applied without re-login, no privilege escalation, per-operation rate limits, plain-HTTP tokens ignored, forwarded headers from trusted proxies only, the audit trail's permission, bootstrap (own database), no secrets in logs, the committed OpenAPI contract. Set `ERP_TEST_SQL_SERVER` for another instance.
 - `WarehouseERP.ArchitectureTests`: layer and module rules, composition root, no cycles, entity ownership per schema.
 
 ## Constraints worth noting
@@ -134,7 +152,6 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 
 ## Postponed
 
-See `docs/adr/` for reasons: sign-in rate limiting, expired-session cleanup, Data Protection key encryption at rest,
-MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, outbox/inbox and idempotency store (with Inventory),
+See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, outbox/inbox and idempotency store (with Inventory),
 explicit transaction port (with Inventory), domain methods for barcodes, external codes and tax entities (with
 their features), CRUD for company/branch/unit/category.

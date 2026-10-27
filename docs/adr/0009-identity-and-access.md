@@ -61,3 +61,10 @@ encryption at rest of the Data Protection keys (certificate or key vault); forwa
 on the deployment); optimistic concurrency for role edits from the client (last write wins today; user scope edits
 are protected by `UserAccess.Revision`); MFA; external SSO; POS device registration and offline grants (design §7);
 an operational AuditLog for identity events (today: Serilog events plus temporal history).
+
+**Update (ADR 0012, accepted 2026-10-27):** rate limiting (per credential operation and client address), session
+cleanup, forwarded headers, client-side concurrency for role and scope edits and a security audit trail
+(`identity.SecurityEvents`) are done; ADR 0012 also adds scope checks to user management, refresh-token reuse
+detection at any depth, atomic lockout counting that stale user saves can't overwrite, and refusal of password change
+while locked out. Still deferred: Data Protection key encryption, MFA, SSO, POS device registration and offline
+grants.
