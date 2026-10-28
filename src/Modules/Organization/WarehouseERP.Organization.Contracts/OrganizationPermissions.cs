@@ -33,10 +33,16 @@ public static class OrganizationPermissions
     /// <summary>Rename, activate and deactivate locations in warehouses in the user's scope.</summary>
     public const string LocationsUpdate = "organization.locations.update";
 
+    /// <summary>
+    /// Add, rename, activate and deactivate countries, governorates and cities (company-wide users only). Reading them
+    /// needs only a signed-in user: every address form uses them.
+    /// </summary>
+    public const string GeographyManage = "organization.geography.manage";
+
     /// <summary>Every Organization permission.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
         CompanyUpdate, BranchesRead, BranchesCreate, BranchesUpdate, WarehousesRead, WarehousesCreate, WarehousesUpdate,
-        LocationsCreate, LocationsUpdate,
+        LocationsCreate, LocationsUpdate, GeographyManage,
     ];
 }
