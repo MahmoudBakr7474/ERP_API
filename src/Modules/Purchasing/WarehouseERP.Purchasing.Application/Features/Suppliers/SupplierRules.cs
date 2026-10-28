@@ -25,10 +25,8 @@ internal static class SupplierRules
         address.RuleFor(x => x.AddressType).IsInEnum();
         address.RuleFor(x => x.Line1).NotEmpty().MaximumLength(200);
         address.RuleFor(x => x.Line2).MaximumLength(200);
-        address.RuleFor(x => x.City).NotEmpty().MaximumLength(100);
-        address.RuleFor(x => x.Region).MaximumLength(100);
+        address.RuleFor(x => x.CityId).NotEmpty();
         address.RuleFor(x => x.PostalCode).MaximumLength(20);
-        address.RuleFor(x => x.CountryCode).NotEmpty().Matches(CountryPattern);
     }
 
     public static IReadOnlyList<SupplierContactInput> Contacts(IReadOnlyList<SupplierContactRequest>? contacts) =>
@@ -36,5 +34,5 @@ internal static class SupplierRules
 
     public static IReadOnlyList<SupplierAddressInput> Addresses(IReadOnlyList<SupplierAddressRequest>? addresses) =>
         (addresses ?? []).Select(a => new SupplierAddressInput(
-            a.AddressType, a.Line1, a.Line2, a.City, a.Region, a.PostalCode, a.CountryCode, a.IsPrimary)).ToList();
+            a.AddressType, a.Line1, a.Line2, a.CityId, a.PostalCode, a.IsPrimary)).ToList();
 }

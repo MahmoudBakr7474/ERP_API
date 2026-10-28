@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
+using WarehouseERP.Organization.Contracts;
 using WarehouseERP.Purchasing.Application.Abstractions.Interfaces.Suppliers;
 using WarehouseERP.Purchasing.Application.Errors;
 using WarehouseERP.Purchasing.Domain;
@@ -9,7 +10,9 @@ namespace WarehouseERP.Purchasing.Application.Features.Suppliers.CreateSupplier;
 
 // One save point. The pre-checks give clear errors; the database's unique indexes still guard the code and the
 // registrations when two requests race. A similar name is only a warning (FindSimilarSuppliers), never refused here.
-public sealed partial class CreateSupplierHandler(ISupplierRepository suppliers, ILogger<CreateSupplierHandler> logger)
+// The country and the addresses' cities must be active entries of Organization's lookups.
+public sealed partial class CreateSupplierHandler(
+    ISupplierRepository suppliers, IGeographyDirectory geography, ILogger<CreateSupplierHandler> logger)
     : ICommandHandler<CreateSupplierCommand, Guid>
 {
     public async Task<Result<Guid>> HandleAsync(CreateSupplierCommand command, CancellationToken ct)
@@ -21,6 +24,9 @@ public sealed partial class CreateSupplierHandler(ISupplierRepository suppliers,
         if (created.IsFailure)
             return created.Error;
         var supplier = created.Value;
+        var located = await SupplierGeography.CheckAsync(geography, current: null, command.CountryCode, command.Addresses, ct);
+        if (located.IsFailure)
+            return located.Error;
         if (await suppliers.CodeExistsAsync(supplier.Code, ct))
             return SupplierErrors.CodeTaken;
         var unique = await SupplierRegistrations.CheckUniqueAsync(suppliers, supplier, exceptId: null, ct);

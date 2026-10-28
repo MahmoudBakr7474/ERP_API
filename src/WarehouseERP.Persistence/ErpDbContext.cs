@@ -88,6 +88,12 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne<WarehouseLocation>().WithMany().HasForeignKey(x => x.LocationId).OnDelete(DeleteBehavior.Restrict);
         });
+        // A supplier's country (by its ISO code) and its addresses' cities are Organization's lookups.
+        builder.Entity<Supplier>()
+            .HasOne<Country>().WithMany().HasForeignKey(x => x.CountryCode).HasPrincipalKey(x => x.Code)
+            .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<SupplierAddress>()
+            .HasOne<City>().WithMany().HasForeignKey(x => x.CityId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<SupplierInvoice>(b =>
         {
             b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);

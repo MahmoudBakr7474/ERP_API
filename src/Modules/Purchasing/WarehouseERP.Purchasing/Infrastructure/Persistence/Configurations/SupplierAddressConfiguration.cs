@@ -24,10 +24,7 @@ internal sealed class SupplierAddressConfiguration : IEntityTypeConfiguration<Su
         b.Property(x => x.AddressType).HasConversion<byte>().HasColumnType("tinyint");
         b.Property(x => x.Line1).HasMaxLength(200);
         b.Property(x => x.Line2).HasMaxLength(200);
-        b.Property(x => x.City).HasMaxLength(100);
-        b.Property(x => x.Region).HasMaxLength(100);
         b.Property(x => x.PostalCode).HasMaxLength(20);
-        b.Property(x => x.CountryCode).HasMaxLength(2).IsUnicode(false).IsFixedLength();
         b.HasIndex(x => x.SupplierId);
     }
 }

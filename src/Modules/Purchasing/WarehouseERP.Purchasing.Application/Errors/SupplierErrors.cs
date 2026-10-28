@@ -20,4 +20,11 @@ public static class SupplierErrors
 
     public static readonly Error NotActive = Error.BusinessRule(
         "Purchasing.Supplier.NotActive", "The supplier is inactive: it takes no new orders.");
+
+    public static readonly Error CountryNotFound = Error.BusinessRule(
+        "Purchasing.Supplier.CountryNotFound", "The country is not in the country list or is inactive.");
+
+    public static Error CityNotFound(int address) => Error.BusinessRule(
+        "Purchasing.Supplier.CityNotFound",
+        $"Address {address}: the city is not in the lookups, or it, its governorate or its country is inactive.");
 }

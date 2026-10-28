@@ -88,15 +88,6 @@ public sealed class Supplier : MasterEntity
             return SupplierDomainErrors.SeveralPrimaryContacts;
         if (details.Addresses.Count(a => a.IsPrimary) > 1)
             return SupplierDomainErrors.SeveralPrimaryAddresses;
-        var addresses = new List<SupplierAddress>(details.Addresses.Count);
-        foreach (var address in details.Addresses)
-        {
-            var created = SupplierAddress.Create(address);
-            if (created.IsFailure)
-                return created.Error;
-            addresses.Add(created.Value);
-        }
-
         NameAr = details.NameAr.Trim();
         NameEn = Text.Optional(details.NameEn);
         NameArKey = SupplierNames.Key(NameAr);
@@ -113,7 +104,7 @@ public sealed class Supplier : MasterEntity
         _contacts.Clear();
         _contacts.AddRange(details.Contacts.Select(SupplierContact.Create));
         _addresses.Clear();
-        _addresses.AddRange(addresses);
+        _addresses.AddRange(details.Addresses.Select(SupplierAddress.Create));
         return Result.Success();
     }
 }

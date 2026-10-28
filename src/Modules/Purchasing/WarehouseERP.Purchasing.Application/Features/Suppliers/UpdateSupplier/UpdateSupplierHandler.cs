@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
+using WarehouseERP.Organization.Contracts;
 using WarehouseERP.Purchasing.Application.Abstractions.Interfaces.Suppliers;
 using WarehouseERP.Purchasing.Application.Errors;
 using WarehouseERP.Purchasing.Application.Shared;
@@ -9,8 +10,10 @@ using WarehouseERP.SharedKernel.Results;
 namespace WarehouseERP.Purchasing.Application.Features.Suppliers.UpdateSupplier;
 
 // Only from the version the editor read (409 otherwise). The code is fixed; orders already placed keep their supplier
-// and their own payment terms. Returns the new row version.
-public sealed partial class UpdateSupplierHandler(ISupplierRepository suppliers, ILogger<UpdateSupplierHandler> logger)
+// and their own payment terms. A country or city the supplier already has may stay after it was deactivated; a new one
+// must be active. Returns the new row version.
+public sealed partial class UpdateSupplierHandler(
+    ISupplierRepository suppliers, IGeographyDirectory geography, ILogger<UpdateSupplierHandler> logger)
     : ICommandHandler<UpdateSupplierCommand, string>
 {
     public async Task<Result<string>> HandleAsync(UpdateSupplierCommand command, CancellationToken ct)
@@ -20,6 +23,9 @@ public sealed partial class UpdateSupplierHandler(ISupplierRepository suppliers,
         var supplier = await suppliers.GetForUpdateAsync(command.SupplierId, expected, ct);
         if (supplier is null)
             return SupplierErrors.NotFound;
+        var located = await SupplierGeography.CheckAsync(geography, supplier, command.CountryCode, command.Addresses, ct);
+        if (located.IsFailure)
+            return located.Error;
 
         var updated = supplier.Update(new SupplierDetails(
             command.NameAr, command.NameEn, command.CountryCode, command.TaxRegistrationNumber, command.CommercialRegistrationNumber,
