@@ -2,8 +2,8 @@
 
 Status: approved by the product owner on 2026-10-28, with corrections, from the decision checklist proposed the same
 day. This file replaces that checklist; where they differ, this file wins. The invariants in
-[`docs/INVENTORY_DECISIONS.md`](../../INVENTORY_DECISIONS.md) still bind everything below. How Milestone A implements
-them is [ADR 0015](../../adr/0015-inventory-core.md).
+[`docs/INVENTORY_DECISIONS.md`](../../INVENTORY_DECISIONS.md) still bind everything below. How Milestones A and B
+implement them is [ADR 0015](../../adr/0015-inventory-core.md).
 
 ## 1. Delivery
 Inventory is one module, delivered in two milestones. Inventory's backend is not complete until both milestones and

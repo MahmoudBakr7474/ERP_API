@@ -34,8 +34,8 @@ tests/
 Modules today: **Organization** (company, branch, warehouse, location), **Catalog** (category, unit, product,
 product unit, barcode, external item code, tax code/rate/assignment), **Identity** (users, roles and their
 permissions, user scope, sessions; authenticates every request and provides `ICurrentUser` to all modules, ADR 0009)
-and **Inventory** (stock documents and their posting, balances, availability, the movement ledger and the
-company-wide valuation, ADR 0015).
+and **Inventory** (stock documents and their posting, balances, availability, the movement ledger, the
+company-wide valuation, transfers through transit warehouses, stock counts and the reconciliation report, ADR 0015).
 
 ## Dependency map
 
@@ -140,9 +140,10 @@ WarehouseERP.Identity.Application/
 Organization: `Features/{Companies,Branches,Warehouses,WarehouseLocations}`, `Errors/{Company,Branch,Warehouse,WarehouseLocation,RowVersion}Errors`.
 Catalog: `Features/{Units,Categories,Products,ProductUnits,ProductBarcodes}`, `Contracts/{Units,Categories,Products}`,
 `Abstractions/Interfaces/{Units,Categories,Products}`, `Errors/{Unit,Category,Product,ProductUnit,ProductBarcode,RowVersion}Errors`.
-Inventory: `Features/{StockDocuments,Stock,Valuation,DocumentPolicies}` (the posting transaction is the area-level
-`StockDocuments/StockDocumentPosting`), `Abstractions/Interfaces/{StockDocuments,Posting,Stock,Valuation,DocumentPolicies}`,
-`Errors/{StockDocument,Stock,Idempotency,Valuation,DocumentPolicy,RowVersion}Errors`.
+Inventory: `Features/{StockDocuments,Stock,Valuation,DocumentPolicies,Transfers,Counts,Reconciliation}` (the posting
+transaction is `Shared/StockDocumentPosting`, used by documents, transfers and counts),
+`Abstractions/Interfaces/{StockDocuments,Posting,Stock,Valuation,DocumentPolicies,Transfers,Counts,Reconciliation}`,
+`Errors/{StockDocument,Stock,Idempotency,Valuation,DocumentPolicy,StockTransfer,StockCount,Reconciliation,RowVersion}Errors`.
 
 ### Where each type belongs
 

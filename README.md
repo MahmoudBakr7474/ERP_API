@@ -18,7 +18,8 @@ src/
   Modules/Organization/             .Domain, .Application, outer project (Infrastructure + Presentation), .Contracts
   Modules/Catalog/                  same layout
   Modules/Identity/                 same layout: users, roles, permissions, scope, sessions (ADR 0009)
-  Modules/Inventory/                same layout: stock documents, posting, balances, ledger, valuation (ADR 0015)
+  Modules/Inventory/                same layout: stock documents, posting, balances, ledger, valuation, transfers, counts,
+                                    reconciliation (ADR 0015)
 tests/
   WarehouseERP.UnitTests/           no database
   WarehouseERP.IntegrationTests/    SQL Server (LocalDB) + the real HTTP host
@@ -60,6 +61,16 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET | `/api/inventory/balances`, `/availability`, `/movements?productId&warehouseId` (stock card), `/over-reservations` | `inventory.stock.read` + warehouse in scope |
 | GET | `/api/inventory/valuation?productId`, `/valuation/{productId}/entries` | `inventory.valuation.read` |
 | GET, PUT | `/api/inventory/document-policies`, `/document-policies/{documentType}` (`requiresApproval` + `rowVersion`) | `inventory.documents.read` / `inventory.settings.manage` + company-wide |
+| POST, PUT | `/api/inventory/transfers` (draft: `sourceWarehouseId`, `destinationWarehouseId`, optional `transitWarehouseId`, lines), `/transfers/{id}` (draft + `rowVersion`) | `inventory.transfers.manage` + source in scope |
+| GET | `/api/inventory/transfers?page&pageSize&warehouseId&status&search`, `/transfers/{id}` (lines, documents, history) | `inventory.documents.read` + source or destination in scope |
+| POST | `/api/inventory/transfers/{id}/submit`, `/cancel`, `/dispatch` (`Idempotency-Key` header) | `inventory.transfers.manage` + source in scope |
+| POST | `/api/inventory/transfers/{id}/approve` (`Idempotency-Key` header; dispatches it), `/reject` (reason) | `inventory.documents.approve` + source in scope, never the creator |
+| POST | `/api/inventory/transfers/{id}/receive` (`Idempotency-Key` header; base quantity per line) | `inventory.transfers.receive` + destination in scope |
+| POST | `/api/inventory/transfers/{id}/close` (reason; submits the loss adjustment for what never arrived) | `inventory.transfers.manage` + source or destination in scope |
+| POST, PUT | `/api/inventory/counts` (`warehouseId`, `locationIds`, none for the whole warehouse), `/counts/{id}/start`, `PUT /counts/{id}/lines`, `/submit`, `/cancel` | `inventory.counts.manage` + warehouse in scope |
+| GET | `/api/inventory/counts?page&pageSize&warehouseId&status`, `/counts/{id}` (lines, history) | `inventory.documents.read` + warehouse in scope |
+| POST | `/api/inventory/counts/{id}/approve` (`Idempotency-Key` header; posts the differences), `/reject` (reason) | `inventory.documents.approve` + warehouse in scope, never the creator |
+| GET | `/api/inventory/reconciliation` (differences only; never corrects) | `inventory.reconciliation.read` + company-wide |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
 | GET | `/api/identity/me`; POST `/api/identity/me/password`; GET `/api/identity/password-policy` | signed in |
@@ -131,6 +142,9 @@ The design-time factory reads `ERP_SQL_CONNECTION`. `Migration02_Identity` only 
 `history.*History` tables); it changes no existing table and seeds the system Administrator role.
 `Migration03_IdentitySecurity` only adds `identity.SecurityEvents` (append-only audit trail, no foreign keys) and
 `identity.RetiredRefreshTokens` (hashes of exchanged refresh tokens, cascading with their session).
+`Migration04_Inventory` adds the `inventory` schema (13 tables and the approval-policy seed). `Migration05_InventoryTransfersCounts`
+adds transfers and counts (7 tables), two nullable columns on `StockDocuments`, `IdempotencyRecords.SubjectId` (backfilled),
+the `TransferDispatch` policy row and `ALLOW_SNAPSHOT_ISOLATION ON`; it changes no data (ADR 0015 *Consequences*).
 
 ## Running the API
 
@@ -171,11 +185,11 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 7. **Sequential GUID keys**: never assign `Guid.NewGuid()` to a key; EF Core generates SQL Server-ordered values.
 8. **ExternalItemCode**: optional `ProductUnitId` must belong to the same product (composite FK).
 9. **Known unique constraints** are mapped to business codes by name (`IX_Products_SKU`, `IX_Warehouses_BranchId_Code`); renaming an index means updating its repository map.
-10. **Stock changes only by posting**: balances, availability, movements and cost entries are written by `StockDocumentPosting` in one transaction under Inventory's locks (ADR 0015). Never update `inventory.*` rows by hand; post an adjustment or a reversal.
+10. **Stock changes only by posting**: balances, availability, movements and cost entries are written by `Application/Shared/StockDocumentPosting` in one transaction under Inventory's locks (ADR 0015), for documents, transfers and counts alike. Never update `inventory.*` rows by hand; post an adjustment or a reversal. A running count's freeze is its active `StockCountScopes` rows.
+11. **Snapshot isolation**: `Migration05` turns `ALLOW_SNAPSHOT_ISOLATION` on for the reconciliation report's consistent read; everything else keeps READ COMMITTED.
 
 ## Postponed
 
 See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, the outbox/inbox (until a consumer exists, ADR 0015),
 management of tax codes, rates, product tax assignments and EGS/GS1 external item codes (Sales/e-invoicing phase,
-ADR 0014), Inventory Milestone B (transfers, counts, reconciliation), batch/serial tracking and reservations
-(`docs/modules/Inventory/V1_DECISIONS.md`).
+ADR 0014), batch/serial tracking and reservations (`docs/modules/Inventory/V1_DECISIONS.md`, ADR 0015 *Not done*).
