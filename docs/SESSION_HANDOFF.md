@@ -1,45 +1,63 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-28 (Inventory Milestone A). Read this first; don't re-analyse the repository.
+Last verified: 2026-10-28 (Inventory Milestones A and B, backend complete). Read this first; don't re-analyse the
+repository.
 
 ## Where things stand
 - **`main` holds Identity, Organization and Catalog (2026-10-28).** With the owner's approval it was fast-forwarded
   from `383d5be` to the tip of `feature/catalog`: Catalog code `adf4a7d`, docs `bb536a0` and this handoff. Earlier,
   on 2026-10-27, it went from `67a7473` to `4b1048d` (`feature/organization`, which includes
-  `feature/identity-completion`). There are no merge commits and no remote.
-- **Current branch: `feature/inventory`** (cut from `main` at `1a1aba1`), with Inventory Milestone A in `5dfdf1a`. It is
-  not merged: Inventory is merged only when the whole V1 backend (Milestones A and B) and its frontend are accepted.
-  Start each new module from `main` on its own `feature/...` branch. Merging into `main` needs the owner's approval.
+  `feature/identity-completion`). There are no merge commits.
+- **Remote (2026-10-28):** `origin` = `https://github.com/MahmoudBakr7474/ERP_API.git` (the owner's GitHub, used to work
+  from other machines and from Claude in the cloud). `main` and `feature/inventory` are pushed with upstream tracking;
+  never force-push, never push `launchSettings.json`.
+- **Current branch: `feature/inventory`** (cut from `main` at `1a1aba1`). Milestone A: `5dfdf1a` (code), `574217c`
+  (handoff). Milestone B: `cc75d3d` (code, Migration05, tests), `171f9b1` (ADR 0015), `4c3170d` (transfer destinations
+  lookup, document links, Migration06), `65031c5` (Lovable prompt and frontend handoff). It is not merged: Inventory is
+  merged only when its frontend is accepted too. Start each new module from `main` on its own `feature/...` branch.
+  Merging into `main` needs the owner's approval.
 - Organization's approved baseline: `fde5e28` (code, tests, ADR 0013, frontend handoff).
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
 - `src/WarehouseERP.Api/Properties/launchSettings.json` is the owner's untracked file: never commit or edit it.
 
 ## Inventory status
-- **Decisions:** the owner approved V1 on 2026-10-28 with corrections: `docs/modules/Inventory/V1_DECISIONS.md` (it
-  replaces the checklist proposed that day). How Milestone A implements it: `docs/adr/0015-inventory-core.md`.
+- **Decisions:** the owner approved V1 on 2026-10-28 with corrections: `docs/modules/Inventory/V1_DECISIONS.md`. How
+  Milestones A and B implement it: `docs/adr/0015-inventory-core.md` (decisions 1–15 and 16–24).
   `docs/INVENTORY_DECISIONS.md` still binds the design.
-- **Milestone A — backend done and verified (`5dfdf1a`):**
-  * stock documents (opening stock, receipt, issue, adjustment, reversal) with drafts, submit/approve/reject/cancel;
-  * approval policy per document type (seeded: opening and adjustment need approval) copied onto each document;
-    nobody approves their own document;
-  * posting in one `ITransactionRunner` transaction: warehouse `sp_getapplock`, fixed lock order, conditional updates
-    (no negative stock), numbers per type + branch + fiscal year (`RCV-<branch>-2026-000001`), `Idempotency-Key` with a
-    request fingerprint;
-  * `StockBalances`, `ProductWarehouseStock` (reserved stays 0), quantity-only `StockMovements` and the stock card;
-  * company-wide moving weighted average (`InventoryCostStates`/`InventoryCostEntries`), pending the accountant's approval;
-  * over-reservation alerts for authorized losses;
-  * Organization refuses deactivating a warehouse or location that holds stock or has a submitted document
-    (`IWarehouseStockGuard`, same lock).
-- **Schema:** `Migration04_Inventory` (schema `inventory`, 13 tables). Applied to `WarehouseERP_Dev` on 2026-10-28.
-- **Contracts changed additively:** `IProductCatalog` (+3 methods, `ProductUnitInfo`), Organization
-  `IWarehouseLocationDirectory` and `ICompanyDirectory`, OpenAPI +16 paths and a 422 on `DeactivateWarehouse`.
-- **E2E (2026-10-28):** the real host with cookie sessions on a throwaway `WarehouseERP_E2E_*` database (dropped): every
-  check passed, no 500s, no passwords in the log.
-- **Next: Milestone B** (transfers through transit, stock counts, reconciliation). Then, once the whole backend is
-  verified, `docs/modules/Inventory/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` (the owner's rule: not before).
-- **Open for the owner:** the accountant's approval of the costing method before production use, and whether batch,
-  expiry or serial tracking is needed (a pre-production dependency; tracked products are refused today).
+- **Backend complete and verified (Milestones A and B).**
+  * Milestone A (`5dfdf1a`): stock documents (opening, receipt, issue, adjustment, reversal) with drafts and
+    submit/approve/reject/cancel; approval policy per type; posting in one `ITransactionRunner` transaction with
+    warehouse `sp_getapplock`, fixed lock order, no negative stock, numbering per type + branch + fiscal year,
+    `Idempotency-Key`; balances, availability, quantity-only movements and the stock card; company-wide moving
+    average; over-reservation alerts; Organization's deactivation guard.
+  * Milestone B (`cc75d3d`, `4c3170d`):
+    - transfers through a transit warehouse: dispatch into a transit location opened per transfer (`TR-000123`),
+      partial and full receipts, closing what never arrived by an approved loss adjustment, the `TransferDispatch`
+      approval policy (seeded: direct), a destinations lookup beyond the sender's scope;
+    - stock counts: start freezes the scope through `StockCountScopes` (warehouse applock Exclusive, snapshot, nothing
+      held while counting), postings refuse frozen stock, approval re-checks the snapshot and posts a `CountAdjustment`;
+    - `GET /api/inventory/reconciliation`: availability, ledger, valuation and transit differences plus stock
+      positions and open transfers, from one SNAPSHOT read; it never corrects anything;
+    - receipt reversal stays at the current average (documented V1 policy, pending the accountant; ADR 0015
+      decision 23); no code change was needed.
+- **Schema:** `Migration04_Inventory` (13 tables), `Migration05_InventoryTransfersCounts` (7 tables, links, idempotency
+  subject, policy row) and `Migration06_InventorySnapshotIsolation` (`ALLOW_SNAPSHOT_ISOLATION ON`, alone because it
+  can't run in a transaction). All applied to `WarehouseERP_Dev` on 2026-10-28.
+- **Contracts changed additively:** Organization `ITransitLocations`, `IWarehouseListing`; OpenAPI +19 Inventory paths in
+  Milestone B and new enum members (`TransferDispatch`, `TransferReceipt`, `CountAdjustment`, `Move`).
+- **E2E (2026-10-28):** the real host with cookie sessions on throwaway `WarehouseERP_E2E_*` databases (dropped):
+  Milestone A, then Milestone B with an approver, a source-scoped sender and a destination-scoped storekeeper (transfer,
+  partial receipt, retry, loss, count with freeze, freeze at the destination, reconciliation with stock in transit).
+  Every check passed, no 500s, no passwords in the log.
+- **Frontend handoff ready (`65031c5`):** `docs/modules/Inventory/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md`, written
+  for the frontend's `AGENTS.md` UI conventions. Next: the owner runs the prompt in Lovable, then the screens are
+  checked against the API.
+- **Open for the owner:** the accountant's approval of the costing method (including receipt reversal at the average)
+  before production use; whether batch, expiry or serial tracking is needed (a pre-production dependency; tracked
+  products are refused today); a DBA must allow `ALLOW_SNAPSHOT_ISOLATION` on production.
+- **Limitations (ADR 0015 *Not done*):** no reservations, outbox or general ledger; receipts of transfers in base
+  units; a dispatched transfer can't be cancelled; counts have no blind mode; reconciliation is on demand only.
 
 ## Organization status
 - **Backend complete and approved for V1 (2026-10-27).** The owner accepted every decision in
@@ -112,7 +130,8 @@ Last verified: 2026-10-28 (Inventory Milestone A). Read this first; don't re-ana
   - Radix `DirectionProvider` makes RTL correct.
   - Every module's Lovable prompt must tell Lovable to follow those conventions. Where the older
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
-- Inventory is in progress on `feature/inventory` (see Inventory status). It has no frontend yet.
+- Inventory's backend is complete on `feature/inventory` (see Inventory status); its frontend is next, from
+  `docs/modules/Inventory/LOVABLE_PROMPT.md`.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -132,7 +151,7 @@ Last verified: 2026-10-28 (Inventory Milestone A). Read this first; don't re-ana
 ## Latest verified tests (2026-10-28, `feature/inventory`, LocalDB, `-m:1`, each project separately)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 207/207 | 69/69 | 190/190 |
+| 225/225 | 69/69 | 207/207 |
 
 Build: 0 warnings, 0 errors. `has-pending-model-changes`: none.
 

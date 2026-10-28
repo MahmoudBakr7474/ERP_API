@@ -2,7 +2,7 @@
 
 Status: accepted (2026-10-28), on `feature/inventory`. The product owner approved the scope and decisions in
 [`docs/modules/Inventory/V1_DECISIONS.md`](../modules/Inventory/V1_DECISIONS.md); this ADR records how Milestone A
-(`5dfdf1a`, decisions 1–15) and Milestone B (`cc75d3d`, decisions 16–24) implement them.
+(`5dfdf1a`, decisions 1–15) and Milestone B (`cc75d3d`, `4c3170d`, decisions 16–24) implement them.
 [`INVENTORY_DECISIONS.md`](../INVENTORY_DECISIONS.md) still binds the design.
 
 ## Context
