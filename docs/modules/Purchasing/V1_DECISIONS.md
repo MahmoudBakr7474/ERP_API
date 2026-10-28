@@ -84,6 +84,8 @@ through `IPurchaseStockPosting`.
   and registry office, both normalized (separators dropped, Arabic digits read as digits); an Egyptian tax number has
   9 digits. Similar normalized names only warn (`GET /api/purchasing/suppliers/similar`).
 - Contacts, addresses, payment terms; temporal history like all master data.
+- (2026-10-29, owner) Country, governorate and city are linked drop-down lists from lookup tables; governorate and city
+  are required in every address (ADR 0017).
 
 ## 9. Products
 Only active stock items without batch or serial tracking (Inventory's own V1 limit); anything else is refused with

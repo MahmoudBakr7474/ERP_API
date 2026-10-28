@@ -19,7 +19,9 @@ not merged). Read this first; don't re-analyse the repository.
   * `84e8c19` Inventory: `IPurchaseStockPosting`, stock document types `PurchaseReceipt`/`PurchaseReturn`,
     `SourceDocumentId`;
   * `661e0dd` the Purchasing module; `bb7fa42` `Migration07_Purchasing`; `aff0486` tests and the OpenAPI contract;
-  * the docs commit with ADR 0016, `docs/modules/Purchasing/*` and this handoff.
+  * the docs commit with ADR 0016, `docs/modules/Purchasing/*` and this handoff;
+  * address lookups (owner request 2026-10-29, ADR 0017): `6f81a99` Organization countries/governorates/cities,
+    `3e8721c` supplier addresses name a city, `48cdff5` `Migration08_Geography`, `dc31696` tests and OpenAPI, then docs.
   Merging into `main` needs the owner's approval.
 - `feature/inventory` (cut from `main` at `1a1aba1`) is merged and stays on the remote for reference:
   * Milestone A: `5dfdf1a` (code), `574217c` (handoff).
@@ -62,8 +64,17 @@ not merged). Read this first; don't re-analyse the repository.
   approver of another warehouse (403); request → order → partial receipts with an idempotent retry → over-receipt
   refused → invoices (exact price posts, variance needs approval, duplicate number 409, over-invoicing 422) → return
   (2 uninvoiced + 2 invoiced, claim 41.55) → reconciliation consistent. 34/34 checks; no 500s, no passwords in the log.
-- **Frontend handoff:** `docs/modules/Purchasing/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` (screens not built yet).
-  Inventory's screens also need labels for `PurchaseReceipt`/`PurchaseReturn` and a link from `sourceDocumentId`.
+- **Migration08_Geography applied to `WarehouseERP_Dev` (2026-10-29)** after a backup
+  (`db-backups\WarehouseERP_Dev_before_Migration08_20261029.bak`): 249 countries, 27 governorates, 271 cities, both
+  existing supplier addresses converted (and their history row), 20 stock documents untouched, still temporal. The dev
+  API was restarted on that build. Note: from this session's sandboxed shell LocalDB may look stopped once it idled;
+  run database commands in the app's terminal (outside the sandbox).
+- **Frontend:** Lovable built the Purchasing screens (`1971216` on the web repo's `main`). Local branch
+  `fix/purchasing-api-contract` in `warehouse-erp-web` (not pushed): `32736df` property names matched to the API
+  (supplierName, productName, paymentTermDays, countryCode, addressType, linked `documentType`, `withCreditClaim`), then
+  the address lookups (cascading searchable pickers, `/organization/geography`). Pushing it to `main` syncs to Lovable:
+  owner's decision. API acceptance through the Vite proxy on the dev DB: 31/31, request bodies 11/11, lookups 7/7.
+  Browser checks still need a signed-in session (credentials are not typed by the agent).
 - **Production prerequisite:** the accountant approves the provisional cost treatment (receipts at the order's net
   price, invoice variances kept without revaluation, returns at the moving average). ADR 0016 *Not done* lists the
   deferred backlog (foreign currency, revaluation/landed cost, credit notes, payments/AP/GL, header discounts,
@@ -228,13 +239,14 @@ not merged). Read this first; don't re-analyse the repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-29, Purchasing on `feature/purchasing`, LocalDB, `-m:1`)
+## Latest verified tests (2026-10-29, Purchasing + address lookups on `feature/purchasing`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 236/236 | 84/84 | 221/221 |
+| 236/236 | 84/84 | 229/229 |
 
-Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. All seven migrations applied to a fresh LocalDB
-database. Earlier (Inventory acceptance, 2026-10-28): 225 / 69 / 209. `MasterDataHistoryTests` passed 30 consecutive runs
+Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. All eight migrations applied to a fresh LocalDB
+database. Frontend (`fix/purchasing-api-contract`): Vitest 67/67, `tsc --noEmit` clean, `vite build` succeeds, ESLint
+no new errors. Earlier (Inventory acceptance, 2026-10-28): 225 / 69 / 209. `MasterDataHistoryTests` passed 30 consecutive runs
 after its fix. Frontend (`4a3beec`): Vitest 53/53, `tsc --noEmit` clean, `vite build` succeeds; ESLint reports one
 older error (the Catalog backlog item above).
 

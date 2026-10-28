@@ -54,7 +54,8 @@ traceable to the stock documents it caused.
    uninvoiced first, then invoiced; the invoiced part is a pending credit claim at the line's average invoiced net
    price and tax, stored on the return lines and header (`CreditClaim*`). No revaluation, payments or ledger.
 10. **Suppliers.** Temporal tables (`Suppliers`, `SupplierContacts`, `SupplierAddresses`). Unique code, tax number per
-    country, commercial registration per country + registry key; normalized name keys for duplicate warnings.
+    country, commercial registration per country + registry key; normalized name keys for duplicate warnings. Since
+    ADR 0017 the country comes from Organization's country list and an address names a city of the lookups (`CityId`).
 
 ## Consequences
 - `Migration07_Purchasing` creates the `purchasing` schema (20 tables, 3 of them temporal with history) and, in

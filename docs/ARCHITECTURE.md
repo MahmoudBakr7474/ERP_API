@@ -31,7 +31,8 @@ tests/
   WarehouseERP.ArchitectureTests/           the dependency rules below
 ```
 
-Modules today: **Organization** (company, branch, warehouse, location), **Catalog** (category, unit, product,
+Modules today: **Organization** (company, branch, warehouse, location, and the address lookups country → governorate →
+city, ADR 0017), **Catalog** (category, unit, product,
 product unit, barcode, external item code, tax code/rate/assignment), **Identity** (users, roles and their
 permissions, user scope, sessions; authenticates every request and provides `ICurrentUser` to all modules, ADR 0009)
 **Inventory** (stock documents and their posting, balances, availability, the movement ledger, the

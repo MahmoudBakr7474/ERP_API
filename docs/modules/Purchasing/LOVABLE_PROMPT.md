@@ -148,7 +148,9 @@ Create/edit dialog (code only on create, fixed afterwards): code (`^[A-Za-z0-9_-
 Arabic name, English name, country (ISO 2 letters, default `EG`), tax registration number, commercial registration
 number + registry office (office required with the number), payment terms days (0–365), phone, email, notes; a
 contacts table (name, job title, phone, email, primary — at most one) and an addresses table (type
-Billing/Shipping/Other, line 1, line 2, city, region, postal code, country, primary — at most one). Saving sends the
+Billing/Shipping/Other, line 1, line 2, country → governorate → city as linked searchable lists from
+`/api/organization/countries`, `/governorates?countryCode=`, `/cities?governorateId=` (only `cityId` is sent; ADR 0017),
+postal code, primary — at most one). Saving sends the
 whole lists; they replace the old ones.
 
 **Duplicate warning:** when the Arabic or English name loses focus, call

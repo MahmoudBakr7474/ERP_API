@@ -36,7 +36,7 @@ All under `/api/purchasing`. Updates and actions answer `200 { rowVersion }`; cr
 | GET | `/suppliers?page&pageSize&search&isActive&countryCode` | ListSuppliers | |
 | GET | `/suppliers/similar?nameAr&nameEn&exceptSupplierId` | FindSimilarSuppliers | list of probable duplicates (warning only) |
 | GET | `/suppliers/{id}` | GetSupplier | with contacts, addresses, `rowVersion` |
-| POST | `/suppliers` | CreateSupplier | code, names, country, registrations, terms, contacts, addresses |
+| POST | `/suppliers` | CreateSupplier | code, names, `countryCode` (from the country list), registrations, terms, contacts, addresses `{ addressType, line1, line2, cityId, postalCode, isPrimary }` |
 | PUT | `/suppliers/{id}` | UpdateSupplier | same without code, + `rowVersion`; lists replace the old ones |
 | POST | `/suppliers/{id}/activate`, `/deactivate` | Activate/DeactivateSupplier | 204 |
 | GET | `/policies` | ListPurchasingPolicies | `PurchaseRequest`, `PurchaseOrder` |

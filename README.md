@@ -46,6 +46,8 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET | `/api/organization/warehouses/{warehouseId}/locations?page&pageSize&search&isActive`, `/locations/{locationId}` | `organization.warehouses.read` + warehouse in scope |
 | POST | `/api/organization/warehouses/{warehouseId}/locations` | `organization.locations.create` + warehouse in scope |
 | PUT, POST | `/api/organization/warehouses/{warehouseId}/locations/{locationId}` (names + `rowVersion`), `/activate`, `/deactivate` | `organization.locations.update` + warehouse in scope |
+| GET | `/api/organization/countries?isActive`, `/governorates?countryCode&isActive`, `/cities?governorateId&isActive` (whole lists, by Arabic name) | any signed-in user |
+| POST, PUT | `/api/organization/{countries,governorates,cities}` (country: ISO `code`, fixed; governorate: `countryCode`; city: `governorateId`), `/{id}` (names + `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `organization.geography.manage` + company-wide |
 | GET | `/api/catalog/units?page&pageSize&search&isActive`, `/units/{id}` | `catalog.products.read` |
 | POST, PUT | `/api/catalog/units` (code fixed), `/units/{id}` (names, `allowsFraction`, `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `catalog.units.manage` |
 | GET | `/api/catalog/categories?isActive` (flat list, `parentId`), `/categories/{id}` | `catalog.products.read` |
@@ -160,7 +162,10 @@ and the `TransferDispatch` policy row; it changes no data. `Migration06_Inventor
 `ALLOW_SNAPSHOT_ISOLATION` on, outside a transaction (ADR 0015 *Consequences*). `Migration07_Purchasing` adds the
 `purchasing` schema (20 tables; suppliers, contacts and addresses temporal) and, on `inventory.StockDocuments` only,
 widens `CK_StockDocuments_Type` to 1–10 and adds `SourceDocumentId` (nullable, filtered unique, set exactly for
-purchase receipts and returns); it changes no data (ADR 0016 *Consequences*).
+purchase receipts and returns); it changes no data (ADR 0016 *Consequences*). `Migration08_Geography` adds
+`organization.Countries`, `Governorates` and `Cities` (temporal), seeds 249 countries and Egypt's 27 governorates and 271
+cities, and turns a supplier address's text city, region and country into `CityId`, matching existing rows by name; it
+stops, changing nothing, if one doesn't match (ADR 0017).
 
 ## Running the API
 
