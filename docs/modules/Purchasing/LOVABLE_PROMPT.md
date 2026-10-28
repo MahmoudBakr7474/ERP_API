@@ -14,7 +14,12 @@ Add the **Purchasing** module to the existing WarehouseERP app. It covers:
 - goods receipts that put the goods into stock;
 - supplier invoices matched to the order's receipts, with price-variance approval;
 - supplier returns that take goods out of stock and record a pending credit claim;
-- the approval policy of requests and orders.
+- the approval policy of requests and orders;
+- Inventory's screens recognising the two stock document types Purchasing posts (section 0, do it first).
+
+It is part of the existing app: same App Shell, routing, sign-in, cookie session, XSRF handling, RTK Query `baseApi`
+and design system. Don't add another app, another auth provider, Supabase, mock data or any business rule the server
+already enforces (amounts, matching, limits): show what the API returns and the errors it sends.
 
 ## Build on what exists (don't rebuild it)
 Follow `AGENTS.md`, and above all its **UI conventions**:
@@ -40,9 +45,25 @@ Follow `AGENTS.md`, and above all its **UI conventions**:
   Suppliers (`purchasing.suppliers.read`), Purchase requests, Purchase orders, Goods receipts, Supplier invoices,
   Supplier returns (each `purchasing.documents.read`), Approval policies (`purchasing.documents.read`).
 - In the Identity role editor, add the permission labels from the table at the end.
-- In Inventory's document screens, label the new stock document types `PurchaseReceipt` and `PurchaseReturn`, hide
-  edit/cancel/reverse for them, and when `sourceDocumentId` is set link it to the goods receipt or supplier return
-  (`/purchasing/receipts/{id}` for `PurchaseReceipt`, `/purchasing/returns/{id}` for `PurchaseReturn`).
+- Inventory's document screens must recognise `PurchaseReceipt`, `PurchaseReturn` and `sourceDocumentId`: section 0.
+
+## 0. Inventory compatibility (do this first)
+The backend now posts two more stock document types, created only by Purchasing. In the existing Inventory code:
+- `src/features/inventory/types.ts`: add `"PurchaseReceipt"` and `"PurchaseReturn"` to `documentTypes`, and
+  `sourceDocumentId?: string | null` to `InventoryRecord` (the document details return it).
+- `src/shared/i18n/translations.ts`: `inv.PurchaseReceipt` (ar "استلام مشتريات", en "Purchase receipt"),
+  `inv.PurchaseReturn` (ar "مرتجع مشتريات", en "Purchase return"), `inv.goodsReceipt` (ar "إذن الاستلام", en "Goods
+  receipt"), `inv.supplierReturn` (ar "مرتجع المورد", en "Supplier return").
+- `src/features/inventory/rules.ts`: add both types to the list that never offers `reverse`, and never offer
+  `reverse` when `r.sourceDocumentId` is set. (They are always Posted and `managePermissions` has no entry for them,
+  so edit/post/cancel are already hidden; keep it that way. `DraftDialog` must not offer them as new types.)
+- `src/features/inventory/RecordPages.tsx`, next to the `transferId` / `countId` links: when `r.sourceDocumentId` is
+  set, link `PurchaseReceipt` to `/purchasing/receipts/{sourceDocumentId}` (label `inv.goodsReceipt`) and
+  `PurchaseReturn` to `/purchasing/returns/{sourceDocumentId}` (label `inv.supplierReturn`), showing
+  `externalReference` (the GRN-/SRN- number) beside it.
+- `src/test/inventory-rules.test.ts`: one case each that a posted `PurchaseReceipt` offers no action.
+- The documents list filter already maps `documentTypes`, so the new types appear there by themselves.
+Nothing else in Inventory changes.
 
 ## Permissions and warehouse scope
 `GET /api/identity/me` gives `permissions`, `isCompanyWide` and `warehouseIds`. Requests, orders, receipts, invoices and
@@ -93,8 +114,31 @@ receipt locations `organization.warehouses.read`. Without them show the picker d
   green, `Closed` slate, `Cancelled` muted.
 - Drafts show `draftReference` (`DPR-000001`, `DPO-…`, `DSIN-…`, `DSRN-…`) until they have a `number`
   (`PR-CAI-2026-000001`, `PO-…`, `GRN-…`, `SIN-…`, `SRN-…`).
-- Every list pages (`page`, `pageSize` ≤ 100) and returns `{ items, page, pageSize, totalCount, totalPages }`.
+- Every list pages (`page`, `pageSize` ≤ 100) and returns `{ items, page, pageSize, totalCount, totalPages }`. Lists use
+  `ServerTable` with the filters named in each section (search box + selects), keep filters and paging the way the
+  Inventory lists do, and open the detail page on row click.
 - For line errors the server's `detail` names the line ("Line 2: …"); show the translation, then `detail` smaller.
+
+## Arabic / English, RTL / LTR
+- Arabic is the default (RTL), English the alternative (LTR), exactly as the rest of the app: every label, button,
+  status, action, enum value and error goes in `src/shared/i18n/translations.ts` with both `ar` and `en`, keys
+  prefixed `pur.` (errors stay `err.<errorCode>`). No hard-coded text.
+- Logical classes only (`ms`/`me`/`ps`/`pe`/`start`/`end`); tables, dialogs and row actions mirror in RTL.
+- Codes, SKUs, document numbers, registration numbers, invoice numbers, emails and phones are shown `dir="ltr"`.
+  Product and supplier names show `nameAr` (with `nameEn` where the API has it, in English mode).
+- Amounts and quantities use the app's number formatting for the active language; dates as the app formats them.
+
+## Status history and audit
+Every detail page of a request, order, invoice and return shows:
+- a "who and when" block: `createdBy` + `createdAtUtc`, `submittedBy`, `approvedBy` (+ `approvedAtUtc` on orders),
+  `postedBy` + `postedAtUtc` on invoices, `postedAtUtc` on returns. The same person may appear as creator and approver:
+  that is allowed and must be shown as it is;
+- the timeline from `events` (`action`, `userName`, `atUtc`, `note`): reuse Inventory's `History` component — move it
+  from `src/features/inventory/components.tsx` to `src/shared/ui/History.tsx` with a `prefix` prop for the
+  translation key (`inv.` for Inventory, `pur.` for Purchasing) and update Inventory's import; don't copy it. A
+  rejection's or closure's reason, and the GRN/SIN/SRN number on an order's `GoodsReceived`/`Invoiced`/`Returned`
+  events, are in `note`.
+Goods receipts have no events: show `receivedBy` and `receivedAtUtc`.
 
 ## 1. Suppliers — `/purchasing/suppliers`
 List: code, Arabic name, English name, country, tax number, phone, payment terms, active badge. Filters: search (code,

@@ -12,7 +12,8 @@ not merged). Read this first; don't re-analyse the repository.
 - **Remote (2026-10-28):** `origin` = `https://github.com/MahmoudBakr7474/ERP_API.git` (the owner's GitHub, used to work
   from other machines and from Claude in the cloud). `main` and `feature/inventory` are pushed with upstream tracking;
   never force-push, never push `launchSettings.json`.
-- **Current branch: `feature/purchasing`** (cut from `main` at `c791868`, local only, not pushed, not merged):
+- **Current branch: `feature/purchasing`** (cut from `main` at `c791868`; pushed to `origin/feature/purchasing` on
+  2026-10-29; not merged). **The owner accepted the Purchasing backend for this milestone on 2026-10-29**:
   * `16a15ce` global self-approval rule (`CLAUDE.md`), stale "another user approves" comments fixed, README approval
     rows corrected, `InventorySelfApprovalTests` (no Inventory behaviour change: it already allowed it since `29cbdb3`);
   * `84e8c19` Inventory: `IPurchaseStockPosting`, stock document types `PurchaseReceipt`/`PurchaseReturn`,
@@ -49,8 +50,13 @@ not merged). Read this first; don't re-analyse the repository.
     stock documents can't be drafted, edited or reversed in Inventory (`ManagedByPurchasing`); other generated types
     now answer `TypeNotDrafted` instead of a 500.
 - **Schema:** `Migration07_Purchasing` (purchasing schema, 20 tables; on `inventory.StockDocuments` only the type check
-  1–10 and `SourceDocumentId`). Applied to throwaway databases only; **not yet applied to `WarehouseERP_Dev`** (run
-  `dotnet dotnet-ef database update`, README *Database*, before the frontend work).
+  1–10 and `SourceDocumentId`). **Applied to `WarehouseERP_Dev` on 2026-10-29** after a verified copy-only backup
+  (`D:\work\WarehouseERP\db-backups\WarehouseERP_Dev_before_Migration07_20261029.bak`); checked: 7 migrations, 20
+  purchasing tables (3 temporal), both policies seeded, the 17 existing stock documents untouched,
+  `has-pending-model-changes` none.
+- **Dev API:** restarted on the Purchasing build on 2026-10-29 in the app's terminal tab "ERP dev API" (`dotnet run
+  --project src/WarehouseERP.Api --no-launch-profile -e ASPNETCORE_ENVIRONMENT=Development -- --urls
+  https://localhost:49571 --contentRoot src/WarehouseERP.Api`); `/health/ready` 200.
 - **E2E (2026-10-29):** the real host with cookie sessions on a throwaway `WarehouseERP_E2E_Purch_*` database
   (dropped): a scoped buyer approving their own request, order, invoice and return; a clerk (403 on approve) and an
   approver of another warehouse (403); request → order → partial receipts with an idempotent retry → over-receipt
@@ -199,9 +205,11 @@ not merged). Read this first; don't re-analyse the repository.
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
 - The frontend's `main` is at `4a3beec` with the accepted Inventory screens. On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
-- **Next step: the owner reviews Purchasing on `feature/purchasing`.** Then, on approval: apply `Migration07` to
-  `WarehouseERP_Dev`, merge into `main` (owner's approval), build the Purchasing screens from the Lovable prompt.
-  Don't start Sales, POS or Accounting without the owner's request.
+- **Next step: the Purchasing screens.** The owner pastes `docs/modules/Purchasing/LOVABLE_PROMPT.md` (section 0
+  first: Inventory's `PurchaseReceipt`/`PurchaseReturn`/`sourceDocumentId`) into Lovable on the frontend's `main`;
+  then pull it locally, run Vitest, `tsc`, the build, and targeted end-to-end acceptance through the Vite proxy against
+  the dev API. Neither repository is merged into `main` without the owner's approval. Don't start Sales, POS or
+  Accounting.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions

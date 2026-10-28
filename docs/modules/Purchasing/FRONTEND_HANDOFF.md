@@ -16,7 +16,9 @@ The Lovable prompt is [`LOVABLE_PROMPT.md`](LOVABLE_PROMPT.md). Business rules: 
   [Organization](../Organization/FRONTEND_HANDOFF.md).
 - OpenAPI tags: `Suppliers`, `PurchasingPolicies`, `PurchaseRequests`, `PurchaseOrders`, `GoodsReceipts`,
   `SupplierInvoices`, `SupplierReturns`.
-- The database needs `Migration07_Purchasing` (`dotnet ef database update`, README *Database*).
+- `WarehouseERP_Dev` has `Migration07_Purchasing` since 2026-10-29 (a copy-only backup taken just before it is
+  `D:\work\WarehouseERP\db-backups\WarehouseERP_Dev_before_Migration07_20261029.bak`). The dev API on
+  `https://localhost:49571` runs the Purchasing build (`/api/purchasing/*` answers 401 until signed in).
 - The bootstrap administrator holds `"*"`. Give other roles the `purchasing.*` permissions in the role editor; buyers
   also need `catalog.products.read` and `organization.warehouses.read` for the pickers, and `inventory.documents.read`
   to open the stock documents a receipt or return links to.
