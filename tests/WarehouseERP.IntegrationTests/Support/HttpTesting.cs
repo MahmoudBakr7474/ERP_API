@@ -12,9 +12,9 @@ internal static class HttpTesting
     public static readonly Guid UserId = Guid.Parse("22222222-2222-2222-2222-222222222222");
 
     /// <summary>A client acting as a user with these permissions; warehouses "*" means all.</summary>
-    public static HttpClient As(this HttpClient client, string permissions, string warehouses = "*")
+    public static HttpClient As(this HttpClient client, string permissions, string warehouses = "*", Guid? userId = null)
     {
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, UserId.ToString());
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserHeader, (userId ?? UserId).ToString());
         client.DefaultRequestHeaders.Add(TestAuthHandler.PermissionsHeader, permissions);
         client.DefaultRequestHeaders.Add(TestAuthHandler.WarehousesHeader, warehouses);
         return client;

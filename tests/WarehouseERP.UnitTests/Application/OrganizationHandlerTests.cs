@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
+using WarehouseERP.BuildingBlocks.Application.Persistence;
 using WarehouseERP.BuildingBlocks.Application.Security;
+using WarehouseERP.Inventory.Contracts;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Branches;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Companies;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
@@ -28,6 +30,8 @@ public sealed class OrganizationHandlerTests
 {
     private const string RowVersion = "AAAAAAAAB9E=";
     private static readonly FakeUser CompanyWide = new(allWarehouses: true);
+    private static readonly PassThroughTransactions Transactions = new();
+    private static readonly FakeStockGuard NoStock = new(StockOccupancy.Free);
 
     private static Company NewCompany() => Company.Create("CO", "الشركة", null, "egp", "Africa/Cairo", null);
 
@@ -148,15 +152,54 @@ public sealed class OrganizationHandlerTests
         warehouse.Deactivate();
         var warehouses = new FakeWarehouseRepository { Stored = warehouse, BranchActive = false };
 
-        var outOfScope = await new SetWarehouseActiveHandler(warehouses, new FakeUser(false), NullLogger<SetWarehouseActiveHandler>.Instance)
+        var outOfScope = await new SetWarehouseActiveHandler(warehouses, new FakeUser(false), Transactions, NoStock, NullLogger<SetWarehouseActiveHandler>.Instance)
             .HandleAsync(new SetWarehouseActiveCommand(warehouse.Id, IsActive: true), default);
         Assert.Same(WarehouseErrors.AccessDenied, outOfScope.Error);
         Assert.Equal(0, warehouses.Loads);
 
-        var result = await new SetWarehouseActiveHandler(warehouses, CompanyWide, NullLogger<SetWarehouseActiveHandler>.Instance)
+        var result = await new SetWarehouseActiveHandler(warehouses, CompanyWide, Transactions, NoStock, NullLogger<SetWarehouseActiveHandler>.Instance)
             .HandleAsync(new SetWarehouseActiveCommand(warehouse.Id, IsActive: true), default);
         Assert.Same(BranchErrors.NotActive, result.Error);
         Assert.False(warehouse.IsActive);
+    }
+
+    [Theory]
+    [InlineData(StockOccupancy.HoldsStock, "Organization.Warehouse.HoldsStock")]
+    [InlineData(StockOccupancy.HasOpenDocuments, "Organization.Warehouse.HasOpenInventoryDocuments")]
+    [InlineData(StockOccupancy.Busy, "Organization.Warehouse.InventoryBusy")]
+    public async Task Deactivating_a_warehouse_inventory_still_uses_is_refused_without_saving(StockOccupancy occupancy, string code)
+    {
+        var warehouse = NewWarehouse();
+        var warehouses = new FakeWarehouseRepository { Stored = warehouse };
+
+        var result = await new SetWarehouseActiveHandler(warehouses, CompanyWide, Transactions, new FakeStockGuard(occupancy),
+                NullLogger<SetWarehouseActiveHandler>.Instance)
+            .HandleAsync(new SetWarehouseActiveCommand(warehouse.Id, IsActive: false), default);
+
+        Assert.Equal(code, result.Error?.Code);
+        Assert.True(warehouse.IsActive);
+        Assert.Equal(0, warehouses.Saves);
+    }
+
+    [Fact]
+    public async Task Deactivating_a_location_with_stock_is_refused_and_a_free_one_is_deactivated()
+    {
+        var warehouse = NewWarehouse();
+        var location = warehouse.AddLocation("A-01", "رف", null).Value;
+        var warehouses = new FakeWarehouseRepository { StoredLocation = location };
+
+        var refused = await new SetWarehouseLocationActiveHandler(warehouses, CompanyWide, Transactions,
+                new FakeStockGuard(StockOccupancy.HoldsStock), NullLogger<SetWarehouseLocationActiveHandler>.Instance)
+            .HandleAsync(new SetWarehouseLocationActiveCommand(warehouse.Id, location.Id, IsActive: false), default);
+        Assert.Same(WarehouseLocationErrors.HoldsStock, refused.Error);
+        Assert.Equal(0, warehouses.Saves);
+
+        var done = await new SetWarehouseLocationActiveHandler(warehouses, CompanyWide, Transactions, NoStock,
+                NullLogger<SetWarehouseLocationActiveHandler>.Instance)
+            .HandleAsync(new SetWarehouseLocationActiveCommand(warehouse.Id, location.Id, IsActive: false), default);
+        Assert.True(done.IsSuccess);
+        Assert.False(location.IsActive);
+        Assert.Equal(1, warehouses.Saves);
     }
 
     [Fact]
@@ -201,12 +244,26 @@ public sealed class OrganizationHandlerTests
         var location = Assert.Single(NewWarehouse().Locations);
         var warehouses = new FakeWarehouseRepository { StoredLocation = location };
 
-        var result = await new SetWarehouseLocationActiveHandler(warehouses, CompanyWide, NullLogger<SetWarehouseLocationActiveHandler>.Instance)
+        var result = await new SetWarehouseLocationActiveHandler(warehouses, CompanyWide, Transactions, NoStock, NullLogger<SetWarehouseLocationActiveHandler>.Instance)
             .HandleAsync(new SetWarehouseLocationActiveCommand(Guid.NewGuid(), location.Id, IsActive: false), default);
 
         Assert.Same(WarehouseLocationDomainErrors.DefaultMustStayActive, result.Error);
         Assert.True(location.IsActive);
         Assert.Equal(0, warehouses.Saves);
+    }
+
+    // The unit under test only needs its work run once; transactions themselves are integration-tested.
+    private sealed class PassThroughTransactions : ITransactionRunner
+    {
+        public Task<Result<T>> RunAsync<T>(Func<CancellationToken, Task<Result<T>>> work, CancellationToken ct) => work(ct);
+    }
+
+    private sealed class FakeStockGuard(StockOccupancy occupancy) : IWarehouseStockGuard
+    {
+        public Task<StockOccupancy> LockAndCheckWarehouseAsync(Guid warehouseId, CancellationToken ct) => Task.FromResult(occupancy);
+
+        public Task<StockOccupancy> LockAndCheckLocationAsync(Guid warehouseId, Guid locationId, CancellationToken ct) =>
+            Task.FromResult(occupancy);
     }
 
     private sealed class FakeUser(bool allWarehouses, params Guid[] warehouses) : ICurrentUser

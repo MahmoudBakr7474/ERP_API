@@ -7,6 +7,8 @@ using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.BuildingBlocks.Infrastructure.Persistence;
 using WarehouseERP.Catalog;
 using WarehouseERP.Catalog.Domain;
+using WarehouseERP.Identity.Contracts;
+using WarehouseERP.Inventory;
 using WarehouseERP.Organization;
 using WarehouseERP.Organization.Domain;
 using WarehouseERP.Persistence;
@@ -43,6 +45,8 @@ public sealed class DatabaseFixture : IAsyncLifetime
             .AddErpPersistence()
             .AddOrganizationModule()
             .AddCatalogModule()
+            .AddInventoryModule()
+            .AddScoped<IUserDirectory, NoUserNames>() // Identity's directory; module tests don't need names
             .BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true });
 
     public async Task InitializeAsync()

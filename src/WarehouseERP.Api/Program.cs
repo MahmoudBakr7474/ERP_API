@@ -6,6 +6,7 @@ using WarehouseERP.Api.Security;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.Catalog;
 using WarehouseERP.Identity;
+using WarehouseERP.Inventory;
 using WarehouseERP.Organization;
 using WarehouseERP.Persistence;
 
@@ -19,7 +20,8 @@ builder.Services
     .AddErpReverseProxy()
     .AddIdentityModule() // authentication, permission policies and ICurrentUser for every module
     .AddOrganizationModule()
-    .AddCatalogModule();
+    .AddCatalogModule()
+    .AddInventoryModule();
 
 builder.Services.AddOptions<PaginationOptions>()
     .BindConfiguration(PaginationOptions.SectionName)
@@ -58,6 +60,7 @@ app.MapErpHealthChecks();
 app.MapIdentityEndpoints();
 app.MapOrganizationEndpoints();
 app.MapCatalogEndpoints();
+app.MapInventoryEndpoints();
 
 app.Run();
 

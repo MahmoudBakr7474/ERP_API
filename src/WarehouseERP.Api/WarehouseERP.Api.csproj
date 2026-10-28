@@ -6,6 +6,7 @@
     <ProjectReference Include="../Modules/Organization/WarehouseERP.Organization/WarehouseERP.Organization.csproj" />
     <ProjectReference Include="../Modules/Catalog/WarehouseERP.Catalog/WarehouseERP.Catalog.csproj" />
     <ProjectReference Include="../Modules/Identity/WarehouseERP.Identity/WarehouseERP.Identity.csproj" />
+    <ProjectReference Include="../Modules/Inventory/WarehouseERP.Inventory/WarehouseERP.Inventory.csproj" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />

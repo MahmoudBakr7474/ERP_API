@@ -18,6 +18,7 @@ src/
   Modules/Organization/             .Domain, .Application, outer project (Infrastructure + Presentation), .Contracts
   Modules/Catalog/                  same layout
   Modules/Identity/                 same layout: users, roles, permissions, scope, sessions (ADR 0009)
+  Modules/Inventory/                same layout: stock documents, posting, balances, ledger, valuation (ADR 0015)
 tests/
   WarehouseERP.UnitTests/           no database
   WarehouseERP.IntegrationTests/    SQL Server (LocalDB) + the real HTTP host
@@ -52,6 +53,13 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | PUT, POST | `/api/catalog/products/{id}` (names, `categoryId`, `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `catalog.products.update` |
 | POST | `/api/catalog/products/{id}/units` (`unitId`, `conversionFactor`), `/units/{productUnitId}/activate`, `/deactivate` | `catalog.products.update` |
 | POST | `/api/catalog/products/{id}/units/{productUnitId}/barcodes`, `/products/{id}/barcodes/{barcodeId}/activate`, `/deactivate` | `catalog.products.update` |
+| POST, PUT | `/api/inventory/documents` (draft: `documentType`, `warehouseId`, lines), `/documents/{id}` (draft + `rowVersion`) | `inventory.<type>.manage` (`opening`, `receipts`, `issues`, `adjustments`) + warehouse in scope |
+| GET | `/api/inventory/documents?page&pageSize&warehouseId&documentType&status&search`, `/documents/{id}` (lines, history) | `inventory.documents.read` + warehouse in scope |
+| POST | `/api/inventory/documents/{id}/submit`, `/post` (`Idempotency-Key` header), `/cancel`, `/reverse` | `inventory.<type>.manage` + warehouse in scope |
+| POST | `/api/inventory/documents/{id}/approve` (`Idempotency-Key` header; posts it), `/reject` (reason) | `inventory.documents.approve` + warehouse in scope, never the creator |
+| GET | `/api/inventory/balances`, `/availability`, `/movements?productId&warehouseId` (stock card), `/over-reservations` | `inventory.stock.read` + warehouse in scope |
+| GET | `/api/inventory/valuation?productId`, `/valuation/{productId}/entries` | `inventory.valuation.read` |
+| GET, PUT | `/api/inventory/document-policies`, `/document-policies/{documentType}` (`requiresApproval` + `rowVersion`) | `inventory.documents.read` / `inventory.settings.manage` + company-wide |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
 | GET | `/api/identity/me`; POST `/api/identity/me/password`; GET `/api/identity/password-policy` | signed in |
@@ -163,9 +171,11 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 7. **Sequential GUID keys**: never assign `Guid.NewGuid()` to a key; EF Core generates SQL Server-ordered values.
 8. **ExternalItemCode**: optional `ProductUnitId` must belong to the same product (composite FK).
 9. **Known unique constraints** are mapped to business codes by name (`IX_Products_SKU`, `IX_Warehouses_BranchId_Code`); renaming an index means updating its repository map.
+10. **Stock changes only by posting**: balances, availability, movements and cost entries are written by `StockDocumentPosting` in one transaction under Inventory's locks (ADR 0015). Never update `inventory.*` rows by hand; post an adjustment or a reversal.
 
 ## Postponed
 
-See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, outbox/inbox and idempotency store (with Inventory),
-explicit transaction port (with Inventory), management of tax codes, rates, product tax assignments and EGS/GS1
-external item codes (Sales/e-invoicing phase, ADR 0014).
+See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, the outbox/inbox (until a consumer exists, ADR 0015),
+management of tax codes, rates, product tax assignments and EGS/GS1 external item codes (Sales/e-invoicing phase,
+ADR 0014), Inventory Milestone B (transfers, counts, reconciliation), batch/serial tracking and reservations
+(`docs/modules/Inventory/V1_DECISIONS.md`).

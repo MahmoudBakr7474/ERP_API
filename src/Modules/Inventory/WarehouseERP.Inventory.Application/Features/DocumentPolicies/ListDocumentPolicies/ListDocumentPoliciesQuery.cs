@@ -1,0 +1,3 @@
+namespace WarehouseERP.Inventory.Application.Features.DocumentPolicies.ListDocumentPolicies;
+
+public sealed record ListDocumentPoliciesQuery;

@@ -32,8 +32,10 @@ tests/
 ```
 
 Modules today: **Organization** (company, branch, warehouse, location), **Catalog** (category, unit, product,
-product unit, barcode, external item code, tax code/rate/assignment) and **Identity** (users, roles and their
-permissions, user scope, sessions; authenticates every request and provides `ICurrentUser` to all modules, ADR 0009).
+product unit, barcode, external item code, tax code/rate/assignment), **Identity** (users, roles and their
+permissions, user scope, sessions; authenticates every request and provides `ICurrentUser` to all modules, ADR 0009)
+and **Inventory** (stock documents and their posting, balances, availability, the movement ledger and the
+company-wide valuation, ADR 0015).
 
 ## Dependency map
 
@@ -64,7 +66,7 @@ Arrows point inward. No cycles (checked). The module's outer project never refer
 | A module's outer project reaches no other module's Domain/Application/outer project, nor `Persistence`/`Api` | `Infrastructure_and_presentation_reach_no_other_module_nor_the_composition_root` |
 | Presentation never touches EF Core, Infrastructure or Domain types (goes through Application) | `Presentation_goes_through_the_application_and_never_touches_ef_core` |
 | A module configures only its own entities (Identity also maps ASP.NET Core Identity's row types) | `Infrastructure_configures_only_its_own_modules_entities` |
-| Every entity lives in its module's schema (`organization.*`, `catalog.*`, `identity.*`) | `Every_entity_lives_in_its_modules_schema` |
+| Every entity lives in its module's schema (`organization.*`, `catalog.*`, `identity.*`, `inventory.*`) | `Every_entity_lives_in_its_modules_schema` |
 | Only `WarehouseERP.Identity` and `Persistence` reference ASP.NET Core Identity | `Only_identity_and_persistence_reference_aspnet_core_identity` |
 | Contracts and the shared kernel reference nothing | `Contracts_are_plain_types_with_no_references`, `Shared_kernel_references_no_project_and_no_framework_package` |
 | Only the host and Persistence reference module outer projects; nothing references the host | `Only_the_host_and_persistence_reference_module_outer_assemblies`, `Nothing_references_the_host` |
@@ -96,7 +98,9 @@ HTTP ─► ForwardedHeaders (only with ReverseProxy enabled) ─► HSTS (outsi
 * Expected failures are `Result` errors with stable codes (ADR 0003). Unexpected exceptions reach
   `GlobalExceptionHandler`: logged once, answered as `Common.Unexpected` (500) without details.
 * Each command handler owns its transaction: one save point (a repository write method → one `SaveChanges`,
-  one database transaction). Known unique-index violations become business errors there (ADR 0004).
+  one database transaction). Known unique-index violations become business errors there (ADR 0004). A use case that
+  must also take locks or run raw SQL in the same unit (an Inventory posting, a deactivation that asks Inventory) runs
+  inside `ITransactionRunner`, which retries the whole unit on a deadlock (ADR 0015).
 * Handlers see the user through `ICurrentUser`; warehouse scope is checked in the handler, permissions by
   endpoint policies (ADR 0005). The Identity module authenticates every request against its sessions (ADR 0009).
 * Security-sensitive Identity changes add a row to `identity.SecurityEvents` in the same save (ADR 0012). Two writes
@@ -136,6 +140,9 @@ WarehouseERP.Identity.Application/
 Organization: `Features/{Companies,Branches,Warehouses,WarehouseLocations}`, `Errors/{Company,Branch,Warehouse,WarehouseLocation,RowVersion}Errors`.
 Catalog: `Features/{Units,Categories,Products,ProductUnits,ProductBarcodes}`, `Contracts/{Units,Categories,Products}`,
 `Abstractions/Interfaces/{Units,Categories,Products}`, `Errors/{Unit,Category,Product,ProductUnit,ProductBarcode,RowVersion}Errors`.
+Inventory: `Features/{StockDocuments,Stock,Valuation,DocumentPolicies}` (the posting transaction is the area-level
+`StockDocuments/StockDocumentPosting`), `Abstractions/Interfaces/{StockDocuments,Posting,Stock,Valuation,DocumentPolicies}`,
+`Errors/{StockDocument,Stock,Idempotency,Valuation,DocumentPolicy,RowVersion}Errors`.
 
 ### Where each type belongs
 

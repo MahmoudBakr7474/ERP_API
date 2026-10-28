@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using WarehouseERP.BuildingBlocks.Application.Persistence;
 using WarehouseERP.BuildingBlocks.Infrastructure.Persistence;
 
 namespace WarehouseERP.Persistence;
@@ -50,6 +51,8 @@ public static class PersistenceRegistration
         });
         // Modules depend on DbContext, not ErpDbContext, so they never reference this project.
         services.AddScoped<DbContext>(sp => sp.GetRequiredService<ErpDbContext>());
+        // Explicit transactions for use cases that change several things at once (ADR 0004, Inventory postings).
+        services.AddScoped<ITransactionRunner, EfTransactionRunner>();
 
         // Keys in the database, so a restart or a second instance still accepts issued anti-forgery tokens.
         services.AddDataProtection()

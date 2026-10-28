@@ -4,6 +4,7 @@
   <ItemGroup>
     <ProjectReference Include="../WarehouseERP.Organization.Domain/WarehouseERP.Organization.Domain.csproj" />
     <ProjectReference Include="../WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
+    <ProjectReference Include="../../Inventory/WarehouseERP.Inventory.Contracts/WarehouseERP.Inventory.Contracts.csproj" />
     <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.BuildingBlocks.Application/WarehouseERP.BuildingBlocks.Application.csproj" />
   </ItemGroup>
 </Project>
