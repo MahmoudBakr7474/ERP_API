@@ -263,3 +263,14 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
 * Counts: no blind-count mode or recount of single lines by a second counter; counts cover available stock without
   lots.
 * Reconciliation is on demand only (no schedule, no stored history).
+
+## Production prerequisites
+None of these blocks merging Inventory into `main` for development; each must be settled before Inventory runs in
+production:
+1. The accountant approves the costing method: the company-wide moving weighted average, and a receipt reversal that
+   leaves at the current average (decision 23).
+2. Batch, expiry or serial tracking is built if the products actually stocked need it; until then tracked products are
+   refused.
+3. `ALLOW_SNAPSHOT_ISOLATION` is on in the production database (`Migration06`, run by or with the DBA) and verified:
+   `SELECT snapshot_isolation_state_desc FROM sys.databases WHERE name = DB_NAME()` returns `ON`. The reconciliation
+   report needs it.
