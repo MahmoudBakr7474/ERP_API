@@ -26,6 +26,7 @@ public sealed class MasterDataHistoryTests(DatabaseFixture fx)
     public async Task Edit_keeps_the_old_version_in_history_and_stamps_who_and_when()
     {
         var productId = await CreateProductAsync();
+        await WaitPastCreationAsync(productId);
         var editor = new TestCurrentUser(Guid.NewGuid(), allWarehouses: true);
         await using var db = fx.NewDb(editor);
         var product = await db.Set<Product>().SingleAsync(x => x.Id == productId);
@@ -53,6 +54,16 @@ public sealed class MasterDataHistoryTests(DatabaseFixture fx)
         await first.SaveChangesAsync();
         b.Update("تاني", null, b.CategoryId);
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync());
+    }
+
+    // SQL Server stamps a version with its transaction's start time, from a clock that ticks coarsely: an edit in the same
+    // tick as the creation leaves a zero-length history row, which TemporalAll (FOR SYSTEM_TIME ALL) leaves out.
+    private async Task WaitPastCreationAsync(Guid productId)
+    {
+        await using var db = fx.NewDb();
+        var created = await db.Set<Product>().Where(x => x.Id == productId).Select(x => EF.Property<DateTime>(x, "ValidFrom")).SingleAsync();
+        while (await db.Database.SqlQuery<DateTime>($"SELECT SYSUTCDATETIME() AS [Value]").SingleAsync() <= created)
+            await Task.Delay(1);
     }
 
     private async Task<Guid> CreateProductAsync()
