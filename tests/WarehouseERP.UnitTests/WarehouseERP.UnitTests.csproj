@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\Modules\Catalog\WarehouseERP.Catalog.Application\WarehouseERP.Catalog.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\WarehouseERP.Identity.Application\WarehouseERP.Identity.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Inventory\WarehouseERP.Inventory.Application\WarehouseERP.Inventory.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Purchasing\WarehouseERP.Purchasing.Application\WarehouseERP.Purchasing.Application.csproj" />
   </ItemGroup>
 
 </Project>
