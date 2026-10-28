@@ -9,6 +9,7 @@ using WarehouseERP.Identity;
 using WarehouseERP.Inventory;
 using WarehouseERP.Organization;
 using WarehouseERP.Persistence;
+using WarehouseERP.Purchasing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,7 +22,8 @@ builder.Services
     .AddIdentityModule() // authentication, permission policies and ICurrentUser for every module
     .AddOrganizationModule()
     .AddCatalogModule()
-    .AddInventoryModule();
+    .AddInventoryModule()
+    .AddPurchasingModule();
 
 builder.Services.AddOptions<PaginationOptions>()
     .BindConfiguration(PaginationOptions.SectionName)
@@ -61,6 +63,7 @@ app.MapIdentityEndpoints();
 app.MapOrganizationEndpoints();
 app.MapCatalogEndpoints();
 app.MapInventoryEndpoints();
+app.MapPurchasingEndpoints();
 
 app.Run();
 

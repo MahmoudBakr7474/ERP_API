@@ -10,6 +10,8 @@ using WarehouseERP.Inventory;
 using WarehouseERP.Inventory.Domain;
 using WarehouseERP.Organization;
 using WarehouseERP.Organization.Domain;
+using WarehouseERP.Purchasing;
+using WarehouseERP.Purchasing.Domain;
 
 namespace WarehouseERP.Persistence;
 
@@ -32,6 +34,7 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfigurationsFromAssembly(typeof(CatalogModule).Assembly);
         builder.ApplyConfigurationsFromAssembly(typeof(IdentityModule).Assembly);
         builder.ApplyConfigurationsFromAssembly(typeof(InventoryModule).Assembly);
+        builder.ApplyConfigurationsFromAssembly(typeof(PurchasingModule).Assembly);
         builder.Entity<DataProtectionKey>().ToTable("DataProtectionKeys", "identity");
 
         // Foreign keys between modules are configured here, the only place that sees every module.
@@ -43,6 +46,72 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
             .HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
 
         ConfigureInventoryReferences(builder);
+        ConfigurePurchasingReferences(builder);
+    }
+
+    // Purchasing's rows point at Organization's structure, Catalog's products and units, and the stock documents Inventory
+    // posted for its receipts and returns (which name them back through SourceDocumentId). Restrict: nothing they name is
+    // ever deleted.
+    private static void ConfigurePurchasingReferences(ModelBuilder builder)
+    {
+        builder.Entity<PurchaseRequest>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PurchaseRequestLine>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PurchaseOrder>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PurchaseOrderLine>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<GoodsReceipt>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<StockDocument>().WithMany().HasForeignKey(x => x.StockDocumentId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<GoodsReceiptLine>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WarehouseLocation>().WithMany().HasForeignKey(x => x.LocationId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<SupplierInvoice>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<SupplierInvoiceLine>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<SupplierReturn>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<StockDocument>().WithMany().HasForeignKey(x => x.StockDocumentId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<SupplierReturnLine>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WarehouseLocation>().WithMany().HasForeignKey(x => x.LocationId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<global::WarehouseERP.Inventory.Domain.DocumentNumberSequence>()
+            .HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
     }
 
     // Inventory's rows point at Organization's structure and Catalog's products. A location is always referenced
@@ -97,8 +166,10 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
             .HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<InventoryCostEntry>()
             .HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
-        builder.Entity<DocumentNumberSequence>()
-            .HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        // Named apart from Inventory's series table, whose foreign key would otherwise have the same name.
+        builder.Entity<global::WarehouseERP.Purchasing.Domain.DocumentNumberSequence>()
+            .HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_PurchasingNumberSequences_Branches_BranchId");
         builder.Entity<OverReservationAlert>(b =>
         {
             b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);

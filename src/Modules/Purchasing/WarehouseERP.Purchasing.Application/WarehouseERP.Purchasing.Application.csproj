@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Purchasing use cases (vertical slices) and the ports they need. No EF Core, HTTP or Serilog: persistence goes
+       through ports implemented in WarehouseERP.Purchasing, other modules only through their Contracts (stock through
+       Inventory's IPurchaseStockPosting). -->
+  <ItemGroup>
+    <ProjectReference Include="../WarehouseERP.Purchasing.Domain/WarehouseERP.Purchasing.Domain.csproj" />
+    <ProjectReference Include="../WarehouseERP.Purchasing.Contracts/WarehouseERP.Purchasing.Contracts.csproj" />
+    <ProjectReference Include="../../Organization/WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
+    <ProjectReference Include="../../Catalog/WarehouseERP.Catalog.Contracts/WarehouseERP.Catalog.Contracts.csproj" />
+    <ProjectReference Include="../../Inventory/WarehouseERP.Inventory.Contracts/WarehouseERP.Inventory.Contracts.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.BuildingBlocks.Application/WarehouseERP.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+</Project>

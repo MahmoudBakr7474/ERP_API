@@ -1,0 +1,3 @@
+namespace WarehouseERP.Purchasing.Application.Features.PurchasingPolicies.ListPurchasingPolicies;
+
+public sealed record ListPurchasingPoliciesQuery;

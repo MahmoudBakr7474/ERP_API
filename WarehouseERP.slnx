@@ -32,6 +32,12 @@
     <Project Path="src/Modules/Organization/WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
     <Project Path="src/Modules/Organization/WarehouseERP.Organization.Domain/WarehouseERP.Organization.Domain.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Purchasing/">
+    <Project Path="src/Modules/Purchasing/WarehouseERP.Purchasing/WarehouseERP.Purchasing.csproj" />
+    <Project Path="src/Modules/Purchasing/WarehouseERP.Purchasing.Application/WarehouseERP.Purchasing.Application.csproj" />
+    <Project Path="src/Modules/Purchasing/WarehouseERP.Purchasing.Contracts/WarehouseERP.Purchasing.Contracts.csproj" />
+    <Project Path="src/Modules/Purchasing/WarehouseERP.Purchasing.Domain/WarehouseERP.Purchasing.Domain.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/WarehouseERP.ArchitectureTests/WarehouseERP.ArchitectureTests.csproj" />
     <Project Path="tests/WarehouseERP.IntegrationTests/WarehouseERP.IntegrationTests.csproj" />

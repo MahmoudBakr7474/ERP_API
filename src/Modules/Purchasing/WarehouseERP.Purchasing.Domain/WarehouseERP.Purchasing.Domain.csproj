@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Purchasing business rules: suppliers, purchase requests and orders, goods receipts, supplier invoices and returns.
+       Only the shared kernel and this module's own Contracts (for enums it publishes); never EF Core, ASP.NET Core or
+       another module. -->
+  <ItemGroup>
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.SharedKernel/WarehouseERP.SharedKernel.csproj" />
+    <ProjectReference Include="../WarehouseERP.Purchasing.Contracts/WarehouseERP.Purchasing.Contracts.csproj" />
+  </ItemGroup>
+</Project>
