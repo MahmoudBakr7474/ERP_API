@@ -125,33 +125,45 @@ internal sealed class ReconciliationReadStore(DbContext db, IWarehouseDirectory 
             availability, ledger, valuation, transfersOut, positions, openTransfers);
     }
 
+    // SQL Server keeps a session's isolation level when its connection goes back to the pool, so the connection is set back
+    // to READ COMMITTED before it is released. Otherwise the next request to use it would run under SNAPSHOT, and an
+    // update racing another one (two requests touching the same session row) would fail with an update conflict (3960).
     private async Task<Snapshot> ReadSnapshotAsync(CancellationToken ct)
     {
-        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Snapshot, ct);
-        var balances = await db.Set<StockBalance>().AsNoTracking()
-            .Where(b => b.Quantity != 0)
-            .Select(b => new BalanceRow(b.ProductId, b.WarehouseId, b.LocationId, b.StockStatus, b.Quantity))
-            .ToListAsync(ct);
-        var availability = await db.Set<ProductWarehouseStock>().AsNoTracking()
-            .Select(a => new AvailabilityRow(a.ProductId, a.WarehouseId, a.OnHandSellable))
-            .ToListAsync(ct);
-        var movements = await db.Set<StockMovement>().AsNoTracking()
-            .GroupBy(m => new { m.ProductId, m.WarehouseId, m.LocationId })
-            .Select(g => new MovementRow(g.Key.ProductId, g.Key.WarehouseId, g.Key.LocationId, g.Sum(m => m.Quantity)))
-            .ToListAsync(ct);
-        var states = await db.Set<InventoryCostState>().AsNoTracking().ToListAsync(ct);
-        var entries = await db.Set<InventoryCostEntry>().AsNoTracking()
-            .GroupBy(e => e.ProductId)
-            .Select(g => new EntryRow(g.Key, g.Sum(e => e.QuantityDelta), g.Sum(e => e.ValueDelta)))
-            .ToListAsync(ct);
-        var transitLocations = balances.Select(b => b.LocationId).Distinct().ToArray();
-        var transfers = await db.Set<StockTransfer>().AsNoTracking()
-            .Include(t => t.Lines)
-            .Where(t => OpenStatuses.Contains(t.Status)
-                        || (t.TransitLocationId != null && transitLocations.Contains(t.TransitLocationId.Value)))
-            .ToListAsync(ct);
-        await transaction.CommitAsync(ct);
-        return new Snapshot(balances, availability, movements, states, entries, transfers);
+        await db.Database.OpenConnectionAsync(ct);
+        try
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Snapshot, ct);
+            var balances = await db.Set<StockBalance>().AsNoTracking()
+                .Where(b => b.Quantity != 0)
+                .Select(b => new BalanceRow(b.ProductId, b.WarehouseId, b.LocationId, b.StockStatus, b.Quantity))
+                .ToListAsync(ct);
+            var availability = await db.Set<ProductWarehouseStock>().AsNoTracking()
+                .Select(a => new AvailabilityRow(a.ProductId, a.WarehouseId, a.OnHandSellable))
+                .ToListAsync(ct);
+            var movements = await db.Set<StockMovement>().AsNoTracking()
+                .GroupBy(m => new { m.ProductId, m.WarehouseId, m.LocationId })
+                .Select(g => new MovementRow(g.Key.ProductId, g.Key.WarehouseId, g.Key.LocationId, g.Sum(m => m.Quantity)))
+                .ToListAsync(ct);
+            var states = await db.Set<InventoryCostState>().AsNoTracking().ToListAsync(ct);
+            var entries = await db.Set<InventoryCostEntry>().AsNoTracking()
+                .GroupBy(e => e.ProductId)
+                .Select(g => new EntryRow(g.Key, g.Sum(e => e.QuantityDelta), g.Sum(e => e.ValueDelta)))
+                .ToListAsync(ct);
+            var transitLocations = balances.Select(b => b.LocationId).Distinct().ToArray();
+            var transfers = await db.Set<StockTransfer>().AsNoTracking()
+                .Include(t => t.Lines)
+                .Where(t => OpenStatuses.Contains(t.Status)
+                            || (t.TransitLocationId != null && transitLocations.Contains(t.TransitLocationId.Value)))
+                .ToListAsync(ct);
+            await transaction.CommitAsync(ct);
+            return new Snapshot(balances, availability, movements, states, entries, transfers);
+        }
+        finally
+        {
+            await db.Database.ExecuteSqlRawAsync("SET TRANSACTION ISOLATION LEVEL READ COMMITTED", CancellationToken.None);
+            await db.Database.CloseConnectionAsync();
+        }
     }
 
     private sealed record BalanceRow(Guid ProductId, Guid WarehouseId, Guid LocationId, StockStatus StockStatus, decimal Quantity);

@@ -1,7 +1,9 @@
 using System.Net;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using WarehouseERP.Inventory.Contracts;
+using WarehouseERP.Persistence;
 using static WarehouseERP.IntegrationTests.Http.InventoryTesting;
 
 namespace WarehouseERP.IntegrationTests.Http;
@@ -96,6 +98,20 @@ public sealed class InventoryReconciliationApiTests(DatabaseFixture fx) : IAsync
             .AssertProblemAsync(HttpStatusCode.Forbidden, "Inventory.Reconciliation.CompanyWideAccessRequired");
         await (await _api.CreateClient().As(InventoryPermissions.DocumentsRead).GetAsync(Reconciliation))
             .AssertProblemAsync(HttpStatusCode.Forbidden, "Common.Forbidden");
+    }
+
+    [Fact]
+    public async Task The_report_hands_its_connection_back_at_read_committed()
+    {
+        // A connection pool of its own, so the next query gets the connection the report used.
+        await using var api = new ApiFactory(fx.ConnectionString + ";Application Name=ReconciliationIsolation", clock: fx.Clock);
+        (await api.CreateClient().As(AllPermissions).GetAsync(Reconciliation)).EnsureSuccessStatusCode();
+
+        await using var scope = api.Services.CreateAsyncScope();
+        var level = await scope.ServiceProvider.GetRequiredService<ErpDbContext>().Database
+            .SqlQueryRaw<short>("SELECT [transaction_isolation_level] AS [Value] FROM sys.dm_exec_sessions WHERE [session_id] = @@SPID")
+            .SingleAsync();
+        Assert.Equal(2, level); // READ COMMITTED; 5 (SNAPSHOT) made the next request's updates fail with update conflicts
     }
 
     // Changes stored totals the way only a bug or a hand-made SQL update could.

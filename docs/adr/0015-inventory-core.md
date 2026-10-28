@@ -189,7 +189,9 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
 20. **Reconciliation.** `GET /api/inventory/reconciliation` (`reconciliation.read`, company-wide only). It reads
     balances, availability, movements, cost states, cost entries and transfers in one `SNAPSHOT` transaction
     (`Migration06` turns `ALLOW_SNAPSHOT_ISOLATION` on; everything else keeps READ COMMITTED), compares in memory and
-    returns:
+    returns the lists below. SQL Server keeps a pooled connection's isolation level, so the report sets its connection
+    back to READ COMMITTED before releasing it; otherwise the next request on that connection ran under SNAPSHOT and two
+    requests updating the same session row failed with an update conflict (500). The report returns:
     * availability differences: a physical warehouse's available balances vs. its `OnHandSellable`;
     * ledger differences: the posted movements of each location vs. its balance;
     * valuation differences: company stock (transit included) vs. the cost state, the cost state vs. its entries
