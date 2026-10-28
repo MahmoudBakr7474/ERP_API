@@ -1,18 +1,45 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-28. Read this first; don't re-analyse the repository.
+Last verified: 2026-10-28 (Inventory Milestone A). Read this first; don't re-analyse the repository.
 
 ## Where things stand
 - **`main` holds Identity, Organization and Catalog (2026-10-28).** With the owner's approval it was fast-forwarded
   from `383d5be` to the tip of `feature/catalog`: Catalog code `adf4a7d`, docs `bb536a0` and this handoff. Earlier,
   on 2026-10-27, it went from `67a7473` to `4b1048d` (`feature/organization`, which includes
   `feature/identity-completion`). There are no merge commits and no remote.
-- **Current branch: `main`.** Start each new module from `main` on its own `feature/...` branch. Merging into `main`
-  needs the owner's approval.
+- **Current branch: `feature/inventory`** (cut from `main` at `1a1aba1`), with Inventory Milestone A in `5dfdf1a`. It is
+  not merged: Inventory is merged only when the whole V1 backend (Milestones A and B) and its frontend are accepted.
+  Start each new module from `main` on its own `feature/...` branch. Merging into `main` needs the owner's approval.
 - Organization's approved baseline: `fde5e28` (code, tests, ADR 0013, frontend handoff).
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
 - `src/WarehouseERP.Api/Properties/launchSettings.json` is the owner's untracked file: never commit or edit it.
+
+## Inventory status
+- **Decisions:** the owner approved V1 on 2026-10-28 with corrections: `docs/modules/Inventory/V1_DECISIONS.md` (it
+  replaces the checklist proposed that day). How Milestone A implements it: `docs/adr/0015-inventory-core.md`.
+  `docs/INVENTORY_DECISIONS.md` still binds the design.
+- **Milestone A — backend done and verified (`5dfdf1a`):**
+  * stock documents (opening stock, receipt, issue, adjustment, reversal) with drafts, submit/approve/reject/cancel;
+  * approval policy per document type (seeded: opening and adjustment need approval) copied onto each document;
+    nobody approves their own document;
+  * posting in one `ITransactionRunner` transaction: warehouse `sp_getapplock`, fixed lock order, conditional updates
+    (no negative stock), numbers per type + branch + fiscal year (`RCV-<branch>-2026-000001`), `Idempotency-Key` with a
+    request fingerprint;
+  * `StockBalances`, `ProductWarehouseStock` (reserved stays 0), quantity-only `StockMovements` and the stock card;
+  * company-wide moving weighted average (`InventoryCostStates`/`InventoryCostEntries`), pending the accountant's approval;
+  * over-reservation alerts for authorized losses;
+  * Organization refuses deactivating a warehouse or location that holds stock or has a submitted document
+    (`IWarehouseStockGuard`, same lock).
+- **Schema:** `Migration04_Inventory` (schema `inventory`, 13 tables). Applied to `WarehouseERP_Dev` on 2026-10-28.
+- **Contracts changed additively:** `IProductCatalog` (+3 methods, `ProductUnitInfo`), Organization
+  `IWarehouseLocationDirectory` and `ICompanyDirectory`, OpenAPI +16 paths and a 422 on `DeactivateWarehouse`.
+- **E2E (2026-10-28):** the real host with cookie sessions on a throwaway `WarehouseERP_E2E_*` database (dropped): every
+  check passed, no 500s, no passwords in the log.
+- **Next: Milestone B** (transfers through transit, stock counts, reconciliation). Then, once the whole backend is
+  verified, `docs/modules/Inventory/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` (the owner's rule: not before).
+- **Open for the owner:** the accountant's approval of the costing method before production use, and whether batch,
+  expiry or serial tracking is needed (a pre-production dependency; tracked products are refused today).
 
 ## Organization status
 - **Backend complete and approved for V1 (2026-10-27).** The owner accepted every decision in
@@ -85,8 +112,7 @@ Last verified: 2026-10-28. Read this first; don't re-analyse the repository.
   - Radix `DirectionProvider` makes RTL correct.
   - Every module's Lovable prompt must tell Lovable to follow those conventions. Where the older
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
-- Next: Inventory, but only when the owner asks. Read `docs/INVENTORY_DECISIONS.md` first, including the
-  warehouse/location deactivation requirement above.
+- Inventory is in progress on `feature/inventory` (see Inventory status). It has no frontend yet.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -103,10 +129,10 @@ Last verified: 2026-10-28. Read this first; don't re-analyse the repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-27, LocalDB, `-m:1`, each project separately)
+## Latest verified tests (2026-10-28, `feature/inventory`, LocalDB, `-m:1`, each project separately)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 186/186 | 54/54 | 171/171 |
+| 207/207 | 69/69 | 190/190 |
 
 Build: 0 warnings, 0 errors. `has-pending-model-changes`: none.
 
@@ -140,4 +166,8 @@ The API log had no 500s and no passwords.
 - No change to existing migrations, schemas or data; no force push, reset or merge to `main` without approval.
 - Build with `-m:1` and run test projects separately. On out-of-memory run `dotnet build-server shutdown`; if every
   integration test fails at once run `sqllocaldb start MSSQLLocalDB`.
+- LocalDB starts under whichever process connects first. On 2026-10-28 a session's sandboxed test runs had started it,
+  and the dev API launched from the owner's terminal could not reach it (`/health/ready` 503 after an ~18 s timeout).
+  Running `sqllocaldb stop MSSQLLocalDB` from the session let the API start it again under the owner's account, with
+  the same databases.
 - Stage commits with explicit paths, never `launchSettings.json`.
