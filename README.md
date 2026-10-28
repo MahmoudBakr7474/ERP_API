@@ -20,6 +20,8 @@ src/
   Modules/Identity/                 same layout: users, roles, permissions, scope, sessions (ADR 0009)
   Modules/Inventory/                same layout: stock documents, posting, balances, ledger, valuation, transfers, counts,
                                     reconciliation (ADR 0015)
+  Modules/Purchasing/               same layout: suppliers, purchase requests and orders, goods receipts, supplier
+                                    invoices and returns; stock only through Inventory's IPurchaseStockPosting (ADR 0016)
 tests/
   WarehouseERP.UnitTests/           no database
   WarehouseERP.IntegrationTests/    SQL Server (LocalDB) + the real HTTP host
@@ -72,6 +74,15 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET | `/api/inventory/counts?page&pageSize&warehouseId&status`, `/counts/{id}` (lines, history) | `inventory.documents.read` + warehouse in scope |
 | POST | `/api/inventory/counts/{id}/approve` (`Idempotency-Key` header; posts the differences), `/reject` (reason) | `inventory.documents.approve` + warehouse in scope, the creator included |
 | GET | `/api/inventory/reconciliation` (differences only; never corrects) | `inventory.reconciliation.read` + company-wide |
+| GET, POST, PUT | `/api/purchasing/suppliers?page&pageSize&search&isActive&countryCode`, `/suppliers/{id}`, `/suppliers/similar?nameAr&nameEn&exceptSupplierId` (duplicate warning) / create (code fixed), update (+ `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `purchasing.suppliers.read` / `purchasing.suppliers.manage` |
+| GET, PUT | `/api/purchasing/policies`, `/policies/{documentType}` (`PurchaseRequest`, `PurchaseOrder`: `requiresApproval` + `rowVersion`) | `purchasing.documents.read` / `purchasing.settings.manage` + company-wide |
+| GET, POST, PUT | `/api/purchasing/requests?page&pageSize&warehouseId&status&orderable&search`, `/requests/{id}` / draft, update, `/{id}/submit`, `/cancel`, `/close` (reason) | `purchasing.documents.read` / `purchasing.requests.manage` + warehouse in scope |
+| GET, POST, PUT | `/api/purchasing/orders?page&pageSize&warehouseId&supplierId&status&search`, `/orders/{id}` (lines, documents, history) / draft (lines may name `purchaseRequestLineId`), update, `/{id}/submit`, `/cancel` (reason), `/close` (reason) | `purchasing.documents.read` / `purchasing.orders.manage` + warehouse in scope |
+| POST | `/api/purchasing/orders/{id}/receipts` (`Idempotency-Key` header; posts a PurchaseReceipt to stock) | `purchasing.receipts.manage` + warehouse in scope |
+| GET | `/api/purchasing/receipts?page&pageSize&warehouseId&supplierId&purchaseOrderId&search`, `/receipts/{id}` | `purchasing.documents.read` + warehouse in scope |
+| GET, POST, PUT | `/api/purchasing/invoices?page&pageSize&supplierId&purchaseOrderId&status&search&dueOnOrBefore`, `/invoices/{id}` / draft, update, `/{id}/submit`, `/post` (`Idempotency-Key`), `/cancel` | `purchasing.documents.read` / `purchasing.invoices.manage` + warehouse in scope |
+| GET, POST, PUT | `/api/purchasing/returns?page&pageSize&supplierId&purchaseOrderId&goodsReceiptId&status&withCreditClaim&search`, `/returns/{id}` / draft, update, `/{id}/submit`, `/cancel` | `purchasing.documents.read` / `purchasing.returns.manage` + warehouse in scope |
+| POST | `/api/purchasing/{requests,orders}/{id}/approve`, `/reject` (reason); `/invoices/{id}/approve`, `/returns/{id}/approve` (`Idempotency-Key`; the return posts a PurchaseReturn to stock), `/reject` | `purchasing.documents.approve` + warehouse in scope, the creator included |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
 | GET | `/api/identity/me`; POST `/api/identity/me/password`; GET `/api/identity/password-policy` | signed in |
@@ -146,7 +157,10 @@ The design-time factory reads `ERP_SQL_CONNECTION`. `Migration02_Identity` only 
 `Migration04_Inventory` adds the `inventory` schema (13 tables and the approval-policy seed). `Migration05_InventoryTransfersCounts`
 adds transfers and counts (7 tables), two nullable columns on `StockDocuments`, `IdempotencyRecords.SubjectId` (backfilled)
 and the `TransferDispatch` policy row; it changes no data. `Migration06_InventorySnapshotIsolation` only turns
-`ALLOW_SNAPSHOT_ISOLATION` on, outside a transaction (ADR 0015 *Consequences*).
+`ALLOW_SNAPSHOT_ISOLATION` on, outside a transaction (ADR 0015 *Consequences*). `Migration07_Purchasing` adds the
+`purchasing` schema (20 tables; suppliers, contacts and addresses temporal) and, on `inventory.StockDocuments` only,
+widens `CK_StockDocuments_Type` to 1–10 and adds `SourceDocumentId` (nullable, filtered unique, set exactly for
+purchase receipts and returns); it changes no data (ADR 0016 *Consequences*).
 
 ## Running the API
 
@@ -189,9 +203,12 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 9. **Known unique constraints** are mapped to business codes by name (`IX_Products_SKU`, `IX_Warehouses_BranchId_Code`); renaming an index means updating its repository map.
 10. **Stock changes only by posting**: balances, availability, movements and cost entries are written by `Application/Shared/StockDocumentPosting` in one transaction under Inventory's locks (ADR 0015), for documents, transfers and counts alike. Never update `inventory.*` rows by hand; post an adjustment or a reversal. A running count's freeze is its active `StockCountScopes` rows.
 11. **Snapshot isolation**: `Migration06` turns `ALLOW_SNAPSHOT_ISOLATION` on for the reconciliation report's consistent read; everything else keeps READ COMMITTED.
+12. **Purchasing posts stock only through Inventory**: goods receipts and supplier returns call `IPurchaseStockPosting` inside their own transaction; the PRC/PRT stock documents name their source (`SourceDocumentId`) and can't be edited or reversed in Inventory. Order, invoice and return quantities are guarded by check constraints as well as the order's row lock (ADR 0016).
+13. **Approvals**: anyone with the approval permission and the warehouse in scope approves, the creator included (`CLAUDE.md`, *Document approvals*).
 
 ## Postponed
 
 See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, the outbox/inbox (until a consumer exists, ADR 0015),
 management of tax codes, rates, product tax assignments and EGS/GS1 external item codes (Sales/e-invoicing phase,
-ADR 0014), batch/serial tracking and reservations (`docs/modules/Inventory/V1_DECISIONS.md`, ADR 0015 *Not done*).
+ADR 0014), batch/serial tracking and reservations (`docs/modules/Inventory/V1_DECISIONS.md`, ADR 0015 *Not done*),
+foreign-currency purchasing, invoice revaluation, supplier payments and accounting (ADR 0016 *Not done*).

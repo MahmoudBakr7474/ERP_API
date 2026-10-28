@@ -34,8 +34,10 @@ tests/
 Modules today: **Organization** (company, branch, warehouse, location), **Catalog** (category, unit, product,
 product unit, barcode, external item code, tax code/rate/assignment), **Identity** (users, roles and their
 permissions, user scope, sessions; authenticates every request and provides `ICurrentUser` to all modules, ADR 0009)
-and **Inventory** (stock documents and their posting, balances, availability, the movement ledger, the
-company-wide valuation, transfers through transit warehouses, stock counts and the reconciliation report, ADR 0015).
+**Inventory** (stock documents and their posting, balances, availability, the movement ledger, the
+company-wide valuation, transfers through transit warehouses, stock counts and the reconciliation report, ADR 0015)
+and **Purchasing** (suppliers, purchase requests and orders, goods receipts, supplier invoices and returns; it moves
+stock only through Inventory's `IPurchaseStockPosting`, ADR 0016).
 
 ## Dependency map
 
@@ -144,6 +146,10 @@ Inventory: `Features/{StockDocuments,Stock,Valuation,DocumentPolicies,Transfers,
 transaction is `Shared/StockDocumentPosting`, used by documents, transfers and counts),
 `Abstractions/Interfaces/{StockDocuments,Posting,Stock,Valuation,DocumentPolicies,Transfers,Counts,Reconciliation}`,
 `Errors/{StockDocument,Stock,Idempotency,Valuation,DocumentPolicy,StockTransfer,StockCount,Reconciliation,RowVersion}Errors`.
+Purchasing: `Features/{Suppliers,PurchasingPolicies,PurchaseRequests,PurchaseOrders,GoodsReceipts,SupplierInvoices,SupplierReturns}`
+(numbering, references, idempotency and scope in `Shared/`), `Abstractions/Interfaces/{Suppliers,DocumentPolicies,PurchaseRequests,
+PurchaseOrders,GoodsReceipts,SupplierInvoices,SupplierReturns,Posting}`, `Errors/{Supplier,PurchaseRequest,PurchaseOrder,GoodsReceipt,
+SupplierInvoice,SupplierReturn,DocumentPolicy,Reference,Access,StockPosting,Idempotency,RowVersion}Errors`.
 
 ### Where each type belongs
 

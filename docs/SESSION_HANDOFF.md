@@ -1,7 +1,7 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-28 (Inventory V1 accepted and merged into `main`; next module: Purchasing). Read this first;
-don't re-analyse the repository.
+Last verified: 2026-10-29 (Purchasing V1 backend complete on `feature/purchasing`, waiting for the owner's review;
+not merged). Read this first; don't re-analyse the repository.
 
 ## Where things stand
 - **`main` holds Identity, Organization, Catalog and Inventory V1 (2026-10-28).** With the owner's approval it was
@@ -12,8 +12,15 @@ don't re-analyse the repository.
 - **Remote (2026-10-28):** `origin` = `https://github.com/MahmoudBakr7474/ERP_API.git` (the owner's GitHub, used to work
   from other machines and from Claude in the cloud). `main` and `feature/inventory` are pushed with upstream tracking;
   never force-push, never push `launchSettings.json`.
-- **Current branch: `main`.** `feature/inventory` (cut from `main` at `1a1aba1`) is merged and stays on the remote
-  for reference:
+- **Current branch: `feature/purchasing`** (cut from `main` at `c791868`, local only, not pushed, not merged):
+  * `16a15ce` global self-approval rule (`CLAUDE.md`), stale "another user approves" comments fixed, README approval
+    rows corrected, `InventorySelfApprovalTests` (no Inventory behaviour change: it already allowed it since `29cbdb3`);
+  * `84e8c19` Inventory: `IPurchaseStockPosting`, stock document types `PurchaseReceipt`/`PurchaseReturn`,
+    `SourceDocumentId`;
+  * `661e0dd` the Purchasing module; `bb7fa42` `Migration07_Purchasing`; `aff0486` tests and the OpenAPI contract;
+  * the docs commit with ADR 0016, `docs/modules/Purchasing/*` and this handoff.
+  Merging into `main` needs the owner's approval.
+- `feature/inventory` (cut from `main` at `1a1aba1`) is merged and stays on the remote for reference:
   * Milestone A: `5dfdf1a` (code), `574217c` (handoff).
   * Milestone B: `cc75d3d` (code, Migration05, tests), `171f9b1` (ADR 0015), `4c3170d` (transfer destinations lookup,
     document links, Migration06), `65031c5` (Lovable prompt and frontend handoff), `b0fc930` (handoff).
@@ -26,6 +33,35 @@ don't re-analyse the repository.
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
 - `src/WarehouseERP.Api/Properties/launchSettings.json` is the owner's untracked file: never commit or edit it.
+
+## Purchasing status
+- **Decisions:** approved by the owner on 2026-10-28 with corrections: `docs/modules/Purchasing/V1_DECISIONS.md`. How
+  the code implements them: `docs/adr/0016-purchasing-module.md`. Self-approval is allowed everywhere (owner's
+  permanent rule, `CLAUDE.md` *Document approvals*); the corrections' maker-checker wording is superseded by it.
+- **Backend complete and verified (2026-10-29), waiting for the owner's review:**
+  * suppliers (temporal, unique code and registrations per jurisdiction, similar-name warning), optional purchase
+    requests that orders draw on, purchase orders (one warehouse, base currency, line discount and recoverable VAT,
+    approval policy seeded required), goods receipts posted to stock through Inventory with an `Idempotency-Key`,
+    supplier invoices matched to receipts with price-variance approval and no revaluation, approved supplier returns
+    that issue at the moving average and record a pending credit claim;
+  * 47 endpoints under `/api/purchasing`; ten new permissions in `PurchasingPermissions.All`;
+  * Inventory changed additively: `IPurchaseStockPosting`, two stock document types, `SourceDocumentId`; purchase
+    stock documents can't be drafted, edited or reversed in Inventory (`ManagedByPurchasing`); other generated types
+    now answer `TypeNotDrafted` instead of a 500.
+- **Schema:** `Migration07_Purchasing` (purchasing schema, 20 tables; on `inventory.StockDocuments` only the type check
+  1–10 and `SourceDocumentId`). Applied to throwaway databases only; **not yet applied to `WarehouseERP_Dev`** (run
+  `dotnet dotnet-ef database update`, README *Database*, before the frontend work).
+- **E2E (2026-10-29):** the real host with cookie sessions on a throwaway `WarehouseERP_E2E_Purch_*` database
+  (dropped): a scoped buyer approving their own request, order, invoice and return; a clerk (403 on approve) and an
+  approver of another warehouse (403); request → order → partial receipts with an idempotent retry → over-receipt
+  refused → invoices (exact price posts, variance needs approval, duplicate number 409, over-invoicing 422) → return
+  (2 uninvoiced + 2 invoiced, claim 41.55) → reconciliation consistent. 34/34 checks; no 500s, no passwords in the log.
+- **Frontend handoff:** `docs/modules/Purchasing/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` (screens not built yet).
+  Inventory's screens also need labels for `PurchaseReceipt`/`PurchaseReturn` and a link from `sourceDocumentId`.
+- **Production prerequisite:** the accountant approves the provisional cost treatment (receipts at the order's net
+  price, invoice variances kept without revaluation, returns at the moving average). ADR 0016 *Not done* lists the
+  deferred backlog (foreign currency, revaluation/landed cost, credit notes, payments/AP/GL, header discounts,
+  non-recoverable tax, receiving in other units, over-receipt tolerance, price lists, amount thresholds).
 
 ## Inventory status
 - **Decisions:** the owner approved V1 on 2026-10-28 with corrections: `docs/modules/Inventory/V1_DECISIONS.md`. How
@@ -163,11 +199,9 @@ don't re-analyse the repository.
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
 - The frontend's `main` is at `4a3beec` with the accepted Inventory screens. On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
-- **Next module: Purchasing (not started).**
-  * Reuse Identity, Organization, Catalog and Inventory only through their approved `*.Contracts`. Where Purchasing
-    needs something a contract doesn't offer yet, extend that contract additively.
-  * Follow `CLAUDE.md` and ADR 0011 as they are: no new architecture patterns, no redesign of existing modules.
-  * Start with Purchasing's business decisions for the owner's approval, then `feature/purchasing` from `main`.
+- **Next step: the owner reviews Purchasing on `feature/purchasing`.** Then, on approval: apply `Migration07` to
+  `WarehouseERP_Dev`, merge into `main` (owner's approval), build the Purchasing screens from the Lovable prompt.
+  Don't start Sales, POS or Accounting without the owner's request.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -181,15 +215,18 @@ don't re-analyse the repository.
 - `docs/api/openapi-v1.json` is the API contract (checked by `HostTests`). After a deliberate change, run the tests
   once with `ERP_UPDATE_OPENAPI_SNAPSHOT=1` (that run fails on purpose), review the diff, run again without it.
 - Never change Migration01–03 or existing tables. A schema change is a new migration with an explained diff.
+- **Approvals (permanent, all modules):** permission + access scope + document state decide; the creator may approve
+  their own document. Never add creator/approver comparisons (`CLAUDE.md`, *Document approvals*).
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-28, Inventory acceptance on `feature/inventory` = `main`, LocalDB, `-m:1`)
+## Latest verified tests (2026-10-29, Purchasing on `feature/purchasing`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 225/225 | 69/69 | 209/209 |
+| 236/236 | 84/84 | 221/221 |
 
-Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. `MasterDataHistoryTests` passed 30 consecutive runs
+Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. All seven migrations applied to a fresh LocalDB
+database. Earlier (Inventory acceptance, 2026-10-28): 225 / 69 / 209. `MasterDataHistoryTests` passed 30 consecutive runs
 after its fix. Frontend (`4a3beec`): Vitest 53/53, `tsc --noEmit` clean, `vite build` succeeds; ESLint reports one
 older error (the Catalog backlog item above).
 
@@ -228,5 +265,9 @@ The API log had no 500s and no passwords.
   Running `sqllocaldb stop MSSQLLocalDB` from the session let the API start it again under the owner's account, with
   the same databases.
 - Stage commits with explicit paths, never `launchSettings.json`.
+- While the owner's dev API runs from `src/WarehouseERP.Api/bin`, builds can't overwrite it: build and test with
+  `--artifacts-path D:/work/WarehouseERP/ERP_API/.artifacts` (excluded in `.git/info/exclude`; inside the repo so
+  `ApplicationLayoutTests` finds the solution). Git worktrees need a short path (`C:\Users\lenovo\AppData\Local\Temp\wtsa`
+  worked); the scratchpad path is too long for some files.
 - The frontend dev server rewrites `src/routeTree.gen.ts` with LF line endings; that line-ending-only change is never
   committed.
