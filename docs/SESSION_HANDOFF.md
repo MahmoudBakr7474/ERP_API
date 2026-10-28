@@ -1,14 +1,14 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
+Last verified: 2026-10-28. Read this first; don't re-analyse the repository.
 
 ## Where things stand
-- **`main` holds Identity and Organization (2026-10-27).** With the owner's approval it was fast-forwarded from
-  `67a7473` to `4b1048d` (`feature/organization`, which includes `feature/identity-completion`). There is no merge
-  commit and no remote.
-- Start new modules from `main` on their own `feature/...` branch. Merging into `main` needs the owner's approval.
-- **Current branch: `feature/catalog`**, cut from `main` at `383d5be`. Ancestry was checked on 2026-10-27: it holds
-  every approved Identity and Organization commit (including `63ec342`). Not merged.
+- **`main` holds Identity, Organization and Catalog (2026-10-28).** With the owner's approval it was fast-forwarded
+  from `383d5be` to the tip of `feature/catalog`: Catalog code `adf4a7d`, docs `bb536a0` and this handoff. Earlier,
+  on 2026-10-27, it went from `67a7473` to `4b1048d` (`feature/organization`, which includes
+  `feature/identity-completion`). There are no merge commits and no remote.
+- **Current branch: `main`.** Start each new module from `main` on its own `feature/...` branch. Merging into `main`
+  needs the owner's approval.
 - Organization's approved baseline: `fde5e28` (code, tests, ADR 0013, frontend handoff).
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
@@ -35,8 +35,9 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
   stock operations go live. It's recorded in ADR 0013 and `docs/INVENTORY_DECISIONS.md`.
 
 ## Catalog status
-- **Backend V1 complete (2026-10-27), on `feature/catalog`: code and tests `adf4a7d`.** The owner approved the scope and decisions before
-  implementation; they are in `docs/adr/0014-catalog-module.md` (accepted). In short:
+- **Full-stack complete and accepted for V1 (2026-10-28); on `main`.** Backend code and tests are `adf4a7d`. The owner
+  approved the scope and decisions before implementation; they are in `docs/adr/0014-catalog-module.md` (accepted).
+  In short:
   * units, categories (tree), products, product units with conversion factors, barcodes, and a barcode lookup;
   * permission-only management, with no company-wide scope; new `catalog.units.manage` and
     `catalog.categories.manage`;
@@ -48,8 +49,12 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
 - Tax codes/rates/assignments and EGS/GS1 external codes are deferred to Sales/e-invoicing; their tables are untouched.
 - No migration; `BarcodeType` moved to `Catalog.Contracts` (same `tinyint`). The OpenAPI contract changed additively
   (21 new operations).
-- **Lovable handoff done:** `docs/modules/Catalog/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md`. The frontend isn't
-  built yet.
+- **Frontend built and accepted:**
+  - Lovable built the screens from `docs/modules/Catalog/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` (frontend
+    `7e8e46d`).
+  - They were verified in the browser against a throwaway database, then reworked in the UI refresh (`afd7656`, see
+    below).
+  - The owner tested and accepted them on 2026-10-28.
 
 ## Identity status
 - Backend complete for the current milestone (ADR 0012, all decisions approved).
@@ -62,14 +67,26 @@ Last verified: 2026-10-27. Read this first; don't re-analyse the repository.
 - The ERP frontend is the Lovable project `mahmoudtaha311/screenshot-match`, cloned to `D:\ERP System\warehouse-erp-web`.
   - Stack: TanStack Start + RTK Query; Vite on `http://localhost:8080` proxies `/api` to `https://localhost:49571`.
   - Pushes to its `main` sync back into Lovable, so never rewrite its history.
-  - It has the App Shell, sign-in, the Organization screens and, since `86dc682`, the Identity administration screens.
+  - It has the App Shell, sign-in, the Organization screens, the Identity administration screens (`86dc682`) and the
+    Catalog screens (`7e8e46d`).
   - The Identity screens were checked in the browser on 2026-10-27 against a throwaway database. Creating roles and
     users, the role 409, own-row limits, the security log, change password, my sessions and the employee view all
     behaved as specified.
-- **2026-10-27: the owner tested both modules on `WarehouseERP_Dev` and accepted them.** Identity and Organization
-  are full-stack complete for V1.
-- Next: the owner reviews Catalog, then pastes `docs/modules/Catalog/LOVABLE_PROMPT.md` into the same Lovable project.
-  Merging `feature/catalog` into `main` needs approval. Don't start Inventory.
+- **2026-10-27: the owner tested Identity and Organization on `WarehouseERP_Dev` and accepted them.**
+- **UI refresh `afd7656` (2026-10-28, owner's request; accepted). The rules are in the frontend repo's `AGENTS.md`,
+  "UI conventions":**
+  - Every add and edit opens in a modal (`FormDialog`). Detail pages are read-only with Edit buttons, and there are no
+    `/new` pages.
+  - Activate/deactivate, delete, unlock and end-session ask first with SweetAlert2.
+  - Tables and pages are full width, with icon row actions.
+  - The sidebar has one collapsible group per module.
+  - The role editor shows translated permission labels only.
+  - Edit dialogs fill from a fetch made after they open (`useLatestRecord`).
+  - Radix `DirectionProvider` makes RTL correct.
+  - Every module's Lovable prompt must tell Lovable to follow those conventions. Where the older
+    `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
+- Next: Inventory, but only when the owner asks. Read `docs/INVENTORY_DECISIONS.md` first, including the
+  warehouse/location deactivation requirement above.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
