@@ -1,21 +1,27 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-28 (Inventory Milestones A and B, backend complete). Read this first; don't re-analyse the
-repository.
+Last verified: 2026-10-28 (Inventory V1 accepted and merged into `main`; next module: Purchasing). Read this first;
+don't re-analyse the repository.
 
 ## Where things stand
-- **`main` holds Identity, Organization and Catalog (2026-10-28).** With the owner's approval it was fast-forwarded
-  from `383d5be` to the tip of `feature/catalog`: Catalog code `adf4a7d`, docs `bb536a0` and this handoff. Earlier,
-  on 2026-10-27, it went from `67a7473` to `4b1048d` (`feature/organization`, which includes
+- **`main` holds Identity, Organization, Catalog and Inventory V1 (2026-10-28).** With the owner's approval it was
+  fast-forwarded from `1a1aba1` to the tip of `feature/inventory` (Inventory code, tests, docs and this handoff).
+  Earlier on 2026-10-28 it went from `383d5be` to the tip of `feature/catalog` (Catalog code `adf4a7d`, docs
+  `bb536a0`), and on 2026-10-27 from `67a7473` to `4b1048d` (`feature/organization`, which includes
   `feature/identity-completion`). There are no merge commits.
 - **Remote (2026-10-28):** `origin` = `https://github.com/MahmoudBakr7474/ERP_API.git` (the owner's GitHub, used to work
   from other machines and from Claude in the cloud). `main` and `feature/inventory` are pushed with upstream tracking;
   never force-push, never push `launchSettings.json`.
-- **Current branch: `feature/inventory`** (cut from `main` at `1a1aba1`). Milestone A: `5dfdf1a` (code), `574217c`
-  (handoff). Milestone B: `cc75d3d` (code, Migration05, tests), `171f9b1` (ADR 0015), `4c3170d` (transfer destinations
-  lookup, document links, Migration06), `65031c5` (Lovable prompt and frontend handoff). It is not merged: Inventory is
-  merged only when its frontend is accepted too. Start each new module from `main` on its own `feature/...` branch.
-  Merging into `main` needs the owner's approval.
+- **Current branch: `main`.** `feature/inventory` (cut from `main` at `1a1aba1`) is merged and stays on the remote
+  for reference:
+  * Milestone A: `5dfdf1a` (code), `574217c` (handoff).
+  * Milestone B: `cc75d3d` (code, Migration05, tests), `171f9b1` (ADR 0015), `4c3170d` (transfer destinations lookup,
+    document links, Migration06), `65031c5` (Lovable prompt and frontend handoff), `b0fc930` (handoff).
+  * Acceptance: `29cbdb3` (approvers may approve their own work), `d862b15` (timestamps read back as UTC), `9e8ce50`
+    (reconciliation resets its connection to READ COMMITTED), `a88a0fe` (history test flake), `3b90f85` (transfer
+    scope test), `c29a6a9` (production prerequisites in ADR 0015) and this handoff.
+  * Start each new module from `main` on its own `feature/...` branch. Merging into `main` needs the owner's
+    approval.
 - Organization's approved baseline: `fde5e28` (code, tests, ADR 0013, frontend handoff).
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
@@ -25,6 +31,21 @@ repository.
 - **Decisions:** the owner approved V1 on 2026-10-28 with corrections: `docs/modules/Inventory/V1_DECISIONS.md`. How
   Milestones A and B implement it: `docs/adr/0015-inventory-core.md` (decisions 1–15 and 16–24).
   `docs/INVENTORY_DECISIONS.md` still binds the design.
+- **Accepted for V1 and merged into `main` (2026-10-28).** The owner approved the result of the acceptance gate:
+  * Frontend: the Lovable screens are on the frontend's `main` at `4a3beec`, with the review fixes from
+    mahmoudtaha311/screenshot-match#1 (Approve shown to the creator, receive column, missing translations, warehouse
+    and transit pickers).
+  * Owner's decision (2026-10-28): anyone with `inventory.documents.approve` and the warehouse in scope approves a
+    document, transfer or count, their own included; the `SelfApproval` error codes are withdrawn (ADR 0015 decision 9,
+    `V1_DECISIONS.md` section 6).
+  * Fixed during the screen review: Inventory timestamps came back without "Z" and showed 3 hours early (`d862b15`);
+    the reconciliation report left its pooled connection at SNAPSHOT, so a later session update failed with an update
+    conflict and a 500 (`9e8ce50`).
+  * Frontend integration on `WarehouseERP_Dev`, through the Vite proxy: core-workflow smoke 17/17 (receipt and issue
+    with an idempotent retry, transfer with a partial receipt by the STORE storekeeper, count with a variance approved
+    by the approver, balances, valuation and reconciliation, 401, XSRF and scoped 403s). The frontend's calls match
+    `docs/api/openapi-v1.json` (88 checks: paths, methods, query parameters, bodies, `Idempotency-Key`), and all 84
+    Inventory error codes have translations.
 - **Backend complete and verified (Milestones A and B).**
   * Milestone A (`5dfdf1a`): stock documents (opening, receipt, issue, adjustment, reversal) with drafts and
     submit/approve/reject/cancel; approval policy per type; posting in one `ITransactionRunner` transaction with
@@ -50,14 +71,24 @@ repository.
   Milestone A, then Milestone B with an approver, a source-scoped sender and a destination-scoped storekeeper (transfer,
   partial receipt, retry, loss, count with freeze, freeze at the destination, reconciliation with stock in transit).
   Every check passed, no 500s, no passwords in the log.
-- **Frontend handoff ready (`65031c5`):** `docs/modules/Inventory/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md`, written
-  for the frontend's `AGENTS.md` UI conventions. Next: the owner runs the prompt in Lovable, then the screens are
-  checked against the API.
-- **Open for the owner:** the accountant's approval of the costing method (including receipt reversal at the average)
-  before production use; whether batch, expiry or serial tracking is needed (a pre-production dependency; tracked
-  products are refused today); a DBA must allow `ALLOW_SNAPSHOT_ISOLATION` on production.
-- **Limitations (ADR 0015 *Not done*):** no reservations, outbox or general ledger; receipts of transfers in base
-  units; a dispatched transfer can't be cancelled; counts have no blind mode; reconciliation is on demand only.
+- **Frontend handoff (`65031c5`):** `docs/modules/Inventory/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md`, written for
+  the frontend's `AGENTS.md` UI conventions. The screens were built from them and accepted (above).
+- **Production prerequisites** (not development blockers; ADR 0015 *Production prerequisites*):
+  1. The accountant approves the moving weighted average and receipt reversal at the current average.
+  2. Batch, expiry and serial support is built before products that need tracking are processed (they are refused
+     today).
+  3. `ALLOW_SNAPSHOT_ISOLATION` is on and verified on the production SQL Server (`Migration06`;
+     `snapshot_isolation_state_desc` = `ON`). It is `ON` on `WarehouseERP_Dev`.
+- **Deferred backlog** (recorded, not started; implement only on the owner's request):
+  * stock reservations for Sales/POS;
+  * outbox integration;
+  * general-ledger integration;
+  * cancelling a transfer after dispatch (today: receive it or close it);
+  * blind stock counting;
+  * scheduled reconciliation (today: on demand, no stored history);
+  * the existing frontend lint error in `src/features/catalog/rules.ts` (`no-useless-escape`).
+  Other V1 limits (ADR 0015 *Not done*): transfer receipts are entered in base units; counts cover available stock
+  without lots.
 
 ## Organization status
 - **Backend complete and approved for V1 (2026-10-27).** The owner accepted every decision in
@@ -130,8 +161,13 @@ repository.
   - Radix `DirectionProvider` makes RTL correct.
   - Every module's Lovable prompt must tell Lovable to follow those conventions. Where the older
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
-- Inventory's backend is complete on `feature/inventory` (see Inventory status); its frontend is next, from
-  `docs/modules/Inventory/LOVABLE_PROMPT.md`.
+- The frontend's `main` is at `4a3beec` with the accepted Inventory screens. On this machine the frontend is cloned to
+  `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
+- **Next module: Purchasing (not started).**
+  * Reuse Identity, Organization, Catalog and Inventory only through their approved `*.Contracts`. Where Purchasing
+    needs something a contract doesn't offer yet, extend that contract additively.
+  * Follow `CLAUDE.md` and ADR 0011 as they are: no new architecture patterns, no redesign of existing modules.
+  * Start with Purchasing's business decisions for the owner's approval, then `feature/purchasing` from `main`.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -148,12 +184,14 @@ repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-28, `feature/inventory`, LocalDB, `-m:1`, each project separately)
+## Latest verified tests (2026-10-28, Inventory acceptance on `feature/inventory` = `main`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 225/225 | 69/69 | 207/207 |
+| 225/225 | 69/69 | 209/209 |
 
-Build: 0 warnings, 0 errors. `has-pending-model-changes`: none.
+Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. `MasterDataHistoryTests` passed 30 consecutive runs
+after its fix. Frontend (`4a3beec`): Vitest 53/53, `tsc --noEmit` clean, `vite build` succeeds; ESLint reports one
+older error (the Catalog backlog item above).
 
 The real host was also checked end to end for Catalog on a throwaway LocalDB database, then dropped:
 - cookie sessions;
@@ -190,3 +228,5 @@ The API log had no 500s and no passwords.
   Running `sqllocaldb stop MSSQLLocalDB` from the session let the API start it again under the owner's account, with
   the same databases.
 - Stage commits with explicit paths, never `launchSettings.json`.
+- The frontend dev server rewrites `src/routeTree.gen.ts` with LF line endings; that line-ending-only change is never
+  committed.
