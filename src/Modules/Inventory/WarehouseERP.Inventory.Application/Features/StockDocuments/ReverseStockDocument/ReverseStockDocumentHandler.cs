@@ -8,8 +8,9 @@ using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Inventory.Application.Features.StockDocuments.ReverseStockDocument;
 
-// Someone who manages the posted document's type creates its reversal, submitted for approval at once; another user
-// approves it. One reversal per document (the database guards it when two requests race).
+// Someone who manages the posted document's type creates its reversal, submitted for approval at once; any approver
+// with the warehouse in scope approves it, its creator included. One reversal per document (the database guards it when
+// two requests race).
 public sealed partial class ReverseStockDocumentHandler(
     IStockDocumentRepository documents, ICurrentUser currentUser, TimeProvider clock, ILogger<ReverseStockDocumentHandler> logger)
     : ICommandHandler<ReverseStockDocumentCommand, Guid>

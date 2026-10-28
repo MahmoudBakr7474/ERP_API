@@ -28,6 +28,17 @@
 - CQRS as separate reads/writes; do not add an unnecessary mediator, event bus, generic repository, or microservice.
 - Outbox/Inbox for reliable integration when needed. Distinguish Domain Events from Integration Events and enforce idempotency.
 
+## Document approvals (all modules, permanent owner decision 2026-10-28)
+- **Document self-approval is allowed throughout WarehouseERP. Approval authorization is determined by granted
+  permissions, applicable access scopes and valid document state, not by whether the approver created the document.**
+- Never compare the approver with the creator or submitter, and never add `SelfApproval`-style errors, job-title or
+  role-name checks, or "administrators only" rules. A user without the approval permission still gets 403; warehouse or
+  branch scope still applies.
+- Whether a document *requires* approval (configurable policies) is separate from *who* may approve it. Keep approval
+  states, `CreatedBy`/`SubmittedBy`/`ApprovedBy`, approval timestamps and the action history: the same user id in
+  creator and approver is legitimate. Every approval is recorded under the real authenticated user.
+- Sales, POS, Accounting and every future module follow this rule.
+
 ## Application Layer Organization & Vertical Slice Conventions
 Permanent standard for every module (Identity, Organization, Catalog, Inventory, Purchasing, Sales, POS, Accounting).
 Full rules, the "where each type belongs" table and the enforcing tests: `docs/ARCHITECTURE.md` → *Application

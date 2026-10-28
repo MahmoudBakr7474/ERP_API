@@ -92,6 +92,10 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
    * Anyone with `documents.approve` and the warehouse in scope approves, their own document, transfer or count
      included. The owner withdrew the first rule, that nobody approves what they created (`SelfApproval`), on
      2026-10-28: a small team often has one administrator, and keeping the roles apart still separates the duties.
+     On 2026-10-28 the owner made this a permanent rule for every module (`CLAUDE.md`, *Document approvals*):
+     approval is decided by the granted permission, the access scope and the document's state, never by who created
+     it. `InventorySelfApprovalTests` covers it on SQL Server for a warehouse-scoped user without company-wide access:
+     their own count (with its count adjustment), adjustment and the reversal of that adjustment.
    * Every step is a `StockDocumentEvent` (who, when, note).
 10. **Reversal.** `POST /documents/{id}/reverse` creates a `Reversal` already submitted, with the posted lines turned
     the other way. Only one reversal can be open per document (filtered unique index). A reversal can't be reversed,

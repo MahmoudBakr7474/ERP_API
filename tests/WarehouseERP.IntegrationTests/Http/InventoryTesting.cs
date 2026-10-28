@@ -9,7 +9,7 @@ namespace WarehouseERP.IntegrationTests.Http;
 
 /// <summary>
 /// Shared steps for the Inventory API tests. Each test builds its own branch, warehouse and products, since the tests
-/// share one database; two users are needed because nobody approves their own document.
+/// share one database. Approvers may approve their own documents; a second user shows that anyone with the permission can.
 /// </summary>
 internal static class InventoryTesting
 {

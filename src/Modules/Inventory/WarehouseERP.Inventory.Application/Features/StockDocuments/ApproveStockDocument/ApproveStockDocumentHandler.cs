@@ -8,7 +8,7 @@ using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Inventory.Application.Features.StockDocuments.ApproveStockDocument;
 
-// An approver (endpoint permission, warehouse scope) who did not create the submitted document approves it, which posts it.
+// An approver (endpoint permission, warehouse scope), its creator included, approves the submitted document, which posts it.
 public sealed class ApproveStockDocumentHandler(
     IStockDocumentRepository documents, StockDocumentPosting posting, ICurrentUser currentUser)
     : ICommandHandler<ApproveStockDocumentCommand, PostedDocumentResponse>

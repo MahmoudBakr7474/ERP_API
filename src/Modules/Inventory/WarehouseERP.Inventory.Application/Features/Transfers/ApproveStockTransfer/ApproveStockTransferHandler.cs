@@ -8,7 +8,7 @@ using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Inventory.Application.Features.Transfers.ApproveStockTransfer;
 
-// An approver with the source warehouse in scope, who did not create the submitted transfer, approves it: it dispatches.
+// An approver with the source warehouse in scope, its creator included, approves the submitted transfer: it dispatches.
 public sealed class ApproveStockTransferHandler(
     IStockTransferRepository transfers, TransferDispatching dispatching, ICurrentUser currentUser)
     : ICommandHandler<ApproveStockTransferCommand, StockTransferPostedResponse>

@@ -13,7 +13,7 @@ using WarehouseERP.SharedKernel.Results;
 namespace WarehouseERP.Inventory.Application.Features.Transfers.CloseStockTransfer;
 
 // What never arrived is not cleared from a number: a loss adjustment out of the transfer's transit location is submitted
-// for approval and receiving stops. Approving that adjustment (another user) closes the transfer; cancelling it lets
+// for approval and receiving stops. Approving that adjustment (any approver, its creator included) closes the transfer; cancelling it lets
 // receiving go on. Returns the adjustment's id.
 public sealed partial class CloseStockTransferHandler(
     IStockTransferRepository transfers, IStockDocumentRepository documents, StockReferences references,

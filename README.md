@@ -57,7 +57,7 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | POST, PUT | `/api/inventory/documents` (draft: `documentType`, `warehouseId`, lines), `/documents/{id}` (draft + `rowVersion`) | `inventory.<type>.manage` (`opening`, `receipts`, `issues`, `adjustments`) + warehouse in scope |
 | GET | `/api/inventory/documents?page&pageSize&warehouseId&documentType&status&search`, `/documents/{id}` (lines, history) | `inventory.documents.read` + warehouse in scope |
 | POST | `/api/inventory/documents/{id}/submit`, `/post` (`Idempotency-Key` header), `/cancel`, `/reverse` | `inventory.<type>.manage` + warehouse in scope |
-| POST | `/api/inventory/documents/{id}/approve` (`Idempotency-Key` header; posts it), `/reject` (reason) | `inventory.documents.approve` + warehouse in scope, never the creator |
+| POST | `/api/inventory/documents/{id}/approve` (`Idempotency-Key` header; posts it), `/reject` (reason) | `inventory.documents.approve` + warehouse in scope, the creator included |
 | GET | `/api/inventory/balances`, `/availability`, `/movements?productId&warehouseId` (stock card), `/over-reservations` | `inventory.stock.read` + warehouse in scope |
 | GET | `/api/inventory/valuation?productId`, `/valuation/{productId}/entries` | `inventory.valuation.read` |
 | GET, PUT | `/api/inventory/document-policies`, `/document-policies/{documentType}` (`requiresApproval` + `rowVersion`) | `inventory.documents.read` / `inventory.settings.manage` + company-wide |
@@ -65,12 +65,12 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET | `/api/inventory/transfers?page&pageSize&warehouseId&status&search`, `/transfers/{id}` (lines, documents, history) | `inventory.documents.read` + source or destination in scope |
 | GET | `/api/inventory/transfers/destinations` (every active physical warehouse, beyond the user's scope) | `inventory.transfers.manage` |
 | POST | `/api/inventory/transfers/{id}/submit`, `/cancel`, `/dispatch` (`Idempotency-Key` header) | `inventory.transfers.manage` + source in scope |
-| POST | `/api/inventory/transfers/{id}/approve` (`Idempotency-Key` header; dispatches it), `/reject` (reason) | `inventory.documents.approve` + source in scope, never the creator |
+| POST | `/api/inventory/transfers/{id}/approve` (`Idempotency-Key` header; dispatches it), `/reject` (reason) | `inventory.documents.approve` + source in scope, the creator included |
 | POST | `/api/inventory/transfers/{id}/receive` (`Idempotency-Key` header; base quantity per line) | `inventory.transfers.receive` + destination in scope |
 | POST | `/api/inventory/transfers/{id}/close` (reason; submits the loss adjustment for what never arrived) | `inventory.transfers.manage` + source or destination in scope |
 | POST, PUT | `/api/inventory/counts` (`warehouseId`, `locationIds`, none for the whole warehouse), `/counts/{id}/start`, `PUT /counts/{id}/lines`, `/submit`, `/cancel` | `inventory.counts.manage` + warehouse in scope |
 | GET | `/api/inventory/counts?page&pageSize&warehouseId&status`, `/counts/{id}` (lines, history) | `inventory.documents.read` + warehouse in scope |
-| POST | `/api/inventory/counts/{id}/approve` (`Idempotency-Key` header; posts the differences), `/reject` (reason) | `inventory.documents.approve` + warehouse in scope, never the creator |
+| POST | `/api/inventory/counts/{id}/approve` (`Idempotency-Key` header; posts the differences), `/reject` (reason) | `inventory.documents.approve` + warehouse in scope, the creator included |
 | GET | `/api/inventory/reconciliation` (differences only; never corrects) | `inventory.reconciliation.read` + company-wide |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
