@@ -13,6 +13,7 @@ using WarehouseERP.Inventory.Application.Features.Transfers.CreateStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.DispatchStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.GetStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.ListStockTransfers;
+using WarehouseERP.Inventory.Application.Features.Transfers.ListTransferDestinations;
 using WarehouseERP.Inventory.Application.Features.Transfers.ReceiveStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.RejectStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.SubmitStockTransfer;
@@ -24,6 +25,7 @@ namespace WarehouseERP.Inventory.Presentation;
 
 // Transfers between warehouses through a transit warehouse. The source warehouse's people prepare and dispatch, the
 // destination's receive; approving needs the approval permission; the handlers check which warehouse must be in scope.
+// The destinations lookup lists every active physical warehouse: a sender may ship outside their own scope.
 internal static class StockTransferEndpoints
 {
     public const string Route = "/api/inventory/transfers";
@@ -45,6 +47,12 @@ internal static class StockTransferEndpoints
             .WithName("ListStockTransfers")
             .Produces<PagedResult<StockTransferSummaryResponse>>()
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        group.MapGet("/destinations", ListDestinationsAsync)
+            .RequireAuthorization(InventoryPermissions.TransfersManage)
+            .WithName("ListTransferDestinations")
+            .Produces<IReadOnlyList<TransferDestinationResponse>>()
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
         group.MapGet("/{id:guid}", GetAsync)
@@ -137,6 +145,10 @@ internal static class StockTransferEndpoints
         IQueryHandler<ListStockTransfersQuery, PagedResult<StockTransferSummaryResponse>> handler, CancellationToken ct,
         int page = 1, int? pageSize = null, Guid? warehouseId = null, StockTransferStatus? status = null, string? search = null) =>
         (await handler.HandleAsync(new ListStockTransfersQuery(page, pageSize, warehouseId, status, search), ct)).ToHttpResult(TypedResults.Ok);
+
+    private static async Task<IResult> ListDestinationsAsync(
+        IQueryHandler<ListTransferDestinationsQuery, IReadOnlyList<TransferDestinationResponse>> handler, CancellationToken ct) =>
+        (await handler.HandleAsync(new ListTransferDestinationsQuery(), ct)).ToHttpResult(TypedResults.Ok);
 
     private static async Task<IResult> GetAsync(
         Guid id, IQueryHandler<GetStockTransferQuery, StockTransferDetailsResponse> handler, CancellationToken ct) =>

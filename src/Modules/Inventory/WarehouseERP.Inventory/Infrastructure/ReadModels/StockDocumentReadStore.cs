@@ -32,7 +32,7 @@ internal sealed class StockDocumentReadStore(DbContext db, ReferenceNames names)
             productIds: lines.Select(l => l.ProductId),
             productUnitIds: lines.Select(l => l.ProductUnitId),
             warehouseIds: [document.WarehouseId],
-            locationIds: lines.Select(LocationOf),
+            locationIds: lines.Select(LocationOf).Concat(lines.Select(MovedFrom).OfType<Guid>()),
             userIds: document.Events.Select(e => e.UserId)
                 .Append(document.CreatedByUserId).Append(document.PostedByUserId).Append(document.ApprovedByUserId),
             ct: ct);
@@ -40,14 +40,16 @@ internal sealed class StockDocumentReadStore(DbContext db, ReferenceNames names)
         return new StockDocumentDetailsResponse(
             document.Id, StockDocumentNumbers.DraftReference(document.DraftNumber), document.Number, document.DocumentType,
             document.Status, document.WarehouseId, lookup.WarehouseCode(document.WarehouseId), document.BranchId,
-            document.RequiresApproval, document.ReversalOfDocumentId, reversedBy, document.AdjustmentReason,
+            document.RequiresApproval, document.ReversalOfDocumentId, reversedBy, document.TransferId, document.CountId,
+            document.AdjustmentReason,
             document.ExternalReference, document.Notes, document.CreatedAtUtc, document.CreatedByUserId,
             lookup.UserName(document.CreatedByUserId), document.PostedAtUtc, lookup.UserName(document.PostedByUserId),
             lookup.UserName(document.ApprovedByUserId), Convert.ToBase64String(document.RowVersion),
             lines.Select(l => new StockDocumentLineResponse(
                 l.Id, l.LineNumber, l.ProductId, lookup.Sku(l.ProductId), lookup.ProductName(l.ProductId), l.ProductUnitId,
                 l.UnitId, lookup.UnitCode(l.ProductUnitId), l.ConversionFactor, l.Quantity, l.BaseQuantity,
-                lookup.BaseUnitCode(l.ProductId), l.Direction, l.UnitCost, LocationOf(l), lookup.LocationCode(LocationOf(l))))
+                lookup.BaseUnitCode(l.ProductId), l.Direction, l.UnitCost, LocationOf(l), lookup.LocationCode(LocationOf(l)),
+                MovedFrom(l), MovedFrom(l) is { } from ? lookup.LocationCode(from) : null))
                 .ToList(),
             document.Events.OrderBy(e => e.Id)
                 .Select(e => new StockDocumentEventResponse(e.Action, e.UserId, lookup.UserName(e.UserId), e.AtUtc, e.Note))
@@ -125,6 +127,9 @@ internal sealed class StockDocumentReadStore(DbContext db, ReferenceNames names)
     // An ordinary line has one allocation, on one side.
     private static Guid LocationOf(StockDocumentLine line) =>
         line.Allocations.Select(a => a.ToLocationId ?? a.FromLocationId).First()!.Value;
+
+    private static Guid? MovedFrom(StockDocumentLine line) =>
+        line.Direction == StockDirection.Move ? line.Allocations[0].FromLocationId : null;
 
     // "DR-000123", "dr-123" or "123" find draft 123.
     private static int? DraftNumberOf(string search)

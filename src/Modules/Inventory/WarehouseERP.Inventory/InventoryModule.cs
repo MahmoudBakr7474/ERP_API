@@ -53,6 +53,7 @@ using WarehouseERP.Inventory.Application.Features.Transfers.CreateStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.DispatchStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.GetStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.ListStockTransfers;
+using WarehouseERP.Inventory.Application.Features.Transfers.ListTransferDestinations;
 using WarehouseERP.Inventory.Application.Features.Transfers.ReceiveStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.RejectStockTransfer;
 using WarehouseERP.Inventory.Application.Features.Transfers.SubmitStockTransfer;
@@ -107,6 +108,7 @@ public static class InventoryModule
         services.AddCommandHandler<UpdateStockTransferCommand, string, UpdateStockTransferHandler>();
         services.AddQueryHandler<GetStockTransferQuery, StockTransferDetailsResponse, GetStockTransferHandler>();
         services.AddQueryHandler<ListStockTransfersQuery, PagedResult<StockTransferSummaryResponse>, ListStockTransfersHandler>();
+        services.AddQueryHandler<ListTransferDestinationsQuery, IReadOnlyList<TransferDestinationResponse>, ListTransferDestinationsHandler>();
         services.AddCommandHandler<SubmitStockTransferCommand, string, SubmitStockTransferHandler>();
         services.AddCommandHandler<RejectStockTransferCommand, string, RejectStockTransferHandler>();
         services.AddCommandHandler<CancelStockTransferCommand, string, CancelStockTransferHandler>();

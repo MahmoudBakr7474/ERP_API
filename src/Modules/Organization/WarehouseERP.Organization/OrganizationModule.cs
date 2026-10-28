@@ -75,6 +75,7 @@ public static class OrganizationModule
         services.AddScoped<WarehouseDirectory>();
         services.AddScoped<IWarehouseDirectory>(sp => sp.GetRequiredService<WarehouseDirectory>());
         services.AddScoped<IBranchDirectory>(sp => sp.GetRequiredService<WarehouseDirectory>());
+        services.AddScoped<IWarehouseListing>(sp => sp.GetRequiredService<WarehouseDirectory>());
         services.AddScoped<IWarehouseLocationDirectory, WarehouseLocationDirectory>();
         services.AddScoped<ICompanyDirectory, CompanyDirectory>();
         services.AddScoped<ITransitLocations, TransitLocations>();

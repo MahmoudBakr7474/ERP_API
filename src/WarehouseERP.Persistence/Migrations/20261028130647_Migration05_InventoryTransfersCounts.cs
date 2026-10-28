@@ -602,17 +602,11 @@ namespace WarehouseERP.Persistence.Migrations
                 principalSchema: "inventory",
                 principalTable: "StockTransfers",
                 principalColumn: "Id");
-
-            // The reconciliation report reads every table in one SNAPSHOT transaction so concurrent postings cannot show
-            // as false differences. Readers and writers otherwise keep READ COMMITTED; ALTER DATABASE cannot run inside
-            // the migration's transaction and waits for open transactions to finish.
-            migrationBuilder.Sql("ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON;", suppressTransaction: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql("ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION OFF;", suppressTransaction: true);
 
             migrationBuilder.DropForeignKey(
                 name: "FK_StockDocuments_StockCounts_CountId",

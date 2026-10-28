@@ -147,12 +147,16 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
       transit location is deactivated.
     * Who: the source side drafts, edits, submits, cancels, dispatches and approves; the destination side receives;
       either side reads and closes. Lists show transfers with either warehouse in the user's scope.
+    * `GET /transfers/destinations` (`transfers.manage`) lists every active physical warehouse with its names and
+      branch code, through Organization's `IWarehouseListing`: Organization's own list shows only the user's scope, and
+      a sender must be able to name a destination outside it. It lists names only; receiving there still needs the
+      destination in scope.
 17. **Generated documents.** `TransferDispatch` (TRF, source branch), `TransferReceipt` (TRR, destination branch) and
     `CountAdjustment` (CNT) are created and posted only by their transfer or count, which carries the approval
     (`MarkPostedGenerated`, no creator check of their own). Transfer documents use the new `Move` direction (one
-    allocation from a place to another). They point back through `StockDocuments.TransferId`/`CountId`, can't be
-    edited (`LinkedLinesFixed`) and can't be reversed (`NotReversible`): an error is corrected by a new transfer, an
-    adjustment or a new count.
+    allocation from a place to another). They point back through `StockDocuments.TransferId`/`CountId` (also in the
+    document's details, with `fromLocationId`/`fromLocationCode` on a move line), can't be edited (`LinkedLinesFixed`)
+    and can't be reversed (`NotReversible`): an error is corrected by a new transfer, an adjustment or a new count.
 18. **What never arrives.** `POST /transfers/{id}/close` (reason, notes) submits an `Adjustment` in the transit
     warehouse for every outstanding quantity, out of the transfer's transit location, and puts the transfer in
     `Closing` (receiving stops). Approving that adjustment like any other (`documents.approve`, not its creator, the
@@ -182,7 +186,7 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
       document.
 20. **Reconciliation.** `GET /api/inventory/reconciliation` (`reconciliation.read`, company-wide only). It reads
     balances, availability, movements, cost states, cost entries and transfers in one `SNAPSHOT` transaction
-    (`Migration05` turns `ALLOW_SNAPSHOT_ISOLATION` on; everything else keeps READ COMMITTED), compares in memory and
+    (`Migration06` turns `ALLOW_SNAPSHOT_ISOLATION` on; everything else keeps READ COMMITTED), compares in memory and
     returns:
     * availability differences: a physical warehouse's available balances vs. its `OnHandSellable`;
     * ledger differences: the posted movements of each location vs. its balance;
@@ -194,7 +198,8 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
 
     It never writes. Reserved totals join it once reservations exist.
 21. **Organization.** `Organization.Contracts.ITransitLocations` opens a transfer's location in a transit warehouse
-    and retires it; it joins the caller's unit of work. The guard (decision 13) also counts open transfers (submitted,
+    and retires it; it joins the caller's unit of work. `IWarehouseListing` lists active warehouses of a type with
+    their names, whatever the caller's scope (decision 16). The guard (decision 13) also counts open transfers (submitted,
     in transit, partially received, closing) on any of their three warehouses, transfers waiting to pick from a
     location, and running counts.
 22. **Valuation of transfers.** Dispatch and receipt create no cost entry: company quantity and value include stock in
@@ -218,12 +223,16 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
   alternate key.
 * `Migration05_InventoryTransfersCounts` adds 7 tables and 30 indexes, `StockDocuments.TransferId`/`CountId`,
   `IdempotencyRecords.SubjectId` (backfilled from `DocumentId`, which becomes nullable), widened check constraints
-  (document types 1–8, direction `Move`), the `TransferDispatch` policy row, and `ALLOW_SNAPSHOT_ISOLATION ON` (outside
-  the migration's transaction; a DBA must allow it on production). Nothing existing is dropped or rewritten.
+  (document types 1–8, direction `Move`) and the `TransferDispatch` policy row. Nothing existing is dropped or
+  rewritten.
+* `Migration06_InventorySnapshotIsolation` only runs `ALTER DATABASE CURRENT SET ALLOW_SNAPSHOT_ISOLATION ON`. It is
+  alone because it can't run in a migration's transaction (EF's advice: a failure can't leave a migration half
+  applied). It waits for open transactions; a DBA must allow it on a shared production server.
 * The OpenAPI contract grew additively: Milestone A 16 paths (tags `StockDocuments`, `Stock`, `Valuation`,
-  `DocumentPolicies`) and a 422 on `DeactivateWarehouse`; Milestone B 18 paths (tags `StockTransfers`, `StockCounts`,
-  `Reconciliation`), 38 schemas, and new enum members (`StockDocumentType` `TransferDispatch`, `TransferReceipt`,
-  `CountAdjustment`; `StockDirection` `Move`), which clients must accept.
+  `DocumentPolicies`) and a 422 on `DeactivateWarehouse`; Milestone B 19 paths (tags `StockTransfers`, `StockCounts`,
+  `Reconciliation`), 39 schemas, new properties on `StockDocumentDetailsResponse` (`transferId`, `countId`) and
+  `StockDocumentLineResponse` (`fromLocationId`, `fromLocationCode`), and new enum members (`StockDocumentType`
+  `TransferDispatch`, `TransferReceipt`, `CountAdjustment`; `StockDirection` `Move`), which clients must accept.
 * **Deviations from earlier ADRs:**
   * ADR 0004 sketched `ITransactionRunner` with lock names as a parameter. Locks are taken by the module that owns
     their names (Inventory's are private to it), so the port only runs the transaction.

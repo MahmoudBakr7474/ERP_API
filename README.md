@@ -63,6 +63,7 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET, PUT | `/api/inventory/document-policies`, `/document-policies/{documentType}` (`requiresApproval` + `rowVersion`) | `inventory.documents.read` / `inventory.settings.manage` + company-wide |
 | POST, PUT | `/api/inventory/transfers` (draft: `sourceWarehouseId`, `destinationWarehouseId`, optional `transitWarehouseId`, lines), `/transfers/{id}` (draft + `rowVersion`) | `inventory.transfers.manage` + source in scope |
 | GET | `/api/inventory/transfers?page&pageSize&warehouseId&status&search`, `/transfers/{id}` (lines, documents, history) | `inventory.documents.read` + source or destination in scope |
+| GET | `/api/inventory/transfers/destinations` (every active physical warehouse, beyond the user's scope) | `inventory.transfers.manage` |
 | POST | `/api/inventory/transfers/{id}/submit`, `/cancel`, `/dispatch` (`Idempotency-Key` header) | `inventory.transfers.manage` + source in scope |
 | POST | `/api/inventory/transfers/{id}/approve` (`Idempotency-Key` header; dispatches it), `/reject` (reason) | `inventory.documents.approve` + source in scope, never the creator |
 | POST | `/api/inventory/transfers/{id}/receive` (`Idempotency-Key` header; base quantity per line) | `inventory.transfers.receive` + destination in scope |
@@ -143,8 +144,9 @@ The design-time factory reads `ERP_SQL_CONNECTION`. `Migration02_Identity` only 
 `Migration03_IdentitySecurity` only adds `identity.SecurityEvents` (append-only audit trail, no foreign keys) and
 `identity.RetiredRefreshTokens` (hashes of exchanged refresh tokens, cascading with their session).
 `Migration04_Inventory` adds the `inventory` schema (13 tables and the approval-policy seed). `Migration05_InventoryTransfersCounts`
-adds transfers and counts (7 tables), two nullable columns on `StockDocuments`, `IdempotencyRecords.SubjectId` (backfilled),
-the `TransferDispatch` policy row and `ALLOW_SNAPSHOT_ISOLATION ON`; it changes no data (ADR 0015 *Consequences*).
+adds transfers and counts (7 tables), two nullable columns on `StockDocuments`, `IdempotencyRecords.SubjectId` (backfilled)
+and the `TransferDispatch` policy row; it changes no data. `Migration06_InventorySnapshotIsolation` only turns
+`ALLOW_SNAPSHOT_ISOLATION` on, outside a transaction (ADR 0015 *Consequences*).
 
 ## Running the API
 
@@ -186,7 +188,7 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 8. **ExternalItemCode**: optional `ProductUnitId` must belong to the same product (composite FK).
 9. **Known unique constraints** are mapped to business codes by name (`IX_Products_SKU`, `IX_Warehouses_BranchId_Code`); renaming an index means updating its repository map.
 10. **Stock changes only by posting**: balances, availability, movements and cost entries are written by `Application/Shared/StockDocumentPosting` in one transaction under Inventory's locks (ADR 0015), for documents, transfers and counts alike. Never update `inventory.*` rows by hand; post an adjustment or a reversal. A running count's freeze is its active `StockCountScopes` rows.
-11. **Snapshot isolation**: `Migration05` turns `ALLOW_SNAPSHOT_ISOLATION` on for the reconciliation report's consistent read; everything else keeps READ COMMITTED.
+11. **Snapshot isolation**: `Migration06` turns `ALLOW_SNAPSHOT_ISOLATION` on for the reconciliation report's consistent read; everything else keeps READ COMMITTED.
 
 ## Postponed
 

@@ -8,7 +8,7 @@ using WarehouseERP.Organization.Contracts;
 
 namespace WarehouseERP.Inventory.Infrastructure.ReadModels;
 
-// Everything is read inside one SNAPSHOT transaction (the database allows snapshot isolation since Migration05), so a
+// Everything is read inside one SNAPSHOT transaction (the database allows snapshot isolation since Migration06), so a
 // posting committing meanwhile can't show up as a false difference. Comparisons run in memory and only report.
 internal sealed class ReconciliationReadStore(DbContext db, IWarehouseDirectory warehouses, ReferenceNames names) : IReconciliationReadStore
 {

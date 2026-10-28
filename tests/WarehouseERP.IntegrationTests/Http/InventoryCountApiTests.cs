@@ -80,8 +80,10 @@ public sealed class InventoryCountApiTests(DatabaseFixture fx) : IAsyncLifetime
         Assert.Equal(("Completed", number), (Status(completed), completed.GetProperty("adjustmentNumber").GetString()));
         Assert.Equal([-2m, 2m], completed.GetProperty("lines").EnumerateArray().Select(l => l.GetProperty("variance").GetDecimal()).Order());
         var adjustment = await DocumentAsync(admin, completed.GetProperty("adjustmentDocumentId").GetGuid());
-        Assert.Equal(("CountAdjustment", "Posted", 2), (adjustment.GetProperty("documentType").GetString(),
-            adjustment.GetProperty("status").GetString(), adjustment.GetProperty("lines").GetArrayLength()));
+        Assert.Equal(("CountAdjustment", "Posted", 2, id), (adjustment.GetProperty("documentType").GetString(),
+            adjustment.GetProperty("status").GetString(), adjustment.GetProperty("lines").GetArrayLength(),
+            adjustment.GetProperty("countId").GetGuid()));
+        Assert.All(adjustment.GetProperty("lines").EnumerateArray(), l => Assert.Equal(JsonValueKind.Null, l.GetProperty("fromLocationId").ValueKind));
         Assert.Equal(7m, await BalanceAsync(admin, room, room.DefaultLocationId));
         Assert.Equal(2m, await QuantityAsync(admin, room.WarehouseId, found, room.DefaultLocationId));
         await AssertValuedAsync(admin, room.ProductId, 11m, 44m); // 15 in at 4, 2 issued and 2 short at the average

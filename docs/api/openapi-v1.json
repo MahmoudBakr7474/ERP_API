@@ -6016,6 +6016,39 @@
         }
       }
     },
+    "/api/inventory/transfers/destinations": {
+      "get": {
+        "tags": [
+          "StockTransfers"
+        ],
+        "operationId": "ListTransferDestinations",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransferDestinationResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/inventory/transfers/{id}": {
       "get": {
         "tags": [
@@ -10749,6 +10782,8 @@
           "requiresApproval",
           "reversalOfDocumentId",
           "reversedByDocumentId",
+          "transferId",
+          "countId",
           "adjustmentReason",
           "externalReference",
           "notes",
@@ -10805,6 +10840,20 @@
             "format": "uuid"
           },
           "reversedByDocumentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "transferId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "countId": {
             "type": [
               "null",
               "string"
@@ -10941,7 +10990,9 @@
           "direction",
           "unitCost",
           "locationId",
-          "locationCode"
+          "locationCode",
+          "fromLocationId",
+          "fromLocationCode"
         ],
         "type": "object",
         "properties": {
@@ -11005,6 +11056,19 @@
           },
           "locationCode": {
             "type": "string"
+          },
+          "fromLocationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "fromLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -11781,6 +11845,42 @@
           "Serial"
         ],
         "description": "How individual units of a stock item are told apart."
+      },
+      "TransferDestinationResponse": {
+        "required": [
+          "warehouseId",
+          "code",
+          "nameAr",
+          "nameEn",
+          "branchId",
+          "branchCode"
+        ],
+        "type": "object",
+        "properties": {
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchCode": {
+            "type": "string"
+          }
+        }
       },
       "TransferDifference": {
         "required": [

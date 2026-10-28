@@ -88,6 +88,12 @@ public sealed class InventoryTransferApiTests(DatabaseFixture fx) : IAsyncLifeti
             receivedLine.GetProperty("receivedQuantity").GetDecimal(), receivedLine.GetProperty("lostQuantity").GetDecimal()));
         Assert.Equal(["TransferDispatch", "TransferReceipt", "TransferReceipt"],
             received.GetProperty("documents").EnumerateArray().Select(d => d.GetProperty("documentType").GetString()));
+        var dispatchDocument = await DocumentAsync(admin, dispatched.GetProperty("documentId").GetGuid());
+        var moved = dispatchDocument.GetProperty("lines")[0];
+        Assert.Equal((id, JsonValueKind.Null, "Move", "DEFAULT", transitLocation),
+            (dispatchDocument.GetProperty("transferId").GetGuid(), dispatchDocument.GetProperty("countId").ValueKind,
+                moved.GetProperty("direction").GetString(), moved.GetProperty("fromLocationCode").GetString(),
+                moved.GetProperty("locationId").GetGuid()));
         Assert.Equal(["Created", "Dispatched", "Received", "Received"],
             received.GetProperty("events").EnumerateArray().Select(e => e.GetProperty("action").GetString()));
         Assert.Equal(0m, await QuantityAsync(admin, route.TransitId, room.ProductId));
@@ -161,6 +167,7 @@ public sealed class InventoryTransferApiTests(DatabaseFixture fx) : IAsyncLifeti
         await (await ReceiveTransferAsync(other, id, null, null, (lineId, 1m)))
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Inventory.StockTransfer.NotInTransit");
         var loss = await DocumentAsync(admin, first);
+        Assert.Equal(id, loss.GetProperty("transferId").GetGuid());
         Assert.Equal(("Adjustment", "Submitted", "Loss", route.TransitId, 4m),
             (loss.GetProperty("documentType").GetString(), loss.GetProperty("status").GetString(),
                 loss.GetProperty("adjustmentReason").GetString(), loss.GetProperty("warehouseId").GetGuid(),
@@ -249,6 +256,34 @@ public sealed class InventoryTransferApiTests(DatabaseFixture fx) : IAsyncLifeti
             .AssertProblemAsync(HttpStatusCode.Forbidden, "Inventory.StockTransfer.AccessDenied");
         await ReceiveTransferAsync(receiver, id, null, null, (lineId, 4m)).PostedAsync();
         Assert.Equal(4m, await QuantityAsync(admin, route.DestinationId, room.ProductId));
+    }
+
+    [Fact]
+    public async Task A_sender_may_ship_to_any_active_physical_warehouse_even_outside_their_scope()
+    {
+        var admin = Admin();
+        var route = await CreateRouteAsync(fx, admin);
+        var room = route.Source;
+        var elsewhere = await CreateStockroomAsync(fx, admin); // another branch
+        var retired = await CreateWarehouseAsync(admin, room.BranchId);
+        await admin.PostEmptyAsync($"{Warehouses}/{retired}/deactivate").AssertNoContentAsync();
+        var sender = _api.CreateClient().As(
+            $"{InventoryPermissions.TransfersManage},{InventoryPermissions.DocumentsRead}", room.WarehouseId.ToString(), Guid.NewGuid());
+
+        var destinations = (await sender.GetJsonAsync($"{Transfers}/destinations")).EnumerateArray().ToList();
+
+        var ids = destinations.Select(d => d.GetProperty("warehouseId").GetGuid()).ToList();
+        Assert.Contains(route.DestinationId, ids);
+        Assert.Contains(elsewhere.WarehouseId, ids);
+        Assert.DoesNotContain(route.TransitId, ids);
+        Assert.DoesNotContain(retired, ids);
+        var other = destinations.Single(d => d.GetProperty("warehouseId").GetGuid() == elsewhere.WarehouseId);
+        Assert.Equal(elsewhere.BranchId, other.GetProperty("branchId").GetGuid());
+        Assert.StartsWith("B-", other.GetProperty("branchCode").GetString());
+        await DraftTransferAsync(sender, route with { DestinationId = elsewhere.WarehouseId },
+            TransferLine(room.ProductId, room.Piece, 1m)).CreatedIdAsync();
+        await (await _api.CreateClient().As(InventoryPermissions.DocumentsRead).GetAsync($"{Transfers}/destinations"))
+            .AssertProblemAsync(HttpStatusCode.Forbidden, "Common.Forbidden");
     }
 
     [Fact]
