@@ -34,10 +34,22 @@ public static class InventoryPermissions
     /// <summary>Change which document types need approval (company-wide users only).</summary>
     public const string SettingsManage = "inventory.settings.manage";
 
+    /// <summary>Draft, submit, dispatch, cancel and close transfers out of warehouses in the user's scope.</summary>
+    public const string TransfersManage = "inventory.transfers.manage";
+
+    /// <summary>Receive transfers into warehouses in the user's scope.</summary>
+    public const string TransfersReceive = "inventory.transfers.receive";
+
+    /// <summary>Create, start, count, submit and cancel stock counts of warehouses in the user's scope.</summary>
+    public const string CountsManage = "inventory.counts.manage";
+
+    /// <summary>Read the reconciliation report (company-wide users only).</summary>
+    public const string ReconciliationRead = "inventory.reconciliation.read";
+
     /// <summary>Every Inventory permission.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
         StockRead, DocumentsRead, OpeningManage, ReceiptsManage, IssuesManage, AdjustmentsManage, DocumentsApprove,
-        ValuationRead, SettingsManage,
+        ValuationRead, SettingsManage, TransfersManage, TransfersReceive, CountsManage, ReconciliationRead,
     ];
 }

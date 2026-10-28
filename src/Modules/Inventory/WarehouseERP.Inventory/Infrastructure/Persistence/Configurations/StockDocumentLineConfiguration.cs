@@ -11,7 +11,7 @@ internal sealed class StockDocumentLineConfiguration : IEntityTypeConfiguration<
         b.ToTable("StockDocumentLines", "inventory", t =>
         {
             t.HasCheckConstraint("CK_StockDocumentLines_Quantities", "[Quantity] > 0 AND [BaseQuantity] > 0 AND [ConversionFactor] > 0");
-            t.HasCheckConstraint("CK_StockDocumentLines_Direction", "[Direction] IN (1, 2)");
+            t.HasCheckConstraint("CK_StockDocumentLines_Direction", "[Direction] IN (1, 2, 3)");
             t.HasCheckConstraint("CK_StockDocumentLines_UnitCost", "[UnitCost] IS NULL OR ([UnitCost] >= 0 AND [Direction] = 1)");
         });
         b.HasKey(x => x.Id);

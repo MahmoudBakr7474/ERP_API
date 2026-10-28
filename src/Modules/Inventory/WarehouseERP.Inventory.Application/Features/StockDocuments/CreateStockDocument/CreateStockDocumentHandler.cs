@@ -4,6 +4,7 @@ using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.DocumentPolicies;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.StockDocuments;
 using WarehouseERP.Inventory.Application.Errors;
+using WarehouseERP.Inventory.Application.Shared;
 using WarehouseERP.Inventory.Contracts;
 using WarehouseERP.Inventory.Domain;
 using WarehouseERP.SharedKernel.Results;

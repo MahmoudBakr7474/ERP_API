@@ -43,6 +43,13 @@ public static class StockDocumentDomainErrors
     public static readonly Error CannotReverseReversal = Error.BusinessRule(
         "Inventory.StockDocument.CannotReverseReversal", "A reversal cannot be reversed; post a new document instead.");
 
+    public static readonly Error LinkedLinesFixed = Error.BusinessRule(
+        "Inventory.StockDocument.LinkedLinesFixed", "This document belongs to a transfer or a count; its lines cannot change.");
+
+    public static readonly Error NotReversible = Error.BusinessRule(
+        "Inventory.StockDocument.NotReversible",
+        "Transfer and count documents are not reversed; post an adjustment or a new transfer instead.");
+
     public static Error WrongDirection(int line) => Error.BusinessRule(
         "Inventory.StockDocument.WrongDirection", $"Line {line}: this document type cannot move stock that way.");
 

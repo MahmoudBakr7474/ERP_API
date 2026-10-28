@@ -16,5 +16,6 @@ internal sealed class IdempotencyRecordConfiguration : IEntityTypeConfiguration<
         b.Property(x => x.CreatedAtUtc).HasColumnType("datetime2(3)");
         b.HasOne<StockDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(x => x.DocumentId);
+        b.HasIndex(x => x.SubjectId);
     }
 }

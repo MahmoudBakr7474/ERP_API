@@ -104,5 +104,50 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
         });
+
+        // Milestone B: a transfer names three warehouses and, once dispatched, its own location in the transit one.
+        builder.Entity<StockTransfer>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.SourceWarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.DestinationWarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.TransitWarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.SourceBranchId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.DestinationBranchId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WarehouseLocation>().WithMany()
+                .HasForeignKey(x => new { x.TransitWarehouseId, x.TransitLocationId })
+                .HasPrincipalKey(x => new { x.WarehouseId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<StockTransferLine>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WarehouseLocation>().WithMany()
+                .HasForeignKey(x => new { x.SourceWarehouseId, x.SourceLocationId })
+                .HasPrincipalKey(x => new { x.WarehouseId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<StockCount>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<StockCountScope>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WarehouseLocation>().WithMany()
+                .HasForeignKey(x => new { x.WarehouseId, x.LocationId })
+                .HasPrincipalKey(x => new { x.WarehouseId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<StockCountLine>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WarehouseLocation>().WithMany()
+                .HasForeignKey(x => new { x.WarehouseId, x.LocationId })
+                .HasPrincipalKey(x => new { x.WarehouseId, x.Id })
+                .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 }

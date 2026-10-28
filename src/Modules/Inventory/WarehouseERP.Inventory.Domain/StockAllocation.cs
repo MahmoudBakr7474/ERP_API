@@ -26,6 +26,14 @@ public sealed class StockAllocation
     internal static StockAllocation OutOf(Guid warehouseId, Guid locationId, decimal baseQuantity) =>
         new() { FromWarehouseId = warehouseId, FromLocationId = locationId, BaseQuantity = baseQuantity };
 
+    internal static StockAllocation Move(StockPlace from, StockPlace to, decimal baseQuantity) =>
+        new()
+        {
+            FromWarehouseId = from.WarehouseId, FromLocationId = from.LocationId,
+            ToWarehouseId = to.WarehouseId, ToLocationId = to.LocationId,
+            BaseQuantity = baseQuantity,
+        };
+
     /// <summary>The same quantity moved the other way.</summary>
     internal StockAllocation Reversed() => new()
     {

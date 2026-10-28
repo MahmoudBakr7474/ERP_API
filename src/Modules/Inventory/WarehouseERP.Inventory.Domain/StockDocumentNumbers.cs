@@ -3,7 +3,10 @@ using WarehouseERP.Inventory.Contracts;
 
 namespace WarehouseERP.Inventory.Domain;
 
-/// <summary>How document numbers read: RCV-CAI-2026-000017 (type, branch code, fiscal year, sequence) and DR-000123 for drafts.</summary>
+/// <summary>
+/// How numbers read: RCV-CAI-2026-000017 (type, branch code, fiscal year, sequence) for posted documents, and DR-000123,
+/// TR-000123 and CT-000123 for drafts, transfers and counts before they have one.
+/// </summary>
 public static class StockDocumentNumbers
 {
     public static string Prefix(StockDocumentType documentType) => documentType switch
@@ -13,6 +16,9 @@ public static class StockDocumentNumbers
         StockDocumentType.Issue => "ISS",
         StockDocumentType.Adjustment => "ADJ",
         StockDocumentType.Reversal => "REV",
+        StockDocumentType.TransferDispatch => "TRF",
+        StockDocumentType.TransferReceipt => "TRR",
+        StockDocumentType.CountAdjustment => "CNT",
         _ => throw new ArgumentOutOfRangeException(nameof(documentType), documentType, "Unknown document type."),
     };
 
@@ -21,4 +27,10 @@ public static class StockDocumentNumbers
 
     public static string DraftReference(int draftNumber) =>
         string.Create(CultureInfo.InvariantCulture, $"DR-{draftNumber:D6}");
+
+    public static string TransferReference(int draftNumber) =>
+        string.Create(CultureInfo.InvariantCulture, $"TR-{draftNumber:D6}");
+
+    public static string CountReference(int draftNumber) =>
+        string.Create(CultureInfo.InvariantCulture, $"CT-{draftNumber:D6}");
 }

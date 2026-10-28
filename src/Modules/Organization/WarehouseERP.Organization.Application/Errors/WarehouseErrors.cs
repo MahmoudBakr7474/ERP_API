@@ -18,7 +18,8 @@ public static class WarehouseErrors
         "Organization.Warehouse.HoldsStock", "The warehouse still holds stock; move or adjust it out first.");
 
     public static readonly Error HasOpenInventoryDocuments = Error.BusinessRule(
-        "Organization.Warehouse.HasOpenInventoryDocuments", "Inventory documents waiting for approval would post into this warehouse.");
+        "Organization.Warehouse.HasOpenInventoryDocuments",
+        "Inventory documents waiting for approval, open transfers or a running count still need this warehouse.");
 
     public static readonly Error InventoryBusy = Error.Conflict(
         "Organization.Warehouse.InventoryBusy", "Stock in this warehouse is being changed right now; try again.");

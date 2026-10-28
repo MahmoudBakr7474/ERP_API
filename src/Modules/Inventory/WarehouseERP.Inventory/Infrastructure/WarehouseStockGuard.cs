@@ -18,10 +18,20 @@ internal sealed class WarehouseStockGuard(DbContext db) : IWarehouseStockGuard
             || await db.Set<ProductWarehouseStock>().AnyAsync(
                 x => x.WarehouseId == warehouseId && (x.OnHandSellable != 0 || x.ReservedQuantity != 0), ct))
             return StockOccupancy.HoldsStock;
-        if (await db.Set<StockDocument>().AnyAsync(x => x.WarehouseId == warehouseId && x.Status == StockDocumentStatus.Submitted, ct))
+        if (await db.Set<StockDocument>().AnyAsync(x => x.WarehouseId == warehouseId && x.Status == StockDocumentStatus.Submitted, ct)
+            || await db.Set<StockTransfer>().AnyAsync(t =>
+                (t.SourceWarehouseId == warehouseId || t.DestinationWarehouseId == warehouseId || t.TransitWarehouseId == warehouseId)
+                && OpenTransferStatuses.Contains(t.Status), ct)
+            || await db.Set<StockCountScope>().AnyAsync(s => s.WarehouseId == warehouseId && s.IsActive, ct))
             return StockOccupancy.HasOpenDocuments;
         return StockOccupancy.Free;
     }
+
+    // A transfer waiting for approval, on its way or being closed still needs its warehouses.
+    private static readonly StockTransferStatus[] OpenTransferStatuses =
+    [
+        StockTransferStatus.Submitted, StockTransferStatus.InTransit, StockTransferStatus.PartiallyReceived, StockTransferStatus.Closing,
+    ];
 
     public async Task<StockOccupancy> LockAndCheckLocationAsync(Guid warehouseId, Guid locationId, CancellationToken ct)
     {
@@ -36,6 +46,12 @@ internal sealed class WarehouseStockGuard(DbContext db) : IWarehouseStockGuard
             from allocation in line.Allocations
             where allocation.FromLocationId == locationId || allocation.ToLocationId == locationId
             select document.Id).AnyAsync(ct);
+        open = open
+            || await db.Set<StockTransfer>().AnyAsync(t =>
+                t.SourceWarehouseId == warehouseId && t.Status == StockTransferStatus.Submitted
+                && t.Lines.Any(l => l.SourceLocationId == locationId), ct)
+            || await db.Set<StockCountScope>().AnyAsync(s =>
+                s.WarehouseId == warehouseId && s.IsActive && (s.LocationId == null || s.LocationId == locationId), ct);
         return open ? StockOccupancy.HasOpenDocuments : StockOccupancy.Free;
     }
 }

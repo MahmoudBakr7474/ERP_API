@@ -196,6 +196,27 @@ public sealed class InventoryDocumentApiTests(DatabaseFixture fx) : IAsyncLifeti
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Inventory.StockDocument.CannotReverseReversal");
     }
 
+    // V1 costing policy (ADR 0015, pending the accountant): a reversed receipt leaves at the current average, so quantity
+    // and value stay consistent; at its own cost (10000) it would leave one unit worth -4494.5.
+    [Fact]
+    public async Task A_reversed_receipt_leaves_at_the_current_average_not_at_its_own_cost()
+    {
+        var maker = Admin();
+        var checker = OtherAdmin();
+        var room = await CreateStockroomAsync(fx, maker);
+        var expensive = await ReceiveAsync(maker, room, 10m, 1000m);
+        await ReceiveAsync(maker, room, 10m, 1m);
+        await IssueAsync(maker, room, 9m).PostedAsync(); // 9 at the 500.5 average: 11 left worth 5505.5
+
+        var reversal = await maker.PostJsonAsync($"{Documents}/{expensive}/reverse", new { notes = (string?)null }).CreatedIdAsync();
+        await ActAsync(checker, reversal, "approve").PostedAsync();
+
+        Assert.Equal(1m, await BalanceAsync(maker, room));
+        var valuation = await ValuationAsync(maker, room.ProductId);
+        Assert.Equal((1m, 500.5m, 500.5m), (valuation.GetProperty("totalQuantity").GetDecimal(),
+            valuation.GetProperty("totalValue").GetDecimal(), valuation.GetProperty("averageUnitCost").GetDecimal()));
+    }
+
     [Fact]
     public async Task An_authorized_loss_may_leave_stock_over_reserved_and_says_so()
     {

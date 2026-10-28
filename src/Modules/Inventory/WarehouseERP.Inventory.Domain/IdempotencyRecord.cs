@@ -12,18 +12,25 @@ public sealed class IdempotencyRecord
     public Guid Key { get; private set; }
     public string Operation { get; private set; } = null!;
     public string Fingerprint { get; private set; } = null!;
-    public Guid DocumentId { get; private set; }
+
+    /// <summary>The document, transfer or count the request acted on.</summary>
+    public Guid SubjectId { get; private set; }
+
+    /// <summary>The document the request posted, when it posted one (an approved count without differences posts none).</summary>
+    public Guid? DocumentId { get; private set; }
+
     public Guid? UserId { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
 
-    public static IdempotencyRecord Create(Guid key, string operation, string fingerprint, Guid documentId, Guid? userId, DateTime nowUtc)
+    public static IdempotencyRecord Create(
+        Guid key, string operation, string fingerprint, Guid subjectId, Guid? documentId, Guid? userId, DateTime nowUtc)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(operation);
         ArgumentException.ThrowIfNullOrWhiteSpace(fingerprint);
         return new IdempotencyRecord
         {
-            Key = key, Operation = operation, Fingerprint = fingerprint, DocumentId = documentId, UserId = userId,
-            CreatedAtUtc = nowUtc,
+            Key = key, Operation = operation, Fingerprint = fingerprint, SubjectId = subjectId, DocumentId = documentId,
+            UserId = userId, CreatedAtUtc = nowUtc,
         };
     }
 }

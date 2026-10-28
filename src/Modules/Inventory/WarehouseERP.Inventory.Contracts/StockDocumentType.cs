@@ -17,4 +17,13 @@ public enum StockDocumentType : byte
 
     /// <summary>Undoes a posted document line by line; always approved (REV).</summary>
     Reversal = 5,
+
+    /// <summary>A transfer leaving its source warehouse for its transit location (TRF); the transfer takes its number.</summary>
+    TransferDispatch = 6,
+
+    /// <summary>Part or all of a transfer arriving from its transit location in the destination warehouse (TRR).</summary>
+    TransferReceipt = 7,
+
+    /// <summary>The differences an approved stock count found (CNT).</summary>
+    CountAdjustment = 8,
 }

@@ -33,6 +33,13 @@ public sealed class StockDocument : IAuditable
     public bool RequiresApproval { get; private set; }
 
     public Guid? ReversalOfDocumentId { get; private set; }
+
+    /// <summary>The transfer this document dispatched, received or wrote off.</summary>
+    public Guid? TransferId { get; private set; }
+
+    /// <summary>The count whose differences this document posted.</summary>
+    public Guid? CountId { get; private set; }
+
     public AdjustmentReason? AdjustmentReason { get; private set; }
     public string? ExternalReference { get; private set; }
     public string? Notes { get; private set; }
@@ -81,6 +88,8 @@ public sealed class StockDocument : IAuditable
     {
         if (DocumentType == StockDocumentType.Reversal)
             return StockDocumentDomainErrors.ReversalLinesFixed;
+        if (TransferId is not null || CountId is not null)
+            return StockDocumentDomainErrors.LinkedLinesFixed;
         if (Status != StockDocumentStatus.Draft)
             return StockDocumentDomainErrors.NotDraft;
         return Fill(reason, externalReference, notes, lines);
@@ -94,6 +103,9 @@ public sealed class StockDocument : IAuditable
     {
         if (original.DocumentType == StockDocumentType.Reversal)
             return StockDocumentDomainErrors.CannotReverseReversal;
+        if (original.TransferId is not null || original.CountId is not null
+            || original.DocumentType is StockDocumentType.TransferDispatch or StockDocumentType.TransferReceipt or StockDocumentType.CountAdjustment)
+            return StockDocumentDomainErrors.NotReversible;
         if (original.Status != StockDocumentStatus.Posted)
             return StockDocumentDomainErrors.NotPosted;
 
@@ -113,6 +125,87 @@ public sealed class StockDocument : IAuditable
         reversal.Record(StockDocumentAction.Created, userId, nowUtc, note: null);
         reversal.Record(StockDocumentAction.Submitted, userId, nowUtc, note: null);
         return reversal;
+    }
+
+    /// <summary>
+    /// The document that dispatches a transfer: every line moves from its source location into the transit location
+    /// opened for the transfer. Posted at once in the caller's transaction.
+    /// </summary>
+    public static StockDocument CreateTransferDispatch(StockTransfer transfer, Guid transitLocationId, Guid? userId, DateTime nowUtc)
+    {
+        var document = Generated(StockDocumentType.TransferDispatch, transfer.SourceWarehouseId, transfer.SourceBranchId,
+            transfer.RequiresApproval, StockDocumentStatus.Draft, StockDocumentNumbers.TransferReference(transfer.DraftNumber), transfer.Notes);
+        document.TransferId = transfer.Id;
+        var transit = new StockPlace(transfer.TransitWarehouseId, transitLocationId);
+        foreach (var line in transfer.Lines.OrderBy(l => l.LineNumber))
+            document._lines.Add(StockDocumentLine.CreateMove(
+                line.LineNumber, line.ProductId, line.ProductUnitId, line.UnitId, line.ConversionFactor, line.Quantity,
+                line.BaseQuantity, new StockPlace(transfer.SourceWarehouseId, line.SourceLocationId), transit));
+        document.Record(StockDocumentAction.Created, userId, nowUtc, note: null);
+        return document;
+    }
+
+    /// <summary>
+    /// The document that receives part or all of a dispatched transfer: each receipt moves base units from the transit
+    /// location into a location of the destination warehouse. Posted at once in the caller's transaction.
+    /// </summary>
+    public static StockDocument CreateTransferReceipt(
+        StockTransfer transfer, IReadOnlyList<TransferReceiptInput> receipts, Guid? userId, DateTime nowUtc)
+    {
+        if (transfer.TransitLocationId is not { } transitLocationId)
+            throw new InvalidOperationException($"Transfer {transfer.Id} was not dispatched.");
+
+        var document = Generated(StockDocumentType.TransferReceipt, transfer.DestinationWarehouseId, transfer.DestinationBranchId,
+            requiresApproval: false, StockDocumentStatus.Draft, transfer.Number, notes: null);
+        document.TransferId = transfer.Id;
+        var transit = new StockPlace(transfer.TransitWarehouseId, transitLocationId);
+        for (var i = 0; i < receipts.Count; i++)
+        {
+            var receipt = receipts[i];
+            var line = transfer.Lines.Single(l => l.Id == receipt.LineId);
+            document._lines.Add(StockDocumentLine.CreateMove(
+                i + 1, line.ProductId, receipt.BaseProductUnitId, receipt.BaseUnitId, 1m, receipt.Quantity, receipt.Quantity,
+                transit, new StockPlace(transfer.DestinationWarehouseId, receipt.LocationId)));
+        }
+        document.Record(StockDocumentAction.Created, userId, nowUtc, note: null);
+        return document;
+    }
+
+    /// <summary>
+    /// The adjustment that writes off what never arrived, out of the transfer's transit location. It is submitted at
+    /// once and needs approval like any adjustment; posting it closes the transfer.
+    /// </summary>
+    public static StockDocument CreateTransferLoss(
+        StockTransfer transfer, Guid transitBranchId, AdjustmentReason reason, string? notes,
+        IReadOnlyList<GeneratedLineInput> lines, Guid? userId, DateTime nowUtc)
+    {
+        if (lines.Count == 0)
+            throw new ArgumentException("A loss adjustment writes something off.", nameof(lines));
+
+        var document = Generated(StockDocumentType.Adjustment, transfer.TransitWarehouseId, transitBranchId,
+            requiresApproval: true, StockDocumentStatus.Submitted, transfer.Number, notes);
+        document.TransferId = transfer.Id;
+        document.AdjustmentReason = reason;
+        for (var i = 0; i < lines.Count; i++)
+            document._lines.Add(StockDocumentLine.CreateGenerated(i + 1, lines[i]));
+        document.Record(StockDocumentAction.Created, userId, nowUtc, note: null);
+        document.Record(StockDocumentAction.Submitted, userId, nowUtc, note: null);
+        return document;
+    }
+
+    /// <summary>The adjustment an approved count posts for its differences; the count carries the approval.</summary>
+    public static StockDocument CreateCountAdjustment(StockCount count, IReadOnlyList<GeneratedLineInput> lines, Guid? userId, DateTime nowUtc)
+    {
+        if (lines.Count == 0)
+            throw new ArgumentException("A count adjustment posts at least one difference.", nameof(lines));
+
+        var document = Generated(StockDocumentType.CountAdjustment, count.WarehouseId, count.BranchId, requiresApproval: true,
+            StockDocumentStatus.Submitted, StockDocumentNumbers.CountReference(count.DraftNumber), count.Notes);
+        document.CountId = count.Id;
+        for (var i = 0; i < lines.Count; i++)
+            document._lines.Add(StockDocumentLine.CreateGenerated(i + 1, lines[i]));
+        document.Record(StockDocumentAction.Created, userId, nowUtc, note: null);
+        return document;
     }
 
     public Result Submit(Guid? userId, DateTime nowUtc)
@@ -192,6 +285,44 @@ public sealed class StockDocument : IAuditable
         PostedByUserId = userId;
         Record(StockDocumentAction.Posted, userId, nowUtc, note: null);
     }
+
+    /// <summary>
+    /// Posts a document a transfer or a count produced. Its approval, and the rule that nobody approves their own work,
+    /// belong to that transfer or count, which checked them; <paramref name="approvedBy"/> records who approved there.
+    /// </summary>
+    public void MarkPostedGenerated(string number, short fiscalYear, int sequenceNumber, Guid? approvedBy, Guid? userId, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(number);
+        if (Status is not (StockDocumentStatus.Draft or StockDocumentStatus.Submitted))
+            throw new InvalidOperationException($"Document {Id} is already {Status}.");
+
+        if (approvedBy is not null)
+        {
+            ApprovedByUserId = approvedBy;
+            Record(StockDocumentAction.Approved, approvedBy, nowUtc, note: null);
+        }
+        Status = StockDocumentStatus.Posted;
+        Number = number;
+        FiscalYear = fiscalYear;
+        SequenceNumber = sequenceNumber;
+        PostedAtUtc = nowUtc;
+        PostedByUserId = userId;
+        Record(StockDocumentAction.Posted, userId, nowUtc, note: null);
+    }
+
+    private static StockDocument Generated(
+        StockDocumentType documentType, Guid warehouseId, Guid branchId, bool requiresApproval, StockDocumentStatus status,
+        string? externalReference, string? notes) =>
+        new()
+        {
+            DocumentType = documentType,
+            Status = status,
+            WarehouseId = warehouseId,
+            BranchId = branchId,
+            RequiresApproval = requiresApproval,
+            ExternalReference = Text.Optional(externalReference),
+            Notes = Text.Optional(notes),
+        };
 
     private Result Fill(AdjustmentReason? reason, string? externalReference, string? notes, IReadOnlyList<StockLineInput> lines)
     {

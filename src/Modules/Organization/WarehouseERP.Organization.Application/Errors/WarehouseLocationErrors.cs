@@ -15,5 +15,6 @@ public static class WarehouseLocationErrors
         "Organization.WarehouseLocation.HoldsStock", "The location still holds stock; move or adjust it out first.");
 
     public static readonly Error HasOpenInventoryDocuments = Error.BusinessRule(
-        "Organization.WarehouseLocation.HasOpenInventoryDocuments", "Inventory documents waiting for approval would post into this location.");
+        "Organization.WarehouseLocation.HasOpenInventoryDocuments",
+        "Inventory documents waiting for approval, a transfer to dispatch or a running count still need this location.");
 }

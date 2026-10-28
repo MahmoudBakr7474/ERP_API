@@ -2,15 +2,19 @@ using Microsoft.Extensions.Logging;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Security;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.StockDocuments;
+using WarehouseERP.Inventory.Application.Abstractions.Interfaces.Transfers;
+using WarehouseERP.Inventory.Contracts;
 using WarehouseERP.Inventory.Application.Errors;
 using WarehouseERP.Inventory.Application.Shared;
 using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Inventory.Application.Features.StockDocuments.CancelStockDocument;
 
-// A draft or a submitted document is abandoned; a posted one is undone only by a reversal. Returns the new row version.
+// A draft or a submitted document is abandoned; a posted one is undone only by a reversal. Cancelling a transfer's loss
+// adjustment lets the transfer receive again. Returns the new row version.
 public sealed partial class CancelStockDocumentHandler(
-    IStockDocumentRepository documents, ICurrentUser currentUser, TimeProvider clock, ILogger<CancelStockDocumentHandler> logger)
+    IStockDocumentRepository documents, IStockTransferRepository transfers, ICurrentUser currentUser, TimeProvider clock,
+    ILogger<CancelStockDocumentHandler> logger)
     : ICommandHandler<CancelStockDocumentCommand, string>
 {
     public async Task<Result<string>> HandleAsync(CancelStockDocumentCommand command, CancellationToken ct)
@@ -24,9 +28,15 @@ public sealed partial class CancelStockDocumentHandler(
         if (document is null)
             return StockDocumentErrors.NotFound;
 
-        var cancelled = document.Cancel(currentUser.UserId, clock.GetUtcNow().UtcDateTime);
+        var now = clock.GetUtcNow().UtcDateTime;
+        var cancelled = document.Cancel(currentUser.UserId, now);
         if (cancelled.IsFailure)
             return cancelled.Error;
+        if (document.TransferId is { } transferId && document.DocumentType == StockDocumentType.Adjustment)
+        {
+            var transfer = await transfers.GetForUpdateAsync(transferId, expectedRowVersion: null, ct);
+            transfer?.AbortClosing(currentUser.UserId, now);
+        }
         var saved = await documents.SaveChangesAsync(ct);
         if (saved.IsFailure)
             return saved.Error;

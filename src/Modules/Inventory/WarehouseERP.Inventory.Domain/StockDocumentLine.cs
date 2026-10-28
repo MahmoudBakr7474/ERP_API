@@ -60,52 +60,68 @@ public sealed class StockDocumentLine
         if (input.UnitCost is { } unitCost
             && (unitCost / input.ConversionFactor > Quantities.MaxUnitCost || input.Quantity * unitCost > Quantities.MaxLineValue))
             return StockDocumentDomainErrors.UnitCostTooLarge(lineNumber);
-        if (!input.UnitAllowsFraction && !Quantities.IsWhole(input.Quantity))
-            return StockDocumentDomainErrors.QuantityMustBeWhole(lineNumber);
+        var baseQuantity = Quantities.ToBase(
+            input.Quantity, input.ConversionFactor, input.UnitAllowsFraction, input.BaseUnitAllowsFraction, lineNumber);
+        if (baseQuantity.IsFailure)
+            return baseQuantity.Error;
 
-        var baseQuantity = input.Quantity * input.ConversionFactor;
-        if (baseQuantity > Quantities.MaxQuantity)
-            return StockDocumentDomainErrors.QuantityTooLarge(lineNumber);
-        if (!Quantities.FitsScale(baseQuantity, Quantities.QuantityScale)
-            || (!input.BaseUnitAllowsFraction && !Quantities.IsWhole(baseQuantity)))
-            return StockDocumentDomainErrors.ConversionNotExact(lineNumber);
-        baseQuantity = decimal.Round(baseQuantity, Quantities.QuantityScale);
-
-        var line = new StockDocumentLine
-        {
-            LineNumber = lineNumber,
-            ProductId = input.ProductId,
-            ProductUnitId = input.ProductUnitId,
-            UnitId = input.UnitId,
-            ConversionFactor = input.ConversionFactor,
-            Quantity = input.Quantity,
-            BaseQuantity = baseQuantity,
-            Direction = input.Direction,
-            UnitCost = input.UnitCost,
-        };
+        var line = New(lineNumber, input.ProductId, input.ProductUnitId, input.UnitId, input.ConversionFactor, input.Quantity,
+            baseQuantity.Value, input.Direction, input.UnitCost);
         line._allocations.Add(input.Direction == StockDirection.In
-            ? StockAllocation.Into(warehouseId, input.LocationId, baseQuantity)
-            : StockAllocation.OutOf(warehouseId, input.LocationId, baseQuantity));
+            ? StockAllocation.Into(warehouseId, input.LocationId, baseQuantity.Value)
+            : StockAllocation.OutOf(warehouseId, input.LocationId, baseQuantity.Value));
+        return line;
+    }
+
+    /// <summary>A transfer line: the quantity as the transfer has it, moved from one place to another, without cost.</summary>
+    internal static StockDocumentLine CreateMove(
+        int lineNumber, Guid productId, Guid productUnitId, Guid unitId, decimal conversionFactor, decimal quantity,
+        decimal baseQuantity, StockPlace from, StockPlace to)
+    {
+        var line = New(lineNumber, productId, productUnitId, unitId, conversionFactor, quantity, baseQuantity, StockDirection.Move, null);
+        line._allocations.Add(StockAllocation.Move(from, to, baseQuantity));
+        return line;
+    }
+
+    /// <summary>A line a transfer or a count produces, in base units at one place.</summary>
+    internal static StockDocumentLine CreateGenerated(int lineNumber, GeneratedLineInput input)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(input.BaseQuantity);
+        if (input.Direction is not (StockDirection.In or StockDirection.Out))
+            throw new ArgumentException("A generated line adds or removes stock.", nameof(input));
+
+        var line = New(lineNumber, input.ProductId, input.ProductUnitId, input.UnitId, 1m, input.BaseQuantity, input.BaseQuantity,
+            input.Direction, input.Direction == StockDirection.In ? input.UnitCost : null);
+        line._allocations.Add(input.Direction == StockDirection.In
+            ? StockAllocation.Into(input.Place.WarehouseId, input.Place.LocationId, input.BaseQuantity)
+            : StockAllocation.OutOf(input.Place.WarehouseId, input.Place.LocationId, input.BaseQuantity));
         return line;
     }
 
     /// <summary>The same product and quantity the other way round, for a reversal.</summary>
     internal StockDocumentLine Reversed()
     {
-        var line = new StockDocumentLine
-        {
-            LineNumber = LineNumber,
-            ProductId = ProductId,
-            ProductUnitId = ProductUnitId,
-            UnitId = UnitId,
-            ConversionFactor = ConversionFactor,
-            Quantity = Quantity,
-            BaseQuantity = BaseQuantity,
-            Direction = Direction == StockDirection.In ? StockDirection.Out : StockDirection.In,
-            ReversesLineId = Id,
-        };
+        var line = New(LineNumber, ProductId, ProductUnitId, UnitId, ConversionFactor, Quantity, BaseQuantity,
+            Direction == StockDirection.In ? StockDirection.Out : StockDirection.In, null);
+        line.ReversesLineId = Id;
         foreach (var allocation in _allocations)
             line._allocations.Add(allocation.Reversed());
         return line;
     }
+
+    private static StockDocumentLine New(
+        int lineNumber, Guid productId, Guid productUnitId, Guid unitId, decimal conversionFactor, decimal quantity,
+        decimal baseQuantity, StockDirection direction, decimal? unitCost) =>
+        new()
+        {
+            LineNumber = lineNumber,
+            ProductId = productId,
+            ProductUnitId = productUnitId,
+            UnitId = unitId,
+            ConversionFactor = conversionFactor,
+            Quantity = quantity,
+            BaseQuantity = baseQuantity,
+            Direction = direction,
+            UnitCost = unitCost,
+        };
 }

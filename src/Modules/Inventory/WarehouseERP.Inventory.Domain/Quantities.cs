@@ -1,3 +1,5 @@
+using WarehouseERP.SharedKernel.Results;
+
 namespace WarehouseERP.Inventory.Domain;
 
 /// <summary>
@@ -27,4 +29,20 @@ public static class Quantities
     public static decimal RoundValue(decimal value) => decimal.Round(value, ValueScale, MidpointRounding.AwayFromZero);
 
     public static decimal RoundCost(decimal value) => decimal.Round(value, CostScale, MidpointRounding.AwayFromZero);
+
+    /// <summary>
+    /// A quantity entered in a unit, in base units: whole where a unit can't be split, at most 4 decimals, exact.
+    /// </summary>
+    public static Result<decimal> ToBase(
+        decimal quantity, decimal conversionFactor, bool unitAllowsFraction, bool baseUnitAllowsFraction, int line)
+    {
+        if (!unitAllowsFraction && !IsWhole(quantity))
+            return StockDocumentDomainErrors.QuantityMustBeWhole(line);
+        var baseQuantity = quantity * conversionFactor;
+        if (baseQuantity > MaxQuantity)
+            return StockDocumentDomainErrors.QuantityTooLarge(line);
+        if (!FitsScale(baseQuantity, QuantityScale) || (!baseUnitAllowsFraction && !IsWhole(baseQuantity)))
+            return StockDocumentDomainErrors.ConversionNotExact(line);
+        return decimal.Round(baseQuantity, QuantityScale);
+    }
 }

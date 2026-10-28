@@ -12,7 +12,7 @@ internal sealed class StockDocumentConfiguration : IEntityTypeConfiguration<Stoc
     {
         b.ToTable("StockDocuments", "inventory", t =>
         {
-            t.HasCheckConstraint("CK_StockDocuments_Type", "[DocumentType] BETWEEN 1 AND 5");
+            t.HasCheckConstraint("CK_StockDocuments_Type", "[DocumentType] BETWEEN 1 AND 8");
             t.HasCheckConstraint("CK_StockDocuments_Status", "[Status] BETWEEN 1 AND 4");
             t.HasCheckConstraint("CK_StockDocuments_Posted",
                 "([Status] = 3 AND [Number] IS NOT NULL AND [FiscalYear] IS NOT NULL AND [SequenceNumber] IS NOT NULL AND [PostedAtUtc] IS NOT NULL)"
@@ -41,6 +41,8 @@ internal sealed class StockDocumentConfiguration : IEntityTypeConfiguration<Stoc
         b.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade);
         b.HasOne<StockDocument>().WithMany().HasForeignKey(x => x.ReversalOfDocumentId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<StockTransfer>().WithMany().HasForeignKey(x => x.TransferId).OnDelete(DeleteBehavior.NoAction);
+        b.HasOne<StockCount>().WithMany().HasForeignKey(x => x.CountId).OnDelete(DeleteBehavior.NoAction);
 
         b.HasIndex(x => x.DraftNumber).IsUnique();
         b.HasIndex(x => x.Number).IsUnique().HasFilter("[Number] IS NOT NULL");
@@ -50,6 +52,8 @@ internal sealed class StockDocumentConfiguration : IEntityTypeConfiguration<Stoc
         b.HasIndex(x => x.ReversalOfDocumentId, "UX_StockDocuments_OneReversal")
             .IsUnique().HasFilter("[ReversalOfDocumentId] IS NOT NULL AND [Status] <> 4");
         b.HasIndex(x => new { x.WarehouseId, x.Status });
+        b.HasIndex(x => x.TransferId);
+        b.HasIndex(x => x.CountId);
         b.HasIndex(x => x.CreatedAtUtc);
     }
 }
