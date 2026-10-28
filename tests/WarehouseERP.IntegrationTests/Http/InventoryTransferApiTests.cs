@@ -255,6 +255,66 @@ public sealed class InventoryTransferApiTests(DatabaseFixture fx) : IAsyncLifeti
     }
 
     [Fact]
+    public async Task Each_side_manages_its_own_part_and_an_outsider_gets_a_403_that_names_nothing()
+    {
+        var admin = Admin();
+        var route = await CreateRouteAsync(fx, admin);
+        var room = route.Source;
+        await ReceiveAsync(admin, room, 10m, 1m);
+        const string manage = $"{InventoryPermissions.TransfersManage},{InventoryPermissions.DocumentsRead}";
+        var sender = _api.CreateClient().As(manage, room.WarehouseId.ToString(), Guid.NewGuid());
+        var destinationSide = _api.CreateClient().As(
+            $"{manage},{InventoryPermissions.TransfersReceive}", route.DestinationId.ToString(), Guid.NewGuid());
+        var elsewhere = await CreateStockroomAsync(fx, admin);
+        var outsider = _api.CreateClient().As(AllPermissions, elsewhere.WarehouseId.ToString(), Guid.NewGuid());
+
+        // The source side edits and cancels its draft, then dispatches another; the destination side receives part of it.
+        var draft = await DraftTransferAsync(sender, route, TransferLine(room.ProductId, room.Piece, 1m)).CreatedIdAsync();
+        var draftVersion = (await TransferAsync(sender, draft)).GetProperty("rowVersion").GetString();
+        Assert.Equal(HttpStatusCode.OK, (await sender.PutJsonAsync($"{Transfers}/{draft}", new
+        {
+            transitWarehouseId = (Guid?)null, externalReference = "WAYBILL-2", notes = (string?)null,
+            lines = new[] { TransferLine(room.ProductId, room.Piece, 2m) }, rowVersion = draftVersion,
+        })).StatusCode);
+        await TransferActAsync(sender, draft, "cancel").EnsureOkAsync();
+        var (id, lineId) = await DispatchPiecesAsync(sender, route, 6m);
+        await ReceiveTransferAsync(destinationSide, id, null, null, (lineId, 2m)).PostedAsync();
+
+        // Every action of an outsider is refused alike, without the transfer's numbers or its warehouses.
+        var transfer = await TransferAsync(admin, id);
+        string[] hidden =
+        [
+            transfer.GetProperty("reference").GetString()!, transfer.GetProperty("number").GetString()!,
+            transfer.GetProperty("sourceWarehouseCode").GetString()!, transfer.GetProperty("destinationWarehouseCode").GetString()!,
+            transfer.GetProperty("transitWarehouseCode").GetString()!, room.WarehouseId.ToString(), route.DestinationId.ToString(),
+        ];
+        const string seen = "AAAAAAAAAAA=";
+        var refusals = new List<HttpResponseMessage>
+        {
+            await outsider.GetAsync($"{Transfers}/{id}"),
+            await outsider.PutJsonAsync($"{Transfers}/{id}", new
+            {
+                transitWarehouseId = (Guid?)null, externalReference = (string?)null, notes = (string?)null,
+                lines = new[] { TransferLine(room.ProductId, room.Piece, 1m) }, rowVersion = seen,
+            }),
+        };
+        foreach (var action in new[] { "submit", "cancel", "dispatch", "approve" })
+            refusals.Add(await TransferActAsync(outsider, id, action, rowVersion: seen));
+        refusals.Add(await TransferActAsync(outsider, id, "reject", body: new { reason = "no", rowVersion = seen }, rowVersion: seen));
+        refusals.Add(await TransferActAsync(outsider, id, "close", body: new { reason = "Loss", notes = (string?)null, rowVersion = seen }, rowVersion: seen));
+        refusals.Add(await ReceiveTransferAsync(outsider, id, null, seen, (lineId, 1m)));
+        foreach (var refusal in refusals)
+        {
+            var problem = (await refusal.AssertProblemAsync(HttpStatusCode.Forbidden, "Inventory.StockTransfer.AccessDenied")).GetRawText();
+            Assert.All(hidden, value => Assert.DoesNotContain(value, problem, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Either side may close what never arrives: here the destination side.
+        await CloseTransferAsync(destinationSide, id).CreatedIdAsync();
+        Assert.Equal("Closing", Status(await TransferAsync(sender, id)));
+    }
+
+    [Fact]
     public async Task A_sender_may_ship_to_any_active_physical_warehouse_even_outside_their_scope()
     {
         var admin = Admin();
