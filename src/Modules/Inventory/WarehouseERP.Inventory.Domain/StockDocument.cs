@@ -40,6 +40,9 @@ public sealed class StockDocument : IAuditable
     /// <summary>The count whose differences this document posted.</summary>
     public Guid? CountId { get; private set; }
 
+    /// <summary>The Purchasing goods receipt or supplier return a purchase receipt or return posted; unique.</summary>
+    public Guid? SourceDocumentId { get; private set; }
+
     public AdjustmentReason? AdjustmentReason { get; private set; }
     public string? ExternalReference { get; private set; }
     public string? Notes { get; private set; }
@@ -88,7 +91,7 @@ public sealed class StockDocument : IAuditable
     {
         if (DocumentType == StockDocumentType.Reversal)
             return StockDocumentDomainErrors.ReversalLinesFixed;
-        if (TransferId is not null || CountId is not null)
+        if (TransferId is not null || CountId is not null || SourceDocumentId is not null)
             return StockDocumentDomainErrors.LinkedLinesFixed;
         if (Status != StockDocumentStatus.Draft)
             return StockDocumentDomainErrors.NotDraft;
@@ -103,8 +106,9 @@ public sealed class StockDocument : IAuditable
     {
         if (original.DocumentType == StockDocumentType.Reversal)
             return StockDocumentDomainErrors.CannotReverseReversal;
-        if (original.TransferId is not null || original.CountId is not null
-            || original.DocumentType is StockDocumentType.TransferDispatch or StockDocumentType.TransferReceipt or StockDocumentType.CountAdjustment)
+        if (original.TransferId is not null || original.CountId is not null || original.SourceDocumentId is not null
+            || original.DocumentType is StockDocumentType.TransferDispatch or StockDocumentType.TransferReceipt
+                or StockDocumentType.CountAdjustment or StockDocumentType.PurchaseReceipt or StockDocumentType.PurchaseReturn)
             return StockDocumentDomainErrors.NotReversible;
         if (original.Status != StockDocumentStatus.Posted)
             return StockDocumentDomainErrors.NotPosted;
@@ -190,6 +194,27 @@ public sealed class StockDocument : IAuditable
             document._lines.Add(StockDocumentLine.CreateGenerated(i + 1, lines[i]));
         document.Record(StockDocumentAction.Created, userId, nowUtc, note: null);
         document.Record(StockDocumentAction.Submitted, userId, nowUtc, note: null);
+        return document;
+    }
+
+    /// <summary>
+    /// The document a Purchasing goods receipt (stock in, at the order's net unit price) or supplier return (stock out)
+    /// posts, in the caller's transaction. Purchasing carries its approval; Inventory's endpoints never change it.
+    /// </summary>
+    public static Result<StockDocument> CreatePurchase(
+        StockDocumentType documentType, Guid warehouseId, Guid branchId, Guid sourceDocumentId, string sourceNumber, string? notes,
+        IReadOnlyList<StockLineInput> lines, Guid? userId, DateTime nowUtc)
+    {
+        if (documentType is not (StockDocumentType.PurchaseReceipt or StockDocumentType.PurchaseReturn))
+            throw new ArgumentException("Purchasing posts purchase receipts and returns only.", nameof(documentType));
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceNumber);
+
+        var document = Generated(documentType, warehouseId, branchId, requiresApproval: false, StockDocumentStatus.Draft, sourceNumber, notes);
+        document.SourceDocumentId = sourceDocumentId;
+        var filled = document.Fill(reason: null, sourceNumber, notes, lines);
+        if (filled.IsFailure)
+            return filled.Error;
+        document.Record(StockDocumentAction.Created, userId, nowUtc, note: null);
         return document;
     }
 

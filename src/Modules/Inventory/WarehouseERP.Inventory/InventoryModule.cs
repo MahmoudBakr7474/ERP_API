@@ -35,6 +35,7 @@ using WarehouseERP.Inventory.Application.Features.Stock.ListOverReservations;
 using WarehouseERP.Inventory.Application.Features.Stock.ListStockAvailability;
 using WarehouseERP.Inventory.Application.Features.Stock.ListStockBalances;
 using WarehouseERP.Inventory.Application.Features.Stock.ListStockMovements;
+using WarehouseERP.Inventory.Application.Features.StockDocuments;
 using WarehouseERP.Inventory.Application.Features.StockDocuments.ApproveStockDocument;
 using WarehouseERP.Inventory.Application.Features.StockDocuments.CancelStockDocument;
 using WarehouseERP.Inventory.Application.Features.StockDocuments.CreateStockDocument;
@@ -74,8 +75,8 @@ namespace WarehouseERP.Inventory;
 // (Milestone A), transfers through transit warehouses, stock counts and the reconciliation report (Milestone B); see
 // docs/modules/Inventory/V1_DECISIONS.md and ADR 0015. Other modules see only Inventory.Contracts: Organization asks
 // IWarehouseStockGuard before deactivating a warehouse or a location and opens transit locations through
-// ITransitLocations. The host calls AddInventoryModule and MapInventoryEndpoints; ITransactionRunner comes from
-// Persistence.
+// ITransitLocations; Purchasing posts its goods receipts and supplier returns through IPurchaseStockPosting. The host
+// calls AddInventoryModule and MapInventoryEndpoints; ITransactionRunner comes from Persistence.
 public static class InventoryModule
 {
     public static IServiceCollection AddInventoryModule(this IServiceCollection services)
@@ -150,6 +151,7 @@ public static class InventoryModule
         services.AddScoped<IStockCountReadStore, StockCountReadStore>();
         services.AddScoped<IReconciliationReadStore, ReconciliationReadStore>();
         services.AddScoped<IWarehouseStockGuard, WarehouseStockGuard>();
+        services.AddScoped<IPurchaseStockPosting, PurchaseStockPosting>();
 
         services.AddPermissions("Inventory", InventoryPermissions.All);
         return services;

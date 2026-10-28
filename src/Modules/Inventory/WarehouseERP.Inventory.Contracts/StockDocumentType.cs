@@ -26,4 +26,10 @@ public enum StockDocumentType : byte
 
     /// <summary>The differences an approved stock count found (CNT).</summary>
     CountAdjustment = 8,
+
+    /// <summary>Goods received against a purchase order, posted only by Purchasing through IPurchaseStockPosting (PRC).</summary>
+    PurchaseReceipt = 9,
+
+    /// <summary>Received goods sent back to their supplier, posted only by Purchasing through IPurchaseStockPosting (PRT).</summary>
+    PurchaseReturn = 10,
 }

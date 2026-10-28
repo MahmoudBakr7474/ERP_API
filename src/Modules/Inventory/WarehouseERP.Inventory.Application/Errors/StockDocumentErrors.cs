@@ -1,3 +1,4 @@
+using WarehouseERP.Inventory.Contracts;
 using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Inventory.Application.Errors;
@@ -16,6 +17,20 @@ public static class StockDocumentErrors
 
     public static readonly Error ReversalNotDrafted = Error.BusinessRule(
         "Inventory.StockDocument.ReversalNotDrafted", "A reversal is created from the posted document it reverses.");
+
+    public static readonly Error TypeNotDrafted = Error.BusinessRule(
+        "Inventory.StockDocument.TypeNotDrafted", "Documents of this type are produced and changed by their transfer or count only.");
+
+    public static readonly Error ManagedByPurchasing = Error.BusinessRule(
+        "Inventory.StockDocument.ManagedByPurchasing",
+        "Purchase receipts and returns are posted by Purchasing; correct them there with a supplier return.");
+
+    public static readonly Error SourceAlreadyPosted = Error.Conflict(
+        "Inventory.StockDocument.SourceAlreadyPosted", "This purchasing document has already been posted to stock.");
+
+    /// <summary>Why a document of this type can't be drafted or changed through Inventory's document endpoints.</summary>
+    public static Error NotManagedHere(StockDocumentType documentType) =>
+        documentType is StockDocumentType.PurchaseReceipt or StockDocumentType.PurchaseReturn ? ManagedByPurchasing : TypeNotDrafted;
 
     public static readonly Error WarehouseNotFound = Error.BusinessRule(
         "Inventory.StockDocument.WarehouseNotFound", "The warehouse does not exist.");

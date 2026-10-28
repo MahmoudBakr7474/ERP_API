@@ -50,6 +50,9 @@ internal sealed class StockDocumentRepository(DbContext db) : IStockDocumentRepo
     public Task<bool> HasReversalAsync(Guid documentId, CancellationToken ct) =>
         db.Set<StockDocument>().AnyAsync(x => x.ReversalOfDocumentId == documentId && x.Status != StockDocumentStatus.Cancelled, ct);
 
+    public Task<bool> HasSourceAsync(Guid sourceDocumentId, CancellationToken ct) =>
+        db.Set<StockDocument>().AnyAsync(x => x.SourceDocumentId == sourceDocumentId, ct);
+
     public void Add(StockDocument document) => db.Add(document);
 
     public Task<Result> SaveChangesAsync(CancellationToken ct)

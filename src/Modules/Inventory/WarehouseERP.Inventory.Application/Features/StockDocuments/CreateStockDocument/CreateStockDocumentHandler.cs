@@ -22,7 +22,9 @@ public sealed partial class CreateStockDocumentHandler(
     {
         if (command.DocumentType == StockDocumentType.Reversal)
             return StockDocumentErrors.ReversalNotDrafted;
-        if (!currentUser.HasPermission(StockDocumentAccess.ManagePermission(command.DocumentType)))
+        if (StockDocumentAccess.ManagePermission(command.DocumentType) is not { } permission)
+            return StockDocumentErrors.NotManagedHere(command.DocumentType);
+        if (!currentUser.HasPermission(permission))
             return StockDocumentErrors.PermissionDenied;
         if (!currentUser.CanAccessWarehouse(command.WarehouseId))
             return StockErrors.WarehouseAccessDenied;

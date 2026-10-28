@@ -21,6 +21,9 @@ public interface IStockDocumentRepository
     /// <summary>True while the document has a reversal that is not cancelled.</summary>
     Task<bool> HasReversalAsync(Guid documentId, CancellationToken ct);
 
+    /// <summary>True once a stock document was made for this Purchasing goods receipt or supplier return.</summary>
+    Task<bool> HasSourceAsync(Guid sourceDocumentId, CancellationToken ct);
+
     void Add(StockDocument document);
 
     /// <summary>

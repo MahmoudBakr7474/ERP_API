@@ -46,14 +46,16 @@ public sealed class StockDocumentLine
 
         var allowed = documentType switch
         {
-            StockDocumentType.OpeningBalance or StockDocumentType.Receipt => input.Direction == StockDirection.In,
-            StockDocumentType.Issue => input.Direction == StockDirection.Out,
+            StockDocumentType.OpeningBalance or StockDocumentType.Receipt or StockDocumentType.PurchaseReceipt =>
+                input.Direction == StockDirection.In,
+            StockDocumentType.Issue or StockDocumentType.PurchaseReturn => input.Direction == StockDirection.Out,
             StockDocumentType.Adjustment => input.Direction is StockDirection.In or StockDirection.Out,
             _ => false,
         };
         if (!allowed)
             return StockDocumentDomainErrors.WrongDirection(lineNumber);
-        if ((documentType is StockDocumentType.OpeningBalance or StockDocumentType.Receipt) && input.UnitCost is null)
+        if (documentType is StockDocumentType.OpeningBalance or StockDocumentType.Receipt or StockDocumentType.PurchaseReceipt
+            && input.UnitCost is null)
             return StockDocumentDomainErrors.UnitCostRequired(lineNumber);
         if (input.Direction == StockDirection.Out && input.UnitCost is not null)
             return StockDocumentDomainErrors.UnitCostNotAllowed(lineNumber);

@@ -41,7 +41,7 @@ internal sealed class StockDocumentReadStore(DbContext db, ReferenceNames names)
             document.Id, StockDocumentNumbers.DraftReference(document.DraftNumber), document.Number, document.DocumentType,
             document.Status, document.WarehouseId, lookup.WarehouseCode(document.WarehouseId), document.BranchId,
             document.RequiresApproval, document.ReversalOfDocumentId, reversedBy, document.TransferId, document.CountId,
-            document.AdjustmentReason,
+            document.SourceDocumentId, document.AdjustmentReason,
             document.ExternalReference, document.Notes, document.CreatedAtUtc, document.CreatedByUserId,
             lookup.UserName(document.CreatedByUserId), document.PostedAtUtc, lookup.UserName(document.PostedByUserId),
             lookup.UserName(document.ApprovedByUserId), Convert.ToBase64String(document.RowVersion),

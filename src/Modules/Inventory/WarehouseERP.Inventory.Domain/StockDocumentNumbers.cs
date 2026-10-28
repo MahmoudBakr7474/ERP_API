@@ -19,6 +19,8 @@ public static class StockDocumentNumbers
         StockDocumentType.TransferDispatch => "TRF",
         StockDocumentType.TransferReceipt => "TRR",
         StockDocumentType.CountAdjustment => "CNT",
+        StockDocumentType.PurchaseReceipt => "PRC",
+        StockDocumentType.PurchaseReturn => "PRT",
         _ => throw new ArgumentOutOfRangeException(nameof(documentType), documentType, "Unknown document type."),
     };
 
