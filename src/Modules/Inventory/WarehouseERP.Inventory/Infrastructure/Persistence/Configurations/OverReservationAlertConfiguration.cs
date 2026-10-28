@@ -13,7 +13,7 @@ internal sealed class OverReservationAlertConfiguration : IEntityTypeConfigurati
         b.Property(x => x.Id).UseIdentityColumn();
         b.Property(x => x.OnHandSellable).HasPrecision(18, 4);
         b.Property(x => x.ReservedQuantity).HasPrecision(18, 4);
-        b.Property(x => x.DetectedAtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.DetectedAtUtc).IsUtcTimestamp();
         b.HasOne<StockDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(x => new { x.WarehouseId, x.ProductId });
         b.HasIndex(x => x.DocumentId);

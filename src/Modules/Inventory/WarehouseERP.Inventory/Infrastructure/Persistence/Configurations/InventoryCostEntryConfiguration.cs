@@ -22,7 +22,7 @@ internal sealed class InventoryCostEntryConfiguration : IEntityTypeConfiguration
         b.Property(x => x.QuantityAfter).HasPrecision(18, 4);
         b.Property(x => x.ValueAfter).HasPrecision(19, 4);
         b.Property(x => x.AverageCostAfter).HasPrecision(19, 8);
-        b.Property(x => x.PostedAtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.PostedAtUtc).IsUtcTimestamp();
         b.HasOne<StockDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<StockDocumentLine>().WithMany().HasForeignKey(x => x.LineId).OnDelete(DeleteBehavior.NoAction);
         b.HasIndex(x => x.LineId).IsUnique();

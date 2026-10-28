@@ -12,7 +12,7 @@ internal sealed class StockCountEventConfiguration : IEntityTypeConfiguration<St
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).UseIdentityColumn();
         b.Property(x => x.Action).HasConversion<byte>().HasColumnType("tinyint");
-        b.Property(x => x.AtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.AtUtc).IsUtcTimestamp();
         b.Property(x => x.Note).HasMaxLength(500);
         b.HasIndex(x => x.CountId);
     }

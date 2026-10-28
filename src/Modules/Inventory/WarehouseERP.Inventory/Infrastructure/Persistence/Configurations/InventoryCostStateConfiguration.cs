@@ -19,7 +19,7 @@ internal sealed class InventoryCostStateConfiguration : IEntityTypeConfiguration
         b.Property(x => x.TotalQuantity).HasPrecision(18, 4);
         b.Property(x => x.TotalValue).HasPrecision(19, 4);
         b.Property(x => x.AverageUnitCost).HasPrecision(19, 8);
-        b.Property(x => x.UpdatedAtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
         b.Property(x => x.RowVersion).IsRowVersion();
     }
 }

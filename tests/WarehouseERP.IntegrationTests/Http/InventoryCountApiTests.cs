@@ -75,6 +75,8 @@ public sealed class InventoryCountApiTests(DatabaseFixture fx) : IAsyncLifetime
 
         var completed = await CountAsync(admin, id);
         Assert.Equal(("Completed", number), (Status(completed), completed.GetProperty("adjustmentNumber").GetString()));
+        Assert.EndsWith("Z", completed.GetProperty("createdAtUtc").GetString()); // read back as UTC: JavaScript won't shift it
+        Assert.EndsWith("Z", completed.GetProperty("completedAtUtc").GetString());
         Assert.Equal([-2m, 2m], completed.GetProperty("lines").EnumerateArray().Select(l => l.GetProperty("variance").GetDecimal()).Order());
         var adjustment = await DocumentAsync(admin, completed.GetProperty("adjustmentDocumentId").GetGuid());
         Assert.Equal(("CountAdjustment", "Posted", 2, id), (adjustment.GetProperty("documentType").GetString(),

@@ -14,11 +14,11 @@ internal sealed class StockCountConfiguration : IEntityTypeConfiguration<StockCo
         b.Property(x => x.DraftNumber).UseIdentityColumn();
         b.Property(x => x.Status).HasConversion<byte>().HasColumnType("tinyint");
         b.Property(x => x.Notes).HasMaxLength(500);
-        b.Property(x => x.StartedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.SubmittedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.CompletedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.CreatedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.UpdatedAtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.StartedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.SubmittedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.CompletedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.CreatedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
         b.Property(x => x.RowVersion).IsRowVersion();
         b.Ignore(x => x.Differences);
 

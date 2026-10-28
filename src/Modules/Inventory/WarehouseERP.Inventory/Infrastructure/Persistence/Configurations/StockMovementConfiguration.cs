@@ -14,7 +14,7 @@ internal sealed class StockMovementConfiguration : IEntityTypeConfiguration<Stoc
         b.Property(x => x.Id).UseIdentityColumn();
         b.Property(x => x.Quantity).HasPrecision(18, 4);
         b.Property(x => x.StockStatus).HasConversion<byte>().HasColumnType("tinyint");
-        b.Property(x => x.PostedAtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.PostedAtUtc).IsUtcTimestamp();
         b.HasOne<StockDocument>().WithMany().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<StockDocumentLine>().WithMany().HasForeignKey(x => x.LineId).OnDelete(DeleteBehavior.NoAction);
         b.HasOne<StockAllocation>().WithMany().HasForeignKey(x => x.AllocationId).OnDelete(DeleteBehavior.NoAction);

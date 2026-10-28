@@ -25,10 +25,10 @@ internal sealed class StockTransferConfiguration : IEntityTypeConfiguration<Stoc
         b.Property(x => x.Status).HasConversion<byte>().HasColumnType("tinyint");
         b.Property(x => x.ExternalReference).HasMaxLength(100);
         b.Property(x => x.Notes).HasMaxLength(500);
-        b.Property(x => x.DispatchedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.CompletedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.CreatedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.UpdatedAtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.DispatchedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.CompletedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.CreatedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
         b.Property(x => x.RowVersion).IsRowVersion();
         b.Ignore(x => x.IsOpen);
         b.Ignore(x => x.OutstandingQuantity);

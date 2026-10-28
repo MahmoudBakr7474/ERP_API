@@ -13,7 +13,7 @@ internal sealed class StockBalanceConfiguration : IEntityTypeConfiguration<Stock
         b.Property(x => x.Id).UseIdentityColumn();
         b.Property(x => x.Quantity).HasPrecision(18, 4);
         b.Property(x => x.StockStatus).HasConversion<byte>().HasColumnType("tinyint");
-        b.Property(x => x.UpdatedAtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
         // Unfiltered on purpose (INVENTORY_DECISIONS.md): SQL Server's unique index then treats a null lot as one value,
         // so there is exactly one row per product, location and status while lots don't exist.
         b.HasIndex(x => new { x.ProductId, x.WarehouseId, x.LocationId, x.LotId, x.StockStatus }, "UX_StockBalances_Key")

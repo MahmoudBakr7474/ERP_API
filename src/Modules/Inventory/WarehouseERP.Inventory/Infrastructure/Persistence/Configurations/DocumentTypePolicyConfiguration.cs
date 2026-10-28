@@ -17,8 +17,8 @@ internal sealed class DocumentTypePolicyConfiguration : IEntityTypeConfiguration
         b.ToTable("DocumentTypePolicies", "inventory", t => t.HasCheckConstraint("CK_DocumentTypePolicies_Type", "[DocumentType] IN (1, 2, 3, 4, 6)"));
         b.HasKey(x => x.DocumentType);
         b.Property(x => x.DocumentType).HasConversion<byte>().HasColumnType("tinyint").ValueGeneratedNever();
-        b.Property(x => x.CreatedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.UpdatedAtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.CreatedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
         b.Property(x => x.RowVersion).IsRowVersion();
         b.HasData(
             new { DocumentType = StockDocumentType.OpeningBalance, RequiresApproval = true, CreatedAtUtc = Seeded },

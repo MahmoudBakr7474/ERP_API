@@ -33,9 +33,9 @@ internal sealed class StockDocumentConfiguration : IEntityTypeConfiguration<Stoc
         b.Property(x => x.ExternalReference).HasMaxLength(100);
         b.Property(x => x.Notes).HasMaxLength(500);
         b.Property(x => x.Number).HasMaxLength(60).IsUnicode(false);
-        b.Property(x => x.PostedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.CreatedAtUtc).HasColumnType("datetime2(3)");
-        b.Property(x => x.UpdatedAtUtc).HasColumnType("datetime2(3)");
+        b.Property(x => x.PostedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.CreatedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
         b.Property(x => x.RowVersion).IsRowVersion();
 
         b.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.DocumentId).OnDelete(DeleteBehavior.Cascade);
