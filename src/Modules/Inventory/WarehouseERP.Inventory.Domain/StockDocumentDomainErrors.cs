@@ -22,9 +22,6 @@ public static class StockDocumentDomainErrors
     public static readonly Error ApprovalNotRequired = Error.BusinessRule(
         "Inventory.StockDocument.ApprovalNotRequired", "This document needs no approval: post it directly.");
 
-    public static readonly Error SelfApproval = Error.BusinessRule(
-        "Inventory.StockDocument.SelfApproval", "Nobody may approve a document they created.");
-
     public static readonly Error NoLines = Error.BusinessRule(
         "Inventory.StockDocument.NoLines", "A document needs at least one line.");
 

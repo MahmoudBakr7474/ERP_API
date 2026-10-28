@@ -59,7 +59,7 @@ public sealed partial class TransferDispatching(
             return StockTransferErrors.NotFound;
         if (!transfer.RowVersion.AsSpan().SequenceEqual(rowVersion))
             return CommonErrors.ConcurrencyConflict;
-        var allowed = transfer.CanDispatch(byApproval, userId);
+        var allowed = transfer.CanDispatch(byApproval);
         if (allowed.IsFailure)
             return allowed.Error;
 

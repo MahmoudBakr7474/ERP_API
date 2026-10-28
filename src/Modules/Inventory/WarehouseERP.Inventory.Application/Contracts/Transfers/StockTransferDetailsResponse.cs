@@ -3,7 +3,7 @@ using WarehouseERP.Inventory.Contracts;
 namespace WarehouseERP.Inventory.Application.Contracts.Transfers;
 
 /// <param name="TransitLocationCode">The location opened for this transfer in the transit warehouse, from dispatch on.</param>
-/// <param name="CreatedByUserId">Its creator, who may not approve its dispatch.</param>
+/// <param name="CreatedByUserId">Its creator.</param>
 /// <param name="RowVersion">Send it back with the next change or action.</param>
 /// <param name="Documents">The dispatch, receipts and loss adjustment it produced.</param>
 public sealed record StockTransferDetailsResponse(

@@ -64,7 +64,8 @@ built before going live.
   type, branch and fiscal year (calendar year in the company's time zone). Drafts carry a separate reference.
   Numbers are kept forever, also for reversed documents.
 - Approval is configurable per document type. Initial policy: opening stock and adjustments need approval; goods
-  receipt and goods issue post directly. A creator never approves their own document.
+  receipt and goods issue post directly. Whoever holds the approval permission approves, their own documents
+  included (changed on 2026-10-28; at first a creator never approved their own document).
 - Approval checks permission, warehouse scope, the document's state and its `rowVersion`.
 - Each document records the approval policy that applied to it, so a later settings change does not alter it.
 

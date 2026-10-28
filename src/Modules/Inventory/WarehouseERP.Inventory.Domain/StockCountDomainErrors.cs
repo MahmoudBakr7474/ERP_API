@@ -22,9 +22,6 @@ public static class StockCountDomainErrors
     public static readonly Error NotFullyCounted = Error.BusinessRule(
         "Inventory.StockCount.NotFullyCounted", "Enter a counted quantity for every line before submitting.");
 
-    public static readonly Error SelfApproval = Error.BusinessRule(
-        "Inventory.StockCount.SelfApproval", "Nobody may approve a count they created.");
-
     public static readonly Error OutOfScope = Error.BusinessRule(
         "Inventory.StockCount.OutOfScope", "That location is not part of this count.");
 

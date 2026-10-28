@@ -19,8 +19,8 @@ The Lovable prompt is [`LOVABLE_PROMPT.md`](LOVABLE_PROMPT.md). Business rules a
 - The database needs `Migration04_Inventory`, `Migration05_InventoryTransfersCounts` and
   `Migration06_InventorySnapshotIsolation` (`dotnet ef database update`, README *Database*). `WarehouseERP_Dev` has
   all three.
-- The bootstrap administrator holds `"*"`. Give other roles the `inventory.*` permissions in the role editor. Approvals
-  need a second user: nobody approves what they created.
+- The bootstrap administrator holds `"*"`. Give other roles the `inventory.*` permissions in the role editor. Anyone with
+  `inventory.documents.approve` and the warehouse in scope approves, their own documents, transfers and counts included.
 - Transfers need a warehouse of type **Transit** in the source branch (Organization → Warehouses → New, type
   Transit). With exactly one active transit warehouse in the branch, transfers use it without asking.
 
@@ -33,7 +33,7 @@ The Lovable prompt is [`LOVABLE_PROMPT.md`](LOVABLE_PROMPT.md). Business rules a
 | PUT | `/api/inventory/documents/{id}` | `<type>.manage` + warehouse | 200 `{rowVersion}` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/documents/{id}/submit` · `/cancel` | `<type>.manage` + warehouse | 200 `{rowVersion}` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/documents/{id}/post` (Idempotency-Key) | `<type>.manage` + warehouse | 200 `PostedDocumentResponse` | 400, 403, 404, 409, 422 |
-| POST | `/api/inventory/documents/{id}/approve` (Idempotency-Key) | `documents.approve` + warehouse, not the creator | 200 `PostedDocumentResponse` | 400, 403, 404, 409, 422 |
+| POST | `/api/inventory/documents/{id}/approve` (Idempotency-Key) | `documents.approve` + warehouse | 200 `PostedDocumentResponse` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/documents/{id}/reject` | `documents.approve` + warehouse | 200 `{rowVersion}` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/documents/{id}/reverse` | `<type>.manage` + warehouse | 201 `{id}` of the reversal | 400, 403, 404, 409 AlreadyReversed, 422 |
 | GET | `/api/inventory/balances?page&pageSize&warehouseId&locationId&productId&includeZero` | `stock.read` | 200 paged | 400, 403 |
@@ -51,7 +51,7 @@ The Lovable prompt is [`LOVABLE_PROMPT.md`](LOVABLE_PROMPT.md). Business rules a
 | PUT | `/api/inventory/transfers/{id}` | `transfers.manage` + source | 200 `{rowVersion}` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/transfers/{id}/submit` · `/cancel` | `transfers.manage` + source | 200 `{rowVersion}` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/transfers/{id}/dispatch` (Idempotency-Key) | `transfers.manage` + source | 200 `StockTransferPostedResponse` | 400, 403, 404, 409, 422 |
-| POST | `/api/inventory/transfers/{id}/approve` (Idempotency-Key) | `documents.approve` + source, not the creator | 200 `StockTransferPostedResponse` | 400, 403, 404, 409, 422 |
+| POST | `/api/inventory/transfers/{id}/approve` (Idempotency-Key) | `documents.approve` + source | 200 `StockTransferPostedResponse` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/transfers/{id}/reject` | `documents.approve` + source | 200 `{rowVersion}` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/transfers/{id}/receive` (Idempotency-Key) | `transfers.receive` + destination | 200 `StockTransferPostedResponse` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/transfers/{id}/close` | `transfers.manage` + source or destination | 201 `{id}` of the loss adjustment | 400, 403, 404, 409, 422 |
@@ -60,7 +60,7 @@ The Lovable prompt is [`LOVABLE_PROMPT.md`](LOVABLE_PROMPT.md). Business rules a
 | POST | `/api/inventory/counts` | `counts.manage` + warehouse | 201 `{id}` | 400, 403, 422 |
 | POST | `/api/inventory/counts/{id}/start` · `/submit` · `/cancel` | `counts.manage` + warehouse | 200 `{rowVersion}` | 400, 403, 404, 409, 422 |
 | PUT | `/api/inventory/counts/{id}/lines` | `counts.manage` + warehouse | 200 `{rowVersion}` | 400, 403, 404, 409, 422 |
-| POST | `/api/inventory/counts/{id}/approve` (Idempotency-Key) | `documents.approve` + warehouse, not the creator | 200 `StockCountApprovalResponse` | 400, 403, 404, 409, 422 |
+| POST | `/api/inventory/counts/{id}/approve` (Idempotency-Key) | `documents.approve` + warehouse | 200 `StockCountApprovalResponse` | 400, 403, 404, 409, 422 |
 | POST | `/api/inventory/counts/{id}/reject` | `documents.approve` + warehouse | 200 `{rowVersion}` | 400, 403, 404, 409, 422 |
 | GET | `/api/inventory/reconciliation` | `reconciliation.read` + company-wide | 200 `ReconciliationReport` | 403 |
 
@@ -115,8 +115,7 @@ POST /api/inventory/transfers/{id}/receive   Idempotency-Key: 9a1d…   (by the 
 
 POST /api/inventory/transfers/{id}/close   { "reason": "Loss", "notes": "كرتونة مفقودة", "rowVersion": "…" }
 → 201 { "id": "…loss adjustment…" }          transfer → "Closing"; receive → 422 Inventory.StockTransfer.NotInTransit
-POST /api/inventory/documents/{loss}/approve  (its creator) → 422 Inventory.StockDocument.SelfApproval
-POST /api/inventory/documents/{loss}/approve  (the approver) → 200 { "number": "ADJ-CAI-2026-000001", … }
+POST /api/inventory/documents/{loss}/approve  (its creator or the approver) → 200 { "number": "ADJ-CAI-2026-000001", … }
 GET /api/inventory/transfers/{id}
 → "status": "Closed", "lines": [ { …, "receivedQuantity": 10.0, "lostQuantity": 14.0, "outstandingQuantity": 0.0 } ],
   "documents": [ TransferDispatch TRF-…, TransferReceipt TRR-…, Adjustment ADJ-… ],
@@ -145,8 +144,8 @@ POST /api/inventory/documents/{an issue in MAIN}/post
 PUT /api/inventory/counts/{id}/lines
 { "lines": [ { "productId": "…", "locationId": "…", "countedQuantity": 22, "unitCost": null } ], "rowVersion": "AAAAAAAAJzI=" }
 → 200 { "rowVersion": "…" }
-POST /api/inventory/counts/{id}/submit → 200; POST …/approve (its creator) → 422 Inventory.StockCount.SelfApproval
-POST /api/inventory/counts/{id}/approve   Idempotency-Key: …   (the approver)
+POST /api/inventory/counts/{id}/submit → 200
+POST /api/inventory/counts/{id}/approve   Idempotency-Key: …   (its creator or the approver)
 → 200 { "countId": "…", "adjustmentDocumentId": "…", "adjustmentNumber": "CNT-CAI-2026-000001",
         "completedAtUtc": "2026-10-28T13:27:52.4621571Z", "overReservations": [] }
 GET /api/inventory/counts?pageSize=5
@@ -180,11 +179,11 @@ to `STORE` (`stock.read`, `documents.read`, `transfers.receive`, `reconciliation
    - The storekeeper sees the transfer and receives 10: `TRR-CAI-2026-000001`, status partly received. `TRANSIT` 14,
      `STORE` 10.
    - Reconciliation (approver): consistent; physical 34 + in transit 14 = valued 48. The storekeeper gets 403.
-4. **Loss:** close the transfer with reason Loss. It is "Closing" and refuses receipts. The administrator can't approve
-   the loss adjustment; the approver can. The transfer is closed with 14 lost; `TRANSIT` 0; valuation 34 / 340.
+4. **Loss:** close the transfer with reason Loss. It is "Closing" and refuses receipts. The administrator who closed it
+   approves the loss adjustment (the approver could too). The transfer is closed with 14 lost; `TRANSIT` 0; valuation 34 / 340.
 5. **Count:** a whole-warehouse count of `MAIN`.
    - Start: 24 expected. An issue from `MAIN` → "frozen by count CT-000001".
-   - Count 22, submit. The creator can't approve; the approver approves: `CNT-CAI-2026-000001`.
+   - Count 22, submit, approve as its creator (the approver could too): `CNT-CAI-2026-000001`.
    - The issue posts now. `MAIN` 21, valuation 31 / 310.
 6. **In transit at the end:** dispatch 5 PCS to `STORE` and leave it. Reconciliation: consistent, physical 26 + in
    transit 5 = valued 31, one open transfer with 5 outstanding. The storekeeper's transfer list shows both transfers.

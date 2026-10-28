@@ -90,7 +90,7 @@ public sealed class InventoryDocumentApiTests(DatabaseFixture fx) : IAsyncLifeti
     }
 
     [Fact]
-    public async Task Adjustments_wait_for_an_approver_who_did_not_create_them_and_a_rejection_sends_them_back()
+    public async Task Adjustments_wait_for_approval_which_their_creator_may_give_and_a_rejection_sends_them_back()
     {
         var maker = Admin();
         var checker = OtherAdmin();
@@ -101,13 +101,12 @@ public sealed class InventoryDocumentApiTests(DatabaseFixture fx) : IAsyncLifeti
 
         await (await ActAsync(maker, id, "post")).AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Inventory.StockDocument.ApprovalRequired");
         Assert.Equal(HttpStatusCode.OK, (await ActAsync(maker, id, "submit")).StatusCode);
-        await (await ActAsync(maker, id, "approve")).AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Inventory.StockDocument.SelfApproval");
         var rowVersion = (await DocumentAsync(checker, id)).GetProperty("rowVersion").GetString();
         Assert.Equal(HttpStatusCode.OK, (await ActAsync(checker, id, "reject", body: new { reason = "الكمية غير صحيحة", rowVersion })).StatusCode);
         Assert.Equal("Draft", (await DocumentAsync(maker, id)).GetProperty("status").GetString());
 
         Assert.Equal(HttpStatusCode.OK, (await ActAsync(maker, id, "submit")).StatusCode);
-        var posted = await ActAsync(checker, id, "approve").PostedAsync();
+        var posted = await ActAsync(maker, id, "approve").PostedAsync();
 
         Assert.StartsWith("ADJ-", posted.GetProperty("number").GetString());
         var document = await DocumentAsync(maker, id);
@@ -169,10 +168,9 @@ public sealed class InventoryDocumentApiTests(DatabaseFixture fx) : IAsyncLifeti
     }
 
     [Fact]
-    public async Task A_reversal_is_approved_by_someone_else_and_undoes_an_issue_at_the_value_it_left_with()
+    public async Task A_reversal_approved_by_its_creator_undoes_an_issue_at_the_value_it_left_with()
     {
         var maker = Admin();
-        var checker = OtherAdmin();
         var room = await CreateStockroomAsync(fx, maker);
         await ReceiveAsync(maker, room, 10m, 10m);
         var issue = await DraftIdAsync(maker, StockDocumentType.Issue, room.WarehouseId, null, Line(room.ProductId, room.Piece, 4m));
@@ -183,8 +181,7 @@ public sealed class InventoryDocumentApiTests(DatabaseFixture fx) : IAsyncLifeti
         var submitted = await DocumentAsync(maker, reversal);
         Assert.Equal(("Reversal", "Submitted", issue), (submitted.GetProperty("documentType").GetString(),
             submitted.GetProperty("status").GetString(), submitted.GetProperty("reversalOfDocumentId").GetGuid()));
-        await (await ActAsync(maker, reversal, "approve")).AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Inventory.StockDocument.SelfApproval");
-        Assert.StartsWith("REV-", (await ActAsync(checker, reversal, "approve").PostedAsync()).GetProperty("number").GetString());
+        Assert.StartsWith("REV-", (await ActAsync(maker, reversal, "approve").PostedAsync()).GetProperty("number").GetString());
 
         Assert.Equal(reversal, (await DocumentAsync(maker, issue)).GetProperty("reversedByDocumentId").GetGuid());
         Assert.Equal(14m, await BalanceAsync(maker, room));

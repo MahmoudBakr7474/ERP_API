@@ -6,7 +6,7 @@ namespace WarehouseERP.Inventory.Application.Contracts.StockDocuments;
 /// <param name="ReversedByDocumentId">The reversal that undoes this document, while it is not cancelled.</param>
 /// <param name="TransferId">The transfer that produced it (dispatch, receipt or loss adjustment); it can't be edited or reversed.</param>
 /// <param name="CountId">The count whose approval produced it.</param>
-/// <param name="CreatedByUserId">Its creator, who may not approve it.</param>
+/// <param name="CreatedByUserId">Its creator.</param>
 /// <param name="RowVersion">Send it back with the next change or action.</param>
 public sealed record StockDocumentDetailsResponse(
     Guid Id, string DraftReference, string? Number, StockDocumentType DocumentType, StockDocumentStatus Status,

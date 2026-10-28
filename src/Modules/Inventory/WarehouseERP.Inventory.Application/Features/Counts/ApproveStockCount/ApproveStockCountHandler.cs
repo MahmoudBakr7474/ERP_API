@@ -16,7 +16,7 @@ using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Inventory.Application.Features.Counts.ApproveStockCount;
 
-// An approver with the warehouse in scope, who did not create the count, approves it as one transaction: under the
+// An approver with the warehouse in scope (its creator included) approves the count as one transaction: under the
 // warehouse lock the frozen stock must still match the snapshot, the differences post as a count adjustment (a surplus at
 // its line's cost or the average, a shortage at the average, never below zero), and the freeze is released.
 public sealed partial class ApproveStockCountHandler(
@@ -65,7 +65,7 @@ public sealed partial class ApproveStockCountHandler(
             return StockCountErrors.NotFound;
         if (!count.RowVersion.AsSpan().SequenceEqual(rowVersion))
             return CommonErrors.ConcurrencyConflict;
-        var allowed = count.CanApprove(userId);
+        var allowed = count.CanApprove();
         if (allowed.IsFailure)
             return allowed.Error;
 

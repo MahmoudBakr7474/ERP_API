@@ -108,18 +108,18 @@ public sealed class StockCountRulesTests
     }
 
     [Fact]
-    public void Someone_other_than_its_creator_approves_and_completion_releases_the_freeze()
+    public void Approval_by_anyone_including_its_creator_completes_it_and_releases_the_freeze()
     {
         var count = Counting();
         count.EnterCounts([Counted(Pens, 10m), Counted(Paper, 4m)]);
-        Assert.Equal("Inventory.StockCount.NotSubmitted", count.CanApprove(Approver).Error?.Code);
-        count.Submit(Creator, Now);
-        Assert.Equal("Inventory.StockCount.SelfApproval", count.CanApprove(Creator).Error?.Code);
+        Assert.Equal("Inventory.StockCount.NotSubmitted", count.CanApprove().Error?.Code);
         Assert.Throws<InvalidOperationException>(() => count.Complete(null, Creator, Now));
+        count.Submit(Creator, Now);
+        Assert.True(count.CanApprove().IsSuccess);
 
-        count.Complete(adjustmentNumber: null, Approver, Now);
+        count.Complete(adjustmentNumber: null, Creator, Now);
 
-        Assert.Equal((StockCountStatus.Completed, (Guid?)Approver, (DateTime?)Now),
+        Assert.Equal((StockCountStatus.Completed, (Guid?)Creator, (DateTime?)Now),
             (count.Status, count.ApprovedByUserId, count.CompletedAtUtc));
         Assert.False(Assert.Single(count.Scopes).IsActive);
         Assert.Empty(count.Differences);

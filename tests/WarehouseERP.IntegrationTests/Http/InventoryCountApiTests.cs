@@ -32,7 +32,6 @@ public sealed class InventoryCountApiTests(DatabaseFixture fx) : IAsyncLifetime
     public async Task A_count_freezes_only_its_locations_and_its_approval_posts_the_differences_and_releases_them()
     {
         var admin = Admin();
-        var other = OtherAdmin();
         var room = await CreateStockroomAsync(fx, admin);
         var shelf = await AddLocationAsync(admin, room.WarehouseId);
         await ReceiveAsync(admin, room, 10m, 4m);
@@ -65,15 +64,13 @@ public sealed class InventoryCountApiTests(DatabaseFixture fx) : IAsyncLifetime
         await EnterCountsAsync(admin, id, Counted(room.ProductId, room.DefaultLocationId, 7m),
             Counted(found, room.DefaultLocationId, 2m, unitCost: 3m)).EnsureOkAsync();
         await CountActAsync(admin, id, "submit").EnsureOkAsync();
-        await (await CountActAsync(admin, id, "approve"))
-            .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Inventory.StockCount.SelfApproval");
 
-        var key = Guid.NewGuid();
-        var submitted = (await CountAsync(other, id)).GetProperty("rowVersion").GetString();
-        var approved = await CountActAsync(other, id, "approve", key, rowVersion: submitted).PostedAsync();
+        var key = Guid.NewGuid(); // its creator approves
+        var submitted = (await CountAsync(admin, id)).GetProperty("rowVersion").GetString();
+        var approved = await CountActAsync(admin, id, "approve", key, rowVersion: submitted).PostedAsync();
         var number = approved.GetProperty("adjustmentNumber").GetString()!;
         Assert.StartsWith("CNT-B-", number);
-        var replay = await CountActAsync(other, id, "approve", key, rowVersion: submitted).PostedAsync();
+        var replay = await CountActAsync(admin, id, "approve", key, rowVersion: submitted).PostedAsync();
         Assert.Equal(number, replay.GetProperty("adjustmentNumber").GetString());
 
         var completed = await CountAsync(admin, id);

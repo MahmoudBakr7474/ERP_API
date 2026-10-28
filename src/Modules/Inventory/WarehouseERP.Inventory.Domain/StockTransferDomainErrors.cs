@@ -28,9 +28,6 @@ public static class StockTransferDomainErrors
     public static readonly Error ApprovalNotRequired = Error.BusinessRule(
         "Inventory.StockTransfer.ApprovalNotRequired", "This transfer needs no approval: dispatch it directly.");
 
-    public static readonly Error SelfApproval = Error.BusinessRule(
-        "Inventory.StockTransfer.SelfApproval", "Nobody may approve a transfer they created.");
-
     public static readonly Error NotInTransit = Error.BusinessRule(
         "Inventory.StockTransfer.NotInTransit", "Only a dispatched transfer that is not being closed can receive stock or be closed.");
 

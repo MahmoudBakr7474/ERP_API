@@ -88,8 +88,10 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
      dispatches post directly.
    * It can be changed by `inventory.settings.manage` with company-wide access.
    * A document (or transfer) copies its policy when created, and a reversal always needs approval.
-   * Approving posts in the same step; nobody approves a document they created (`SelfApproval`); a rejection returns
-     it to draft with its reason.
+   * Approving posts in the same step; a rejection returns it to draft with its reason.
+   * Anyone with `documents.approve` and the warehouse in scope approves, their own document, transfer or count
+     included. The owner withdrew the first rule, that nobody approves what they created (`SelfApproval`), on
+     2026-10-28: a small team often has one administrator, and keeping the roles apart still separates the duties.
    * Every step is a `StockDocumentEvent` (who, when, note).
 10. **Reversal.** `POST /documents/{id}/reverse` creates a `Reversal` already submitted, with the posted lines turned
     the other way. Only one reversal can be open per document (filtered unique index). A reversal can't be reversed,
@@ -136,8 +138,8 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
       source location (DEFAULT when none is named).
     * Statuses: `Draft` → (`Submitted`) → `InTransit` → `PartiallyReceived` → `Received`; `Closing` → `Closed`;
       `Cancelled` only before dispatch. Every step is a `StockTransferEvent`.
-    * Dispatch follows the `TransferDispatch` approval policy copied at creation: directly, or submit then approve by
-      someone other than the creator (approving dispatches). It needs an `Idempotency-Key`.
+    * Dispatch follows the `TransferDispatch` approval policy copied at creation: directly, or submit then approve
+      (approving dispatches). It needs an `Idempotency-Key`.
     * Dispatching opens a location `TR-000123` (named "ترانزيت TR-000123") in the transit warehouse through
       Organization's `ITransitLocations` in the same transaction, then posts a `TransferDispatch` document moving every
       line from its source location into it. A refused dispatch rolls everything back, location included.
@@ -153,14 +155,14 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
       destination in scope.
 17. **Generated documents.** `TransferDispatch` (TRF, source branch), `TransferReceipt` (TRR, destination branch) and
     `CountAdjustment` (CNT) are created and posted only by their transfer or count, which carries the approval
-    (`MarkPostedGenerated`, no creator check of their own). Transfer documents use the new `Move` direction (one
+    (`MarkPostedGenerated`, no approval check of their own). Transfer documents use the new `Move` direction (one
     allocation from a place to another). They point back through `StockDocuments.TransferId`/`CountId` (also in the
     document's details, with `fromLocationId`/`fromLocationCode` on a move line), can't be edited (`LinkedLinesFixed`)
     and can't be reversed (`NotReversible`): an error is corrected by a new transfer, an adjustment or a new count.
 18. **What never arrives.** `POST /transfers/{id}/close` (reason, notes) submits an `Adjustment` in the transit
     warehouse for every outstanding quantity, out of the transfer's transit location, and puts the transfer in
-    `Closing` (receiving stops). Approving that adjustment like any other (`documents.approve`, not its creator, the
-    transit warehouse in scope) posts it at the average, writes the outstanding quantities off as `LostQuantity`,
+    `Closing` (receiving stops). Approving that adjustment like any other (`documents.approve`, the transit
+    warehouse in scope) posts it at the average, writes the outstanding quantities off as `LostQuantity`,
     closes the transfer and deactivates its transit location. Cancelling the adjustment returns the transfer to
     `InTransit`/`PartiallyReceived`.
 19. **Stock counts.** `StockCounts` → `StockCountScopes`, `StockCountLines`, `StockCountEvents`; reference `CT-000123`.
@@ -179,7 +181,7 @@ persisted freeze, and a reconciliation report on top of Milestone A's posting.
     * Counted quantities are entered in base units and can be re-entered; a product found where nothing was expected
       gets a line expecting zero. A surplus may carry a unit cost (required for a product never valued). Submitting
       needs every line counted.
-    * **Approval** (`documents.approve`, not the creator, `Idempotency-Key`) runs in one transaction: the warehouse's
+    * **Approval** (`documents.approve`, `Idempotency-Key`) runs in one transaction: the warehouse's
       applock (Shared), a re-check that the frozen balances still equal the snapshot (409
       `StockChangedDuringCount` otherwise), a `CountAdjustment` of the differences (shortages out at the average,
       surpluses in at their cost or the average), then completion, which releases the freeze. No difference → no

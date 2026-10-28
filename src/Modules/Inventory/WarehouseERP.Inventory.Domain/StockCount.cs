@@ -7,8 +7,8 @@ namespace WarehouseERP.Inventory.Domain;
 /// <summary>
 /// A physical count of one physical warehouse, whole or some of its locations. Starting it freezes its scope (persisted
 /// in StockCountScope, no lock held while people count) and snapshots the expected quantities; counted quantities are
-/// entered in base units; approval by someone other than its creator posts the differences as a count adjustment and
-/// releases the freeze.
+/// entered in base units; approval (its creator may give it too) posts the differences as a count adjustment and releases
+/// the freeze.
 /// </summary>
 public sealed class StockCount : IAuditable
 {
@@ -157,19 +157,13 @@ public sealed class StockCount : IAuditable
         return Result.Success();
     }
 
-    public Result CanApprove(Guid? userId)
-    {
-        if (Status != StockCountStatus.Submitted)
-            return StockCountDomainErrors.NotSubmitted;
-        if (userId is null || userId == CreatedByUserId)
-            return StockCountDomainErrors.SelfApproval;
-        return Result.Success();
-    }
+    public Result CanApprove() =>
+        Status == StockCountStatus.Submitted ? Result.Success() : StockCountDomainErrors.NotSubmitted;
 
     /// <summary>Completes an approved count once the caller posted its differences, and releases the freeze.</summary>
     public void Complete(string? adjustmentNumber, Guid? userId, DateTime nowUtc)
     {
-        var allowed = CanApprove(userId);
+        var allowed = CanApprove();
         if (allowed.IsFailure)
             throw new InvalidOperationException($"Count {Id} cannot be approved: {allowed.Error}");
 

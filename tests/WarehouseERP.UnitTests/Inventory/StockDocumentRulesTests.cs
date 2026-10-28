@@ -72,14 +72,14 @@ public sealed class StockDocumentRulesTests
     {
         var direct = Draft(StockDocumentType.Receipt, requiresApproval: false, Line(1));
         Assert.Equal("Inventory.StockDocument.ApprovalNotRequired", direct.Submit(null, Now).Error?.Code);
-        Assert.True(direct.CanPost(byApproval: false, Guid.NewGuid()).IsSuccess);
-        Assert.Equal("Inventory.StockDocument.NotSubmitted", direct.CanPost(byApproval: true, Guid.NewGuid()).Error?.Code);
+        Assert.True(direct.CanPost(byApproval: false).IsSuccess);
+        Assert.Equal("Inventory.StockDocument.NotSubmitted", direct.CanPost(byApproval: true).Error?.Code);
 
         var approved = Draft(StockDocumentType.Adjustment, requiresApproval: true, Line(1, StockDirection.Out, null));
-        Assert.Equal("Inventory.StockDocument.ApprovalRequired", approved.CanPost(byApproval: false, Guid.NewGuid()).Error?.Code);
+        Assert.Equal("Inventory.StockDocument.ApprovalRequired", approved.CanPost(byApproval: false).Error?.Code);
         Assert.True(approved.Submit(Guid.NewGuid(), Now).IsSuccess);
         Assert.Equal("Inventory.StockDocument.NotDraft", approved.ReplaceDraft(AdjustmentReason.Loss, null, null, [Line(1, StockDirection.Out, null)]).Error?.Code);
-        Assert.Equal("Inventory.StockDocument.SelfApproval", approved.CanPost(byApproval: true, userId: null).Error?.Code);
+        Assert.True(approved.CanPost(byApproval: true).IsSuccess);
         Assert.True(approved.Reject("الكمية خطأ", Guid.NewGuid(), Now).IsSuccess);
         Assert.Equal(StockDocumentStatus.Draft, approved.Status);
         Assert.Equal([StockDocumentAction.Created, StockDocumentAction.Submitted, StockDocumentAction.Rejected], approved.Events.Select(e => e.Action));

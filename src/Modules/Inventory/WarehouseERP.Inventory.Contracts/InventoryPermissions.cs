@@ -25,7 +25,7 @@ public static class InventoryPermissions
     /// <summary>Draft, submit, post, cancel and reverse stock adjustments.</summary>
     public const string AdjustmentsManage = "inventory.adjustments.manage";
 
-    /// <summary>Approve (which posts) or reject submitted documents; nobody approves a document they created.</summary>
+    /// <summary>Approve (which posts) or reject submitted documents, transfers and counts, one's own included.</summary>
     public const string DocumentsApprove = "inventory.documents.approve";
 
     /// <summary>Read the company-wide valuation (moving average cost) and its history.</summary>

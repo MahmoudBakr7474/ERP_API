@@ -63,21 +63,20 @@ public sealed class StockTransferRulesTests
     }
 
     [Fact]
-    public void Dispatch_waits_for_an_approver_who_did_not_create_the_transfer_when_the_policy_says_so()
+    public void Dispatch_waits_for_approval_when_the_policy_says_so_and_its_creator_may_give_it()
     {
         var transfer = Draft(true, Line(5m));
 
-        Assert.Equal("Inventory.StockTransfer.ApprovalRequired", transfer.CanDispatch(byApproval: false, Creator).Error?.Code);
-        Assert.Equal("Inventory.StockTransfer.NotSubmitted", transfer.CanDispatch(byApproval: true, Approver).Error?.Code);
+        Assert.Equal("Inventory.StockTransfer.ApprovalRequired", transfer.CanDispatch(byApproval: false).Error?.Code);
+        Assert.Equal("Inventory.StockTransfer.NotSubmitted", transfer.CanDispatch(byApproval: true).Error?.Code);
+        Assert.Throws<InvalidOperationException>(() => transfer.MarkDispatched("TRF-1", TransitLocation, byApproval: true, Creator, Now));
         Assert.True(transfer.Submit(Creator, Now).IsSuccess);
         Assert.True(transfer.IsOpen);
-        Assert.Equal("Inventory.StockTransfer.SelfApproval", transfer.CanDispatch(byApproval: true, Creator).Error?.Code);
-        Assert.Equal("Inventory.StockTransfer.SelfApproval", transfer.CanDispatch(byApproval: true, null).Error?.Code);
-        Assert.Throws<InvalidOperationException>(() => transfer.MarkDispatched("TRF-1", TransitLocation, byApproval: true, Creator, Now));
+        Assert.True(transfer.CanDispatch(byApproval: true).IsSuccess);
 
-        transfer.MarkDispatched("TRF-1", TransitLocation, byApproval: true, Approver, Now);
+        transfer.MarkDispatched("TRF-1", TransitLocation, byApproval: true, Creator, Now);
 
-        Assert.Equal((StockTransferStatus.InTransit, "TRF-1", TransitLocation, Approver, Approver),
+        Assert.Equal((StockTransferStatus.InTransit, "TRF-1", TransitLocation, Creator, Creator),
             (transfer.Status, transfer.Number, transfer.TransitLocationId, transfer.ApprovedByUserId, transfer.DispatchedByUserId));
         Assert.Equal([StockTransferAction.Created, StockTransferAction.Submitted, StockTransferAction.Approved, StockTransferAction.Dispatched],
             transfer.Events.Select(e => e.Action));
@@ -89,7 +88,7 @@ public sealed class StockTransferRulesTests
     {
         var direct = Draft(false, Line(1m));
         Assert.Equal("Inventory.StockTransfer.ApprovalNotRequired", direct.Submit(Creator, Now).Error?.Code);
-        Assert.True(direct.CanDispatch(byApproval: false, Creator).IsSuccess);
+        Assert.True(direct.CanDispatch(byApproval: false).IsSuccess);
 
         var approved = Draft(true, Line(1m));
         approved.Submit(Creator, Now);

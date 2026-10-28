@@ -54,7 +54,7 @@ only documents, transfers and counts of their warehouses; the server answers 403
 |---|---|
 | See documents, transfers, counts and their history | `inventory.documents.read` + the warehouse in scope (a transfer: its source or destination) |
 | Draft, edit, submit, post, cancel, reverse a document | `inventory.<type>.manage` for its type: `opening` (OpeningBalance), `receipts` (Receipt), `issues` (Issue), `adjustments` (Adjustment) |
-| Approve or reject a document, a transfer, a count | `inventory.documents.approve`; **never the user who created it** |
+| Approve or reject a document, a transfer, a count | `inventory.documents.approve`, the user who created it included |
 | Draft, edit, submit, cancel, dispatch a transfer | `inventory.transfers.manage` + the source warehouse in scope |
 | Close a transfer (write off what never arrived) | `inventory.transfers.manage` + source or destination in scope |
 | Receive a transfer | `inventory.transfers.receive` + the destination warehouse in scope |
@@ -63,9 +63,6 @@ only documents, transfers and counts of their warehouses; the server answers 403
 | Valuation and its entries | `inventory.valuation.read` |
 | Reconciliation report | `inventory.reconciliation.read` + **company-wide** |
 | Change an approval policy | `inventory.settings.manage` + **company-wide** |
-
-Compare `createdByUserId` with `me.userId` to hide Approve on the user's own document, transfer or count (the server
-answers 422 `…SelfApproval`).
 
 The pickers read other modules: warehouses and locations need `organization.warehouses.read`, products and their
 units `catalog.products.read`. Inventory roles that create documents, transfers or counts need those too; without
@@ -181,7 +178,7 @@ quantity and value don't change while stock is in transit.
       externalReference, notes, lines, rowVersion }`; source and destination are fixed), **Dispatch** when
       `requiresApproval` is false (`POST …/dispatch`, Idempotency-Key, `{ rowVersion }`), **Submit** when it is true
       (`POST …/submit`), **Cancel** (`POST …/cancel`).
-    - `Submitted`: **Approve** (`POST …/approve`, Idempotency-Key; it dispatches; not the creator), **Reject** (dialog:
+    - `Submitted`: **Approve** (`POST …/approve`, Idempotency-Key; it dispatches), **Reject** (dialog:
       reason, `POST …/reject` with `{ reason, rowVersion }`), **Cancel** (source side).
     - `InTransit` / `PartiallyReceived`: **Receive** (destination side, dialog below) and **Close** (dialog below).
     - `Closing`: show "Waiting for the loss adjustment to be approved" with a link to the `Adjustment` in `documents`
@@ -226,7 +223,7 @@ transfer dispatches and receipts are refused with `Inventory.StockCount.ScopeFro
       a location of the count's scope, counted quantity, and a unit cost; the cost is required when the product was
       never valued, otherwise optional), **Submit** (all lines must have a counted quantity: 422
       `Inventory.StockCount.NotFullyCounted`), **Cancel** (releases the freeze, nothing posts).
-    - `Submitted`: **Approve** (not the creator; confirm showing the number of differences; `POST …/approve` with
+    - `Submitted`: **Approve** (confirm showing the number of differences; `POST …/approve` with
       `{ rowVersion }` and an Idempotency-Key → `{ countId, adjustmentDocumentId, adjustmentNumber, completedAtUtc,
       overReservations }`), **Reject** (dialog: reason, back to `Counting`, still frozen), **Cancel**.
     - `Completed`: read only, with a link to the `CountAdjustment` (`adjustmentDocumentId`, `CNT-…`); no link when
@@ -362,7 +359,6 @@ on. Reversals always need approval."
 | `Inventory.StockDocument.NotPosted` | 422 | المستند المُرحّل فقط يمكن عكسه | Only a posted document can be reversed |
 | `Inventory.StockDocument.ApprovalRequired` | 422 | هذا المستند يحتاج اعتمادًا: أرسله للاعتماد | This document needs approval: submit it |
 | `Inventory.StockDocument.ApprovalNotRequired` | 422 | هذا المستند لا يحتاج اعتمادًا: رحّله مباشرة | This document needs no approval: post it |
-| `Inventory.StockDocument.SelfApproval` | 422 | لا يمكنك اعتماد مستند أنشأته | You can't approve a document you created |
 | `Inventory.StockDocument.NoLines` | 422 | المستند يحتاج سطرًا واحدًا على الأقل | A document needs at least one line |
 | `Inventory.StockDocument.TooManyLines` | 422 | الحد الأقصى 500 سطر | At most 500 lines |
 | `Inventory.StockDocument.ReasonRequired` | 422 | التسوية تحتاج سببًا | An adjustment needs a reason |
@@ -393,7 +389,6 @@ on. Reversals always need approval."
 | `Inventory.StockTransfer.NotOpen` | 422 | لا يمكن إلغاء تحويل تم إرساله؛ استلمه أو أقفله | A dispatched transfer can't be cancelled; receive or close it |
 | `Inventory.StockTransfer.ApprovalRequired` | 422 | هذا التحويل يحتاج اعتمادًا: أرسله للاعتماد | This transfer needs approval: submit it |
 | `Inventory.StockTransfer.ApprovalNotRequired` | 422 | هذا التحويل لا يحتاج اعتمادًا: أرسله مباشرة | This transfer needs no approval: dispatch it |
-| `Inventory.StockTransfer.SelfApproval` | 422 | لا يمكنك اعتماد تحويل أنشأته | You can't approve a transfer you created |
 | `Inventory.StockTransfer.NotInTransit` | 422 | التحويل ليس في الطريق أو قيد الإقفال | The transfer isn't in transit (or is being closed) |
 | `Inventory.StockTransfer.NothingOutstanding` | 422 | لا يوجد شيء متبقٍ في الطريق | Nothing is still in transit |
 | `Inventory.StockTransfer.NothingToReceive` | 422 | حدد السطور والكميات المستلمة | Say which lines arrived and how much |
@@ -412,7 +407,6 @@ on. Reversals always need approval."
 | `Inventory.StockCount.NotSubmitted` | 422 | الجرد ليس بانتظار الاعتماد | Only a submitted count can be approved or rejected |
 | `Inventory.StockCount.NotOpen` | 422 | الجرد مكتمل أو ملغي | The count is completed or cancelled |
 | `Inventory.StockCount.NotFullyCounted` | 422 | أدخل الكمية المجرودة لكل السطور أولًا | Enter a counted quantity for every line first |
-| `Inventory.StockCount.SelfApproval` | 422 | لا يمكنك اعتماد جرد أنشأته | You can't approve a count you created |
 | `Inventory.StockCount.OutOfScope` | 422 | الموقع ليس ضمن نطاق هذا الجرد | That location is not part of this count |
 | `Inventory.StockCount.QuantityMustBeWhole` | 422 | الوحدة الأساسية لا تقبل الكسور | The base unit can't be split; count a whole quantity |
 | `Organization.Warehouse.HoldsStock` | 422 | المخزن به رصيد؛ انقله أو سوّه أولًا | The warehouse still holds stock |

@@ -128,18 +128,12 @@ public sealed class StockTransfer : IAuditable
 
     /// <summary>
     /// Whether it may be dispatched now: directly, when it needs no approval and is a draft; or by approval, when it is
-    /// submitted and the approver did not create it.
+    /// submitted. Its creator may approve it too.
     /// </summary>
-    public Result CanDispatch(bool byApproval, Guid? userId)
+    public Result CanDispatch(bool byApproval)
     {
         if (byApproval)
-        {
-            if (Status != StockTransferStatus.Submitted)
-                return StockTransferDomainErrors.NotSubmitted;
-            if (userId is null || userId == CreatedByUserId)
-                return StockTransferDomainErrors.SelfApproval;
-            return Result.Success();
-        }
+            return Status == StockTransferStatus.Submitted ? Result.Success() : StockTransferDomainErrors.NotSubmitted;
 
         if (RequiresApproval)
             return StockTransferDomainErrors.ApprovalRequired;
@@ -152,7 +146,7 @@ public sealed class StockTransfer : IAuditable
     public void MarkDispatched(string number, Guid transitLocationId, bool byApproval, Guid? userId, DateTime nowUtc)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(number);
-        var allowed = CanDispatch(byApproval, userId);
+        var allowed = CanDispatch(byApproval);
         if (allowed.IsFailure)
             throw new InvalidOperationException($"Transfer {Id} cannot be dispatched: {allowed.Error}");
 

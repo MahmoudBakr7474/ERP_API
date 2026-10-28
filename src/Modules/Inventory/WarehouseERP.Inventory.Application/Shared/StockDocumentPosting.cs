@@ -135,7 +135,7 @@ public sealed partial class StockDocumentPosting(
             return StockDocumentErrors.NotFound;
         if (!document.RowVersion.AsSpan().SequenceEqual(rowVersion))
             return CommonErrors.ConcurrencyConflict;
-        var allowed = document.CanPost(byApproval, userId);
+        var allowed = document.CanPost(byApproval);
         if (allowed.IsFailure)
             return allowed.Error;
 

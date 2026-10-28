@@ -244,18 +244,12 @@ public sealed class StockDocument : IAuditable
 
     /// <summary>
     /// Whether it may be posted now: directly, when it needs no approval and is a draft; or by approval, when it is
-    /// submitted and the approver did not create it.
+    /// submitted. Its creator may approve it too.
     /// </summary>
-    public Result CanPost(bool byApproval, Guid? userId)
+    public Result CanPost(bool byApproval)
     {
         if (byApproval)
-        {
-            if (Status != StockDocumentStatus.Submitted)
-                return StockDocumentDomainErrors.NotSubmitted;
-            if (userId is null || userId == CreatedByUserId)
-                return StockDocumentDomainErrors.SelfApproval;
-            return Result.Success();
-        }
+            return Status == StockDocumentStatus.Submitted ? Result.Success() : StockDocumentDomainErrors.NotSubmitted;
 
         if (RequiresApproval)
             return StockDocumentDomainErrors.ApprovalRequired;
@@ -268,7 +262,7 @@ public sealed class StockDocument : IAuditable
     public void MarkPosted(string number, short fiscalYear, int sequenceNumber, bool byApproval, Guid? userId, DateTime nowUtc)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(number);
-        var allowed = CanPost(byApproval, userId);
+        var allowed = CanPost(byApproval);
         if (allowed.IsFailure)
             throw new InvalidOperationException($"Document {Id} cannot be posted: {allowed.Error}");
 
@@ -287,8 +281,8 @@ public sealed class StockDocument : IAuditable
     }
 
     /// <summary>
-    /// Posts a document a transfer or a count produced. Its approval, and the rule that nobody approves their own work,
-    /// belong to that transfer or count, which checked them; <paramref name="approvedBy"/> records who approved there.
+    /// Posts a document a transfer or a count produced. Its approval belongs to that transfer or count, which checked
+    /// it; <paramref name="approvedBy"/> records who approved there.
     /// </summary>
     public void MarkPostedGenerated(string number, short fiscalYear, int sequenceNumber, Guid? approvedBy, Guid? userId, DateTime nowUtc)
     {

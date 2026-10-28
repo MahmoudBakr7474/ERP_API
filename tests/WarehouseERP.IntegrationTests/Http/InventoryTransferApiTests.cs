@@ -105,7 +105,7 @@ public sealed class InventoryTransferApiTests(DatabaseFixture fx) : IAsyncLifeti
     }
 
     [Fact]
-    public async Task Dispatch_follows_the_approval_policy_of_its_creation_and_nobody_approves_a_transfer_they_created()
+    public async Task Dispatch_follows_the_approval_policy_of_its_creation_and_its_creator_may_approve_it()
     {
         var admin = Admin();
         var other = OtherAdmin();
@@ -133,14 +133,12 @@ public sealed class InventoryTransferApiTests(DatabaseFixture fx) : IAsyncLifeti
         await (await TransferActAsync(other, id, "approve"))
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Inventory.StockTransfer.NotSubmitted");
         await TransferActAsync(admin, id, "submit").EnsureOkAsync();
-        await (await TransferActAsync(admin, id, "approve"))
-            .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Inventory.StockTransfer.SelfApproval");
         var submitted = (await TransferAsync(other, id)).GetProperty("rowVersion").GetString();
         await TransferActAsync(other, id, "reject", body: new { reason = "check the quantity", rowVersion = submitted }).EnsureOkAsync();
         Assert.Equal("Draft", Status(await TransferAsync(admin, id)));
         await TransferActAsync(admin, id, "submit").EnsureOkAsync();
 
-        var approved = await TransferActAsync(other, id, "approve").PostedAsync();
+        var approved = await TransferActAsync(admin, id, "approve").PostedAsync();
 
         Assert.Equal("InTransit", Status(approved));
         var transfer = await TransferAsync(admin, id);
@@ -176,9 +174,7 @@ public sealed class InventoryTransferApiTests(DatabaseFixture fx) : IAsyncLifeti
         Assert.Equal("PartiallyReceived", Status(await TransferAsync(admin, id)));
 
         var second = await CloseTransferAsync(admin, id).CreatedIdAsync();
-        await (await ActAsync(admin, second, "approve"))
-            .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Inventory.StockDocument.SelfApproval");
-        await ActAsync(other, second, "approve").PostedAsync();
+        await ActAsync(admin, second, "approve").PostedAsync();
 
         var closed = await TransferAsync(admin, id);
         var line = closed.GetProperty("lines")[0];
