@@ -69,6 +69,7 @@ public sealed class StockReferences(
             }
             else
                 direction = documentType is StockDocumentType.Issue or StockDocumentType.PurchaseReturn or StockDocumentType.SalesDelivery
+                    or StockDocumentType.PosSale
                     ? StockDirection.Out
                     : StockDirection.In;
 

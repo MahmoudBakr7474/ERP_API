@@ -29,8 +29,22 @@ public static class StockDocumentErrors
         "Inventory.StockDocument.ManagedBySales",
         "Sales deliveries and customer returns are posted by Sales; correct them there with a sales return.");
 
+    public static readonly Error ManagedByPos = Error.BusinessRule(
+        "Inventory.StockDocument.ManagedByPos",
+        "POS sales and returns are posted by POS; correct them there with a POS return.");
+
     public static readonly Error SourceAlreadyPosted = Error.Conflict(
-        "Inventory.StockDocument.SourceAlreadyPosted", "This purchasing or sales document has already been posted to stock.");
+        "Inventory.StockDocument.SourceAlreadyPosted", "This purchasing, sales or POS document has already been posted to stock.");
+
+    public static readonly Error WarehouseNotSelling = Error.BusinessRule(
+        "Inventory.StockDocument.WarehouseNotSelling", "Nothing may be sold from this warehouse: it does not allow selling.");
+
+    public static Error SoldLineNotFound(int line) => Error.BusinessRule(
+        "Inventory.StockDocument.SoldLineNotFound",
+        $"Line {line}: the goods must come back from a posted POS sale line of the same product and warehouse.");
+
+    public static Error ReturnExceedsSale(int line) => Error.BusinessRule(
+        "Inventory.StockDocument.ReturnExceedsSale", $"Line {line}: more would come back than its sale line still has unreturned.");
 
     public static Error DeliveryLineNotFound(int line) => Error.BusinessRule(
         "Inventory.StockDocument.DeliveryLineNotFound",
@@ -44,6 +58,7 @@ public static class StockDocumentErrors
     {
         StockDocumentType.PurchaseReceipt or StockDocumentType.PurchaseReturn => ManagedByPurchasing,
         StockDocumentType.SalesDelivery or StockDocumentType.SalesReturn => ManagedBySales,
+        StockDocumentType.PosSale or StockDocumentType.PosReturn => ManagedByPos,
         _ => TypeNotDrafted,
     };
 

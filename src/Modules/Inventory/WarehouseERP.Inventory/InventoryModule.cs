@@ -80,7 +80,8 @@ namespace WarehouseERP.Inventory;
 // IWarehouseStockGuard before deactivating a warehouse or a location and opens transit locations through
 // ITransitLocations; Purchasing posts its goods receipts and supplier returns through IPurchaseStockPosting; Sales
 // reserves and releases stock through IStockReservations and posts deliveries and customer returns through
-// ISalesStockPosting. The host calls AddInventoryModule and MapInventoryEndpoints; ITransactionRunner comes from Persistence.
+// ISalesStockPosting; POS posts its sales and returns through IPosStockPosting and reads a till's stock through
+// IStockAvailabilityLookup. The host calls AddInventoryModule and MapInventoryEndpoints; ITransactionRunner comes from Persistence.
 public static class InventoryModule
 {
     public static IServiceCollection AddInventoryModule(this IServiceCollection services)
@@ -160,6 +161,8 @@ public static class InventoryModule
         services.AddScoped<IStockReservationRepository, StockReservationRepository>();
         services.AddScoped<IStockReservations, StockReservations>();
         services.AddScoped<ISalesStockPosting, SalesStockPosting>();
+        services.AddScoped<IPosStockPosting, PosStockPosting>();
+        services.AddScoped<IStockAvailabilityLookup, StockAvailabilityLookup>();
 
         services.AddPermissions("Inventory", InventoryPermissions.All);
         return services;

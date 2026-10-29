@@ -14,7 +14,9 @@ public interface IInventoryValuation
     /// <summary>The value each line of a posted document moved (negative for stock that went out), by line id.</summary>
     Task<IReadOnlyDictionary<Guid, decimal>> GetLineValuesAsync(Guid documentId, CancellationToken ct);
 
-    /// <summary>The cost each of these posted sales delivery lines left with and what returns brought back, by line id.</summary>
+    /// <summary>
+    /// The cost each of these posted sales delivery or POS sale lines left with and what returns brought back, by line id.
+    /// </summary>
     Task<IReadOnlyDictionary<Guid, DeliveryCost>> GetDeliveryCostsAsync(IReadOnlyCollection<Guid> deliveryLineIds, CancellationToken ct);
 
     void Add(InventoryCostState state);

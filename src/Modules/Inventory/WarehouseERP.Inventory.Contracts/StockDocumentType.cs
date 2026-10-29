@@ -38,4 +38,10 @@ public enum StockDocumentType : byte
 
     /// <summary>Delivered goods a customer sent back fit for resale, posted only by Sales through ISalesStockPosting (SRT).</summary>
     SalesReturn = 12,
+
+    /// <summary>Goods a POS checkout sold from unreserved stock, posted only by POS through IPosStockPosting (PSL).</summary>
+    PosSale = 13,
+
+    /// <summary>Goods a POS customer brought back fit for resale, posted only by POS through IPosStockPosting (PSR).</summary>
+    PosReturn = 14,
 }

@@ -35,7 +35,8 @@ internal sealed class InventoryValuation(DbContext db) : IInventoryValuation
         var issued = await (
                 from entry in db.Set<InventoryCostEntry>().AsNoTracking()
                 join document in db.Set<StockDocument>() on entry.DocumentId equals document.Id
-                where ids.Contains(entry.LineId) && document.DocumentType == StockDocumentType.SalesDelivery
+                where ids.Contains(entry.LineId)
+                      && (document.DocumentType == StockDocumentType.SalesDelivery || document.DocumentType == StockDocumentType.PosSale)
                 select new { entry.LineId, Quantity = -entry.QuantityDelta, Value = -entry.ValueDelta })
             .ToListAsync(ct);
         var returned = await (
@@ -43,7 +44,7 @@ internal sealed class InventoryValuation(DbContext db) : IInventoryValuation
                 join document in db.Set<StockDocument>() on line.DocumentId equals document.Id
                 join entry in db.Set<InventoryCostEntry>() on line.Id equals entry.LineId
                 where line.ReversesLineId != null && ids.Contains(line.ReversesLineId.Value)
-                      && document.DocumentType == StockDocumentType.SalesReturn
+                      && (document.DocumentType == StockDocumentType.SalesReturn || document.DocumentType == StockDocumentType.PosReturn)
                 group entry by line.ReversesLineId!.Value into g
                 select new { LineId = g.Key, Quantity = g.Sum(e => e.QuantityDelta), Value = g.Sum(e => e.ValueDelta) })
             .ToDictionaryAsync(x => x.LineId, ct);

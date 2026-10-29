@@ -85,7 +85,8 @@ public sealed partial class SalesStockPosting(
     {
         if (await documents.HasSourceAsync(request.SourceDocumentId, ct))
             return StockDocumentErrors.SourceAlreadyPosted;
-        var delivered = (await documents.FindDeliveredLinesAsync(request.Lines.Select(l => l.DeliveredStockLineId).Distinct().ToList(), ct))
+        var delivered = (await documents.FindDeliveredLinesAsync(
+                request.Lines.Select(l => l.DeliveredStockLineId).Distinct().ToList(), StockDocumentType.SalesDelivery, ct))
             .ToDictionary(l => l.LineId);
         for (var i = 0; i < request.Lines.Count; i++)
         {

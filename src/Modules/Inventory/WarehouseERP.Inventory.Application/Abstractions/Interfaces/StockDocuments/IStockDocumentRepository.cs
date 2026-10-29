@@ -1,3 +1,4 @@
+using WarehouseERP.Inventory.Contracts;
 using WarehouseERP.Inventory.Domain;
 using WarehouseERP.SharedKernel.Results;
 
@@ -24,8 +25,12 @@ public interface IStockDocumentRepository
     /// <summary>True once a stock document was made for this Purchasing or Sales document.</summary>
     Task<bool> HasSourceAsync(Guid sourceDocumentId, CancellationToken ct);
 
-    /// <summary>The lines among these ids that belong to posted sales deliveries; anything else is left out.</summary>
-    Task<IReadOnlyList<DeliveredLine>> FindDeliveredLinesAsync(IReadOnlyCollection<Guid> lineIds, CancellationToken ct);
+    /// <summary>
+    /// The lines among these ids that belong to posted documents of this outgoing type (a sales delivery or a POS sale);
+    /// anything else is left out.
+    /// </summary>
+    Task<IReadOnlyList<DeliveredLine>> FindDeliveredLinesAsync(
+        IReadOnlyCollection<Guid> lineIds, StockDocumentType documentType, CancellationToken ct);
 
     void Add(StockDocument document);
 

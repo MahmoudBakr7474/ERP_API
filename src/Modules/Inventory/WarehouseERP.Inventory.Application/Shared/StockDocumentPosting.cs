@@ -197,9 +197,9 @@ public sealed partial class StockDocumentPosting(
 
     // Moving weighted average, line by line. Stock coming in with a cost is valued at it; an increase without one at the
     // current average (refused for a product that was never valued); a reversed issue comes back at the value it left
-    // with; stock going out leaves at the current average. A customer return comes back at the cost its delivery line left
-    // with, in proportion, the last units taking whatever value that line has left, so a delivery's cost is never returned
-    // twice. A transfer moves stock inside the company: no valuation.
+    // with; stock going out leaves at the current average. A customer return (Sales or POS) comes back at the cost its
+    // delivery or sale line left with, in proportion, the last units taking whatever value that line has left, so a line's
+    // cost is never returned twice. A transfer moves stock inside the company: no valuation.
     private async Task<Result> ValueAsync(StockDocument document, DateTime now, IDictionary<Guid, decimal>? lineValues, CancellationToken ct)
     {
         if (document.DocumentType is StockDocumentType.TransferDispatch or StockDocumentType.TransferReceipt)
@@ -212,7 +212,8 @@ public sealed partial class StockDocumentPosting(
             ? await valuation.GetLineValuesAsync(originalId, ct)
             : new Dictionary<Guid, decimal>();
         // Read once the products' valuation is locked, so returns of one delivery line value one after the other.
-        var deliveries = document.DocumentType == StockDocumentType.SalesReturn
+        var isCustomerReturn = document.DocumentType is StockDocumentType.SalesReturn or StockDocumentType.PosReturn;
+        var deliveries = isCustomerReturn
             ? new Dictionary<Guid, DeliveryCost>(await valuation.GetDeliveryCostsAsync(
                 document.Lines.Select(l => l.ReversesLineId!.Value).Distinct().ToList(), ct))
             : [];
@@ -231,12 +232,14 @@ public sealed partial class StockDocumentPosting(
                 change = state.Issue(line.BaseQuantity, now);
             else if (line.UnitCost is { } unitCost)
                 change = state.Receive(line.BaseQuantity, line.Quantity * unitCost, now);
-            else if (document.DocumentType == StockDocumentType.SalesReturn)
+            else if (isCustomerReturn)
             {
                 var deliveredLine = line.ReversesLineId!.Value;
                 if (!deliveries.TryGetValue(deliveredLine, out var delivered)
                     || line.BaseQuantity > delivered.IssuedQuantity - delivered.ReturnedQuantity)
-                    return StockDocumentErrors.ReturnExceedsDelivery(line.LineNumber);
+                    return document.DocumentType == StockDocumentType.PosReturn
+                        ? StockDocumentErrors.ReturnExceedsSale(line.LineNumber)
+                        : StockDocumentErrors.ReturnExceedsDelivery(line.LineNumber);
                 var valueLeft = delivered.IssuedValue - delivered.ReturnedValue;
                 var returnedValue = line.BaseQuantity == delivered.IssuedQuantity - delivered.ReturnedQuantity
                     ? valueLeft

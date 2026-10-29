@@ -111,7 +111,8 @@ public sealed class StockDocument : IAuditable
         if (original.TransferId is not null || original.CountId is not null || original.SourceDocumentId is not null
             || original.DocumentType is StockDocumentType.TransferDispatch or StockDocumentType.TransferReceipt
                 or StockDocumentType.CountAdjustment or StockDocumentType.PurchaseReceipt or StockDocumentType.PurchaseReturn
-                or StockDocumentType.SalesDelivery or StockDocumentType.SalesReturn)
+                or StockDocumentType.SalesDelivery or StockDocumentType.SalesReturn or StockDocumentType.PosSale
+                or StockDocumentType.PosReturn)
             return StockDocumentDomainErrors.NotReversible;
         if (original.Status != StockDocumentStatus.Posted)
             return StockDocumentDomainErrors.NotPosted;
@@ -231,6 +232,27 @@ public sealed class StockDocument : IAuditable
     {
         if (documentType is not (StockDocumentType.SalesDelivery or StockDocumentType.SalesReturn))
             throw new ArgumentException("Sales posts deliveries and returns only.", nameof(documentType));
+        ArgumentException.ThrowIfNullOrWhiteSpace(sourceNumber);
+
+        var document = Generated(documentType, warehouseId, branchId, requiresApproval: false, StockDocumentStatus.Draft, sourceNumber, notes);
+        document.SourceDocumentId = sourceDocumentId;
+        var filled = document.Fill(reason: null, sourceNumber, notes, lines);
+        if (filled.IsFailure)
+            return filled.Error;
+        document.Record(StockDocumentAction.Created, userId, nowUtc, note: null);
+        return document;
+    }
+
+    /// <summary>
+    /// The document a POS sale (stock out, unreserved, at the moving average) or POS return (stock back in at the sale's
+    /// cost) posts, in the caller's transaction. POS carries its authorization; Inventory's endpoints never change it.
+    /// </summary>
+    public static Result<StockDocument> CreatePos(
+        StockDocumentType documentType, Guid warehouseId, Guid branchId, Guid sourceDocumentId, string sourceNumber, string? notes,
+        IReadOnlyList<StockLineInput> lines, Guid? userId, DateTime nowUtc)
+    {
+        if (documentType is not (StockDocumentType.PosSale or StockDocumentType.PosReturn))
+            throw new ArgumentException("POS posts sales and returns only.", nameof(documentType));
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceNumber);
 
         var document = Generated(documentType, warehouseId, branchId, requiresApproval: false, StockDocumentStatus.Draft, sourceNumber, notes);

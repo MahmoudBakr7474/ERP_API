@@ -53,11 +53,12 @@ internal sealed class StockDocumentRepository(DbContext db) : IStockDocumentRepo
     public Task<bool> HasSourceAsync(Guid sourceDocumentId, CancellationToken ct) =>
         db.Set<StockDocument>().AnyAsync(x => x.SourceDocumentId == sourceDocumentId, ct);
 
-    public async Task<IReadOnlyList<DeliveredLine>> FindDeliveredLinesAsync(IReadOnlyCollection<Guid> lineIds, CancellationToken ct) =>
+    public async Task<IReadOnlyList<DeliveredLine>> FindDeliveredLinesAsync(
+        IReadOnlyCollection<Guid> lineIds, StockDocumentType documentType, CancellationToken ct) =>
         await (
                 from line in db.Set<StockDocumentLine>().AsNoTracking()
                 join document in db.Set<StockDocument>() on line.DocumentId equals document.Id
-                where lineIds.Contains(line.Id) && document.DocumentType == StockDocumentType.SalesDelivery
+                where lineIds.Contains(line.Id) && document.DocumentType == documentType
                       && document.Status == StockDocumentStatus.Posted
                 select new DeliveredLine(line.Id, line.ProductId, document.WarehouseId))
             .ToListAsync(ct);

@@ -23,6 +23,8 @@ public static class StockDocumentNumbers
         StockDocumentType.PurchaseReturn => "PRT",
         StockDocumentType.SalesDelivery => "SDL",
         StockDocumentType.SalesReturn => "SRT",
+        StockDocumentType.PosSale => "PSL",
+        StockDocumentType.PosReturn => "PSR",
         _ => throw new ArgumentOutOfRangeException(nameof(documentType), documentType, "Unknown document type."),
     };
 
