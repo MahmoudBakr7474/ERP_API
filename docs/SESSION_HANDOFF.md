@@ -1,14 +1,13 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-29 (POS V1 accepted on `WarehouseERP_Dev` through the browser; `feature/pos` and the frontend's
-`fix/pos-integration` pushed, neither merged; `main` holds Sales V1).
+Last verified: 2026-10-30 (POS V1 accepted on `WarehouseERP_Dev` and merged into `main` in both repositories).
 Read this first; don't re-analyse the repository.
 
 ## Where things stand
-- **POS V1 is complete and accepted on the dev database (2026-10-29), not merged.** Backend `feature/pos` (cut from
-  `main` at `ea122c1`) and frontend `fix/pos-integration` (cut from the web `main` at `e9da46f`, Lovable's POS screens)
-  are pushed with tracking. Migrations 11–13 are applied to `WarehouseERP_Dev`. Merging either branch into `main` waits
-  for the owner. Details in *POS status* below.
+- **`main` holds POS V1 (2026-10-30).** With the owner's approval after the acceptance on the dev database, the
+  backend `main` was fast-forwarded from `ea122c1` to the tip of `feature/pos` (this handoff) and the frontend's `main`
+  from `e9da46f` (Lovable's POS screens) to `fd44db5` (`fix/pos-integration`). No merge commits; both branches stay on
+  the remotes for reference. Migrations 11–13 are applied to `WarehouseERP_Dev`. Details in *POS status* below.
 - **`main` holds Sales V1 (2026-10-29).** With the owner's approval after the acceptance on the dev database, `main`
   was fast-forwarded from `60bb17c` to `0eb88af`, the tip of `feature/sales` (cut from `main` at `60bb17c`; it stays on
   the remote for reference). The frontend's `main` was fast-forwarded from `c958638` to `526a7e6` (`fix/sales-api-contract`).
@@ -126,7 +125,8 @@ Read this first; don't re-analyse the repository.
 - **Known gaps (not defects, not fixed):** a till refund method above its cap disables Confirm without a message; error
   `detail` texts from the API are English (the screens show the translated `err.<code>` first); page titles are English
   in every module.
-- **Not done / next (owner's call):** merge `feature/pos` and `fix/pos-integration` into their `main`s.
+- **Merged (2026-10-30)** with the owner's approval, fast-forward in both repositories (see *Where things stand*).
+  Next module only when the owner asks; don't start Accounting unasked.
 - **Production prerequisites (ADR 0019):** Egyptian ETA e-Receipt (registration, EGS/GS1 codes, device registration,
   integration) where required — V1 receipts are internal commercial receipts; reviewed tax classification of every
   product sold at tills; the accountant approves cost treatment and the handling of card incidents and cash
@@ -387,10 +387,10 @@ Read this first; don't re-analyse the repository.
   - Radix `DirectionProvider` makes RTL correct.
   - Every module's Lovable prompt must tell Lovable to follow those conventions. Where the older
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
-- The frontend's `main` is at `526a7e6` with the Sales screens (and Purchasing, address lookups before them). On this machine the frontend is cloned to
+- The frontend's `main` is at `fd44db5` with the POS screens (and Sales, Purchasing, address lookups before them). On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
-- **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). **POS V1** is accepted on
-  the dev database: backend `feature/pos`, frontend `fix/pos-integration`, both pushed, not merged (see *POS status*). Start the next module only
+- **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). **POS V1 is accepted and
+  merged in both repositories (2026-10-30)** (see *POS status*). Start the next module only
   when the owner asks, from `main` on its own `feature/...` branch, decisions first. Don't start Accounting unasked.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
