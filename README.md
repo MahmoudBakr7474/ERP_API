@@ -22,8 +22,10 @@ src/
                                     reconciliation (ADR 0015)
   Modules/Purchasing/               same layout: suppliers, purchase requests and orders, goods receipts, supplier
                                     invoices and returns; stock only through Inventory's IPurchaseStockPosting (ADR 0016)
-  Modules/Sales/                    same layout: customers, price list, quotations, orders, deliveries, invoices, returns;
-                                    reservations and stock only through Inventory's contracts (ADR 0018)
+  Modules/Sales/                    same layout: customers, price list, product tax classifications, quotations, orders,
+                                    deliveries, invoices, returns; reservations and stock only through Inventory (ADR 0018)
+  Modules/Pos/                      same layout: terminals, cashier shifts and cash, checkout, receipts, returns and
+                                    refunds; prices from Sales, stock only through Inventory's IPosStockPosting (ADR 0019)
 tests/
   WarehouseERP.UnitTests/           no database
   WarehouseERP.IntegrationTests/    SQL Server (LocalDB) + the real HTTP host
@@ -98,6 +100,15 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET, POST, PUT | `/api/sales/invoices?page&pageSize&warehouseId&orderId&customerId&status&search`, `/invoices/{id}` / draft, update, `/{id}/cancel`, `/post` (`Idempotency-Key`) | `sales.documents.read` / `sales.invoices.manage` + warehouse in scope |
 | GET, POST, PUT | `/api/sales/returns?page&pageSize&warehouseId&orderId&deliveryId&customerId&status&search`, `/returns/{id}` / draft, update, `/{id}/submit`, `/cancel` | `sales.documents.read` / `sales.returns.manage` + warehouse in scope |
 | POST | `/api/sales/{quotations,orders,returns}/{id}/approve`, `/reject` (reason); the return's approve takes an `Idempotency-Key` and posts a SalesReturn to stock | `sales.documents.approve` + warehouse in scope, the creator included |
+| GET, PUT, DELETE | `/api/sales/product-taxes?page&pageSize&productId&taxTreatment` / `/product-taxes/{productId}` (`taxTreatment` Standard/ZeroRated/Exempt, own `taxRate` or null = default VAT; 204) | `sales.documents.read` / `sales.prices.manage` |
+| GET, PUT | `/api/pos/settings` (maximum till discount, return window; + `rowVersion`) | signed in / `pos.settings.manage` + company-wide |
+| GET, POST, PUT | `/api/pos/terminals?page&pageSize&warehouseId&isActive&search`, `/terminals/{id}` / register (code and warehouse fixed), update (+ `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `pos.read` / `pos.terminals.manage` + warehouse in scope |
+| GET | `/api/pos/terminals/{id}/current-shift`, `/terminals/{id}/items/lookup?barcode`, `/terminals/{id}/items?search&take`, `/api/pos/customers?search&take` | `pos.sell` + warehouse in scope |
+| GET, POST | `/api/pos/shifts?page&pageSize&terminalId&warehouseId&cashierUserId&status`, `/shifts/{id}` (X/Z report) / open (float), `/{id}/cash-movements` (`pos.cash.manage`), `/{id}/close` (count, note; the cashier with `pos.sell`, anyone else forced with `pos.shifts.manage`) | `pos.read` / `pos.sell` + warehouse in scope |
+| POST | `/api/pos/sales/quote` (prices a cart, records nothing); `/api/pos/sales` (`Idempotency-Key`; checkout on the caller's open shift, posts a PosSale from unreserved stock) | `pos.sell` + warehouse in scope |
+| GET, POST | `/api/pos/sales?page&pageSize&terminalId&shiftId&warehouseId&customerId&cashierUserId&search&from&to`, `/sales/{id}` / `/{id}/reprint` (counted copy) | `pos.read` / `pos.receipts.reprint` |
+| GET, POST | `/api/pos/returns?…`, `/returns/{id}` / create (`Idempotency-Key`; refunds and posts a PosReturn), `/{id}/reprint` | `pos.read` / `pos.returns.manage`, `pos.receipts.reprint` |
+| GET, POST | `/api/pos/card-incidents?page&pageSize&terminalId&shiftId&status` / `/{id}/resolve` (note, `rowVersion`) | `pos.read` / `pos.shifts.manage` |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
 | GET | `/api/identity/me`; POST `/api/identity/me/password`; GET `/api/identity/password-policy` | signed in |
@@ -182,6 +193,9 @@ stops, changing nothing, if one doesn't match (ADR 0017). `Migration09_Inventory
 `inventory.StockReservations` and `StockReservationEntries` and widens the stock document type and source checks to
 types 11–12 (sales delivery and return); `Migration10_Sales` adds the `sales` schema (22 tables; customers, contacts,
 addresses and prices temporal) and the settings row. Neither changes data (ADR 0018 *Consequences*).
+`Migration11_InventoryPos` widens the stock document type and source checks to types 13–14 (POS sale and return);
+`Migration12_SalesProductTaxes` adds `sales.ProductTaxes` (temporal); `Migration13_Pos` adds the `pos` schema (14 tables;
+terminals temporal) and the POS settings row. None changes data (ADR 0019 *Consequences*).
 
 ## Running the API
 
@@ -227,6 +241,7 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 12. **Purchasing posts stock only through Inventory**: goods receipts and supplier returns call `IPurchaseStockPosting` inside their own transaction; the PRC/PRT stock documents name their source (`SourceDocumentId`) and can't be edited or reversed in Inventory. Order, invoice and return quantities are guarded by check constraints as well as the order's row lock (ADR 0016).
 13. **Approvals**: anyone with the approval permission and the warehouse in scope approves, the creator included (`CLAUDE.md`, *Document approvals*).
 14. **Reservations belong to Inventory**: Sales reserves, releases and consumes stock only through `IStockReservations` and `ISalesStockPosting`; `ProductWarehouseStock.ReservedQuantity` always equals what open `StockReservations` hold (the reconciliation report checks it). Delivery, invoice and return quantities are guarded by check constraints as well as the order's row lock (ADR 0018).
+15. **POS sells only unreserved stock, in one transaction**: a checkout locks its key and the terminal's open shift, prices the cart through Sales (`ISalesPricing`, no VAT logic in POS) and posts a PosSale through `IPosStockPosting`; sale, payments, stock, shift totals, receipt number and idempotency record commit together. A refused checkout with card payments records a card incident afterwards and answers `Pos.Checkout.CardReversalRequired`. Payment, drawer and return arithmetic are also check constraints (ADR 0019).
 
 ## Postponed
 
@@ -234,4 +249,5 @@ See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, PO
 management of tax codes, rates, product tax assignments and EGS/GS1 external item codes (Sales/e-invoicing phase,
 ADR 0014), batch/serial tracking (`docs/modules/Inventory/V1_DECISIONS.md`, ADR 0015 *Not done*),
 foreign-currency purchasing, invoice revaluation, supplier payments and accounting (ADR 0016 *Not done*), backorders,
-quarantine returns, customer price lists, credit notes, customer payments and Egyptian e-invoicing (ADR 0018 *Not done*).
+quarantine returns, customer price lists, credit notes, customer payments and Egyptian e-invoicing (ADR 0018 *Not done*),
+offline POS, integrated card gateways and wallets, held carts, promotions and the ETA e-Receipt (ADR 0019 *Not done*).

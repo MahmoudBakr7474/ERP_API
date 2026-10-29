@@ -1,9 +1,12 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-29 (Sales V1 accepted and merged into `main` in both repositories with the owner's approval;
-next module only on the owner's request). Read this first; don't re-analyse the repository.
+Last verified: 2026-10-29 (POS V1 backend implemented and verified on `feature/pos`, not merged; `main` holds Sales V1).
+Read this first; don't re-analyse the repository.
 
 ## Where things stand
+- **POS V1 backend is complete on `feature/pos` (2026-10-29), cut from `main` at `ea122c1`; not pushed, not merged.**
+  Merging into `main`, pushing, and applying Migrations 11–13 to `WarehouseERP_Dev` all wait for the owner. Details in
+  *POS status* below.
 - **`main` holds Sales V1 (2026-10-29).** With the owner's approval after the acceptance on the dev database, `main`
   was fast-forwarded from `60bb17c` to `0eb88af`, the tip of `feature/sales` (cut from `main` at `60bb17c`; it stays on
   the remote for reference). The frontend's `main` was fast-forwarded from `c958638` to `526a7e6` (`fix/sales-api-contract`).
@@ -46,6 +49,46 @@ next module only on the owner's request). Read this first; don't re-analyse the 
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
 - `src/WarehouseERP.Api/Properties/launchSettings.json` is the owner's untracked file: never commit or edit it.
+
+## POS status
+- **Decisions:** approved by the owner on 2026-10-29 ("POS V1 Final Owner Approval", with corrections: product-level tax
+  classification, 10% configurable till discount limit, 14-day configurable return window, damaged returns refused, card
+  charge outside the SQL transaction handled explicitly): `docs/modules/POS/V1_DECISIONS.md`. How the code implements
+  them: `docs/adr/0019-pos-module.md`.
+- **Backend complete and verified on `feature/pos`** (commits listed by `git log main..feature/pos`):
+  * Inventory (additive): stock document types `PosSale` = 13 (`PSL-`) / `PosReturn` = 14 (`PSR-`), `IPosStockPosting`
+    (unreserved issue under the warehouse lock, count freezes, location balance, moving average; returns at the sold
+    cost), `IStockAvailabilityLookup`, `Inventory.StockDocument.ManagedByPos`; `Migration11_InventoryPos` (checks only).
+  * Sales (additive): product tax classifications (`sales.ProductTaxes`, temporal, `/api/sales/product-taxes`,
+    `sales.prices.manage`; `Migration12_SalesProductTaxes`), `ISalesPricing` (list price + classification + discount
+    through the same `LineAmounts`), `ICustomerDirectory`. Sales documents' behaviour unchanged.
+  * Catalog (additive): `IProductCatalog.FindUnitByBarcodeAsync`, `SearchActiveAsync`, `FindUnitsOfProductsAsync`.
+  * POS module `src/Modules/Pos` (`pos` schema, `Migration13_Pos`, 14 tables): terminals, shifts (one open per terminal
+    and per cashier, cash in/out, close with count and mandatory note on a difference, forced close by a shift manager),
+    quote, checkout (cash/card/split, idempotent, one transaction with stock, payments, shift totals and receipt number),
+    card incidents for refused checkouts with card payments, sales history, counted receipt copies, returns and refunds
+    (cumulative shares, per-method caps, window, fit-for-resale only), settings (10% / 14 days seeded). 22 endpoints under
+    `/api/pos`; nine permissions in `PosPermissions.All`; self-approval everywhere.
+- **Verified (2026-10-29):** build 0 warnings; Unit 259/259, Architecture 114/114, Integration 275/275 on LocalDB
+  (24 POS tests: last units across four tills, POS vs Sales reservation race, concurrent retries of one key, concurrent
+  returns, rollback leaving no number/stock/payment, card incidents, count freeze, scope, permissions, Inventory
+  protection); migrations 01–13 on a fresh database, 13–11 rolled back to 10 and re-applied, `has-pending-model-changes`
+  none; OpenAPI snapshot regenerated (+24 paths, +50 schemas, additive). Real-host E2E on a throwaway
+  `WarehouseERP_E2E_Pos_*` database (dropped): 60/60, no 500s, no passwords in the log. Scripts in `.artifacts/`
+  (git-excluded): `e2e-pos-host.ps1` + `e2e-pos.mjs`, `pos-migration-check.ps1`, `drop-db.ps1` (now also accepts
+  `E2E_Pos`). SQL Server tests and scripts were run in the app's terminal (outside the sandbox), as the LocalDB caveat
+  below requires; the dev API stayed healthy.
+- **Frontend:** not built yet. `docs/modules/POS/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` are ready (till screen,
+  receipt, returns, back-office pages, Inventory `PosSale`/`PosReturn` labels, the Sales product taxes page).
+- **Not done / next (owner's call):** apply Migrations 11–13 to `WarehouseERP_Dev` after a copy-only backup and restart the
+  dev API on the `feature/pos` build; classify products; Lovable builds the screens; acceptance; merge.
+- **Production prerequisites (ADR 0019):** Egyptian ETA e-Receipt (registration, EGS/GS1 codes, device registration,
+  integration) where required — V1 receipts are internal commercial receipts; reviewed tax classification of every
+  product sold at tills; the accountant approves cost treatment and the handling of card incidents and cash
+  differences; earlier modules' prerequisites still apply.
+- **Backlog (not started):** offline POS, integrated payments, wallets/InstaPay, held carts, loyalty, promotions, barcode
+  scales, quarantine returns, hardware drawer/printer, manual till prices, header discounts, cash rounding, credit sales,
+  GL posting.
 
 ## Sales status
 - **Decisions:** approved by the owner on 2026-10-29 ("Sales V1 Final Owner Approval & Implementation", with
@@ -301,9 +344,9 @@ next module only on the owner's request). Read this first; don't re-analyse the 
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
 - The frontend's `main` is at `526a7e6` with the Sales screens (and Purchasing, address lookups before them). On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
-- **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). Start the next module only
-  when the owner asks, from `main` on its own `feature/...` branch, decisions first. Don't start POS or Accounting
-  unasked.
+- **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). **POS V1** was started on
+  the owner's request (2026-10-29) and its backend is on `feature/pos` (see *POS status*). Start the next module only
+  when the owner asks, from `main` on its own `feature/...` branch, decisions first. Don't start Accounting unasked.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -322,13 +365,14 @@ next module only on the owner's request). Read this first; don't re-analyse the 
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-29, Sales V1 on `feature/sales`, LocalDB, `-m:1`)
+## Latest verified tests (2026-10-29, POS V1 on `feature/pos`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 242/242 | 99/99 | 252/252 |
+| 259/259 | 114/114 | 275/275 |
 
-Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. All ten migrations applied to a fresh LocalDB
-database, Migrations 09–10 rolled back and re-applied. Sales E2E 49/49 (above). Earlier (Purchasing acceptance,
+Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. All thirteen migrations applied to a fresh LocalDB
+database, Migrations 11–13 rolled back and re-applied. POS E2E 60/60 (above). Earlier (Sales, 2026-10-29): 242 / 99 / 252,
+ten migrations, Sales E2E 49/49. Earlier (Purchasing acceptance,
 2026-10-29): 236 / 84 / 230; frontend (web `main` `edbfea3`): Vitest 67/67, `tsc --noEmit` clean, `vite build`
 succeeds, ESLint only the older Catalog error. Earlier still (Inventory acceptance, 2026-10-28): 225 / 69 / 209. `MasterDataHistoryTests` passed 30 consecutive runs
 after its fix. Frontend (`4a3beec`): Vitest 53/53, `tsc --noEmit` clean, `vite build` succeeds; ESLint reports one

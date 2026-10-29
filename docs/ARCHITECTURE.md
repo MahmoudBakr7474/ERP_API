@@ -40,7 +40,9 @@ company-wide valuation, transfers through transit warehouses, stock counts and t
 **Purchasing** (suppliers, purchase requests and orders, goods receipts, supplier invoices and returns; it moves
 stock only through Inventory's `IPurchaseStockPosting`, ADR 0016) and **Sales** (customers, the price list,
 quotations, orders, deliveries, invoices and customer returns; it reserves and moves stock only through Inventory's
-`IStockReservations` and `ISalesStockPosting`, ADR 0018).
+`IStockReservations` and `ISalesStockPosting`, ADR 0018) and **POS** (terminals, cashier shifts and their cash, checkout,
+receipts, returns and refunds; it prices through Sales' `ISalesPricing`, names customers through `ICustomerDirectory` and
+moves only unreserved stock through Inventory's `IPosStockPosting`, ADR 0019).
 
 ## Dependency map
 
@@ -156,7 +158,12 @@ SupplierInvoice,SupplierReturn,DocumentPolicy,Reference,Access,StockPosting,Idem
 Sales: `Features/{Customers,Prices,Settings,Quotations,Orders,Deliveries,Invoices,Returns}` (numbering, references, line
 pricing, idempotency and scope in `Shared/`), `Abstractions/Interfaces/{Customers,Prices,Settings,Quotations,Orders,
 Deliveries,Invoices,Returns,Posting}`, `Errors/{Customer,Price,Quotation,Order,Delivery,Invoice,Return,Reference,Access,
-Stock,Idempotency,RowVersion}Errors`.
+Stock,Idempotency,RowVersion}Errors`; product tax classifications in `Features/ProductTaxes`, `ISalesPricing` in
+`Features/Prices/SalesPricing`.
+POS: `Features/{Settings,Terminals,Shifts,Items,Customers,Sales,Returns,CardIncidents}` (cart pricing in `Features/Sales`,
+item descriptions in `Features/Items`; references, till access, numbering, idempotency, request rules in `Shared/`),
+`Abstractions/Interfaces/{Settings,Terminals,Shifts,Sales,Returns,CardIncidents,Posting}`,
+`Errors/{Access,Terminal,Shift,Sale,Item,Return,CardIncident,Idempotency,RowVersion,Reference,Pricing,Stock}Errors`.
 
 ### Where each type belongs
 
