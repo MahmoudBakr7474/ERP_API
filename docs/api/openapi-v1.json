@@ -13240,6 +13240,186 @@
         }
       }
     },
+    "/api/sales/product-taxes": {
+      "get": {
+        "tags": [
+          "ProductTaxes"
+        ],
+        "operationId": "ListProductTaxes",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "productId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "taxTreatment",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SalesTaxTreatment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfProductTaxResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sales/product-taxes/{productId}": {
+      "put": {
+        "tags": [
+          "ProductTaxes"
+        ],
+        "operationId": "SetProductTax",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetProductTaxRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "ProductTaxes"
+        ],
+        "operationId": "RemoveProductTax",
+        "parameters": [
+          {
+            "name": "productId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/sales/quotations": {
       "get": {
         "tags": [
@@ -16659,6 +16839,2152 @@
           }
         }
       }
+    },
+    "/api/pos/settings": {
+      "get": {
+        "tags": [
+          "PosSettings"
+        ],
+        "operationId": "GetPosSettings",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosSettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "PosSettings"
+        ],
+        "operationId": "UpdatePosSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePosSettingsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/terminals": {
+      "get": {
+        "tags": [
+          "PosTerminals"
+        ],
+        "operationId": "ListPosTerminals",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfPosTerminalResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "PosTerminals"
+        ],
+        "operationId": "CreatePosTerminal",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePosTerminalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/terminals/{id}": {
+      "get": {
+        "tags": [
+          "PosTerminals"
+        ],
+        "operationId": "GetPosTerminal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosTerminalResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "PosTerminals"
+        ],
+        "operationId": "UpdatePosTerminal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePosTerminalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/terminals/{id}/activate": {
+      "post": {
+        "tags": [
+          "PosTerminals"
+        ],
+        "operationId": "ActivatePosTerminal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/terminals/{id}/deactivate": {
+      "post": {
+        "tags": [
+          "PosTerminals"
+        ],
+        "operationId": "DeactivatePosTerminal",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/terminals/{id}/current-shift": {
+      "get": {
+        "tags": [
+          "PosTerminals"
+        ],
+        "operationId": "GetCurrentPosShift",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosShiftResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/terminals/{terminalId}/items/lookup": {
+      "get": {
+        "tags": [
+          "PosItems"
+        ],
+        "operationId": "LookupPosItem",
+        "parameters": [
+          {
+            "name": "terminalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "barcode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosItemResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/terminals/{terminalId}/items": {
+      "get": {
+        "tags": [
+          "PosItems"
+        ],
+        "operationId": "SearchPosItems",
+        "parameters": [
+          {
+            "name": "terminalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PosItemResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/customers": {
+      "get": {
+        "tags": [
+          "PosCustomers"
+        ],
+        "operationId": "SearchPosCustomers",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": ""
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PosCustomerResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/shifts": {
+      "post": {
+        "tags": [
+          "PosShifts"
+        ],
+        "operationId": "OpenPosShift",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenPosShiftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "PosShifts"
+        ],
+        "operationId": "ListPosShifts",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "terminalId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cashierUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PosShiftStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfPosShiftSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/shifts/{id}": {
+      "get": {
+        "tags": [
+          "PosShifts"
+        ],
+        "operationId": "GetPosShift",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosShiftResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/shifts/{id}/cash-movements": {
+      "post": {
+        "tags": [
+          "PosShifts"
+        ],
+        "operationId": "RecordPosCashMovement",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordPosCashMovementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/shifts/{id}/close": {
+      "post": {
+        "tags": [
+          "PosShifts"
+        ],
+        "operationId": "ClosePosShift",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClosePosShiftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosShiftResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/sales/quote": {
+      "post": {
+        "tags": [
+          "PosSales"
+        ],
+        "operationId": "QuotePosCart",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotePosCartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosCartQuoteResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/sales": {
+      "post": {
+        "tags": [
+          "PosSales"
+        ],
+        "operationId": "CheckoutPosSale",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutPosSaleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosSaleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "PosSales"
+        ],
+        "operationId": "ListPosSales",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "terminalId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "shiftId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "customerId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cashierUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfPosSaleSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/sales/{id}": {
+      "get": {
+        "tags": [
+          "PosSales"
+        ],
+        "operationId": "GetPosSale",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosSaleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/sales/{id}/reprint": {
+      "post": {
+        "tags": [
+          "PosSales"
+        ],
+        "operationId": "ReprintPosSale",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosSaleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/returns": {
+      "post": {
+        "tags": [
+          "PosReturns"
+        ],
+        "operationId": "CreatePosReturn",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePosReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosReturnResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "PosReturns"
+        ],
+        "operationId": "ListPosReturns",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "terminalId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "shiftId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "saleId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfPosReturnSummaryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/returns/{id}": {
+      "get": {
+        "tags": [
+          "PosReturns"
+        ],
+        "operationId": "GetPosReturn",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosReturnResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/returns/{id}/reprint": {
+      "post": {
+        "tags": [
+          "PosReturns"
+        ],
+        "operationId": "ReprintPosReturn",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PosReturnResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/card-incidents": {
+      "get": {
+        "tags": [
+          "PosCardIncidents"
+        ],
+        "operationId": "ListPosCardIncidents",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "terminalId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "shiftId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PosCardIncidentStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfPosCardIncidentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/card-incidents/{id}/resolve": {
+      "post": {
+        "tags": [
+          "PosCardIncidents"
+        ],
+        "operationId": "ResolvePosCardIncident",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolvePosCardIncidentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -16958,6 +19284,61 @@
           }
         }
       },
+      "CheckoutPosSaleRequest": {
+        "required": [
+          "terminalId",
+          "customerId",
+          "customerName",
+          "customerPhone",
+          "notes",
+          "lines",
+          "payments"
+        ],
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerPhone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosCartLineRequest"
+            }
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosPaymentRequest"
+            }
+          }
+        }
+      },
       "CityResponse": {
         "required": [
           "id",
@@ -16988,6 +19369,29 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "rowVersion": {
+            "type": "string"
+          }
+        }
+      },
+      "ClosePosShiftRequest": {
+        "required": [
+          "countedCash",
+          "note",
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "countedCash": {
+            "type": "number",
+            "format": "double"
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "rowVersion": {
             "type": "string"
@@ -17347,6 +19751,101 @@
             "type": "string"
           },
           "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CreatePosReturnRequest": {
+        "required": [
+          "terminalId",
+          "saleId",
+          "reason",
+          "notes",
+          "lines",
+          "refunds"
+        ],
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "saleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosReturnLineRequest"
+            }
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosPaymentRequest"
+            }
+          }
+        }
+      },
+      "CreatePosTerminalRequest": {
+        "required": [
+          "code",
+          "name",
+          "warehouseId",
+          "sellingLocationId",
+          "acceptsCash",
+          "acceptsCard",
+          "receiptHeader",
+          "receiptFooter"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sellingLocationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "acceptsCash": {
+            "type": "boolean"
+          },
+          "acceptsCard": {
+            "type": "boolean"
+          },
+          "receiptHeader": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receiptFooter": {
             "type": [
               "null",
               "string"
@@ -19429,6 +21928,23 @@
           }
         }
       },
+      "OpenPosShiftRequest": {
+        "required": [
+          "terminalId",
+          "openingFloat"
+        ],
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "openingFloat": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "OpenTransferPosition": {
         "required": [
           "transferId",
@@ -19775,6 +22291,171 @@
           }
         }
       },
+      "PagedResultOfPosCardIncidentResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosCardIncidentResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfPosReturnSummaryResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosReturnSummaryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfPosSaleSummaryResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosSaleSummaryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfPosShiftSummaryResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosShiftSummaryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfPosTerminalResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosTerminalResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "PagedResultOfProductSummaryResponse": {
         "required": [
           "items",
@@ -19788,6 +22469,39 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ProductSummaryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfProductTaxResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductTaxResponse"
             }
           },
           "page": {
@@ -20615,6 +23329,2026 @@
           }
         }
       },
+      "PosCardIncidentResponse": {
+        "required": [
+          "id",
+          "idempotencyKey",
+          "terminalId",
+          "terminalCode",
+          "warehouseId",
+          "warehouseCode",
+          "shiftId",
+          "cashierUserId",
+          "cashierName",
+          "cardAmount",
+          "references",
+          "errorCode",
+          "errorMessage",
+          "status",
+          "attempts",
+          "occurredAtUtc",
+          "lastAttemptAtUtc",
+          "saleId",
+          "resolvedAtUtc",
+          "resolvedByUserId",
+          "resolvedByName",
+          "resolutionNote",
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalCode": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "shiftId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "cashierUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "cashierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cardAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "references": {
+            "type": "string"
+          },
+          "errorCode": {
+            "type": "string"
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PosCardIncidentStatus"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "occurredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastAttemptAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "saleId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "resolvedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "resolvedByUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "resolvedByName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "resolutionNote": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rowVersion": {
+            "type": "string"
+          }
+        }
+      },
+      "PosCardIncidentStatus": {
+        "enum": [
+          "ReversalRequired",
+          "SaleRecorded",
+          "Resolved"
+        ],
+        "description": "Where a card incident (a card approved for a checkout POS could not record) stands."
+      },
+      "PosCartLineRequest": {
+        "required": [
+          "productId",
+          "productUnitId",
+          "quantity",
+          "discountPercent"
+        ],
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productUnitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountPercent": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PosCartQuoteLineResponse": {
+        "required": [
+          "lineNumber",
+          "productId",
+          "sku",
+          "productName",
+          "productUnitId",
+          "unitCode",
+          "quantity",
+          "unitPrice",
+          "unitPriceWithTax",
+          "discountPercent",
+          "grossAmount",
+          "discountAmount",
+          "netAmount",
+          "taxTreatment",
+          "taxRate",
+          "taxAmount",
+          "totalAmount",
+          "availableBaseQuantity",
+          "stockShort"
+        ],
+        "type": "object",
+        "properties": {
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "productUnitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitCode": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitPriceWithTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "grossAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "netAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxTreatment": {
+            "$ref": "#/components/schemas/PosTaxTreatment"
+          },
+          "taxRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "availableBaseQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "stockShort": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PosCartQuoteResponse": {
+        "required": [
+          "currencyCode",
+          "currencyDecimals",
+          "maxLineDiscountPercent",
+          "lines",
+          "grossAmount",
+          "discountAmount",
+          "netAmount",
+          "taxAmount",
+          "totalAmount",
+          "stockShort"
+        ],
+        "type": "object",
+        "properties": {
+          "currencyCode": {
+            "type": "string"
+          },
+          "currencyDecimals": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxLineDiscountPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosCartQuoteLineResponse"
+            }
+          },
+          "grossAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "netAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "stockShort": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PosCashMovementResponse": {
+        "required": [
+          "id",
+          "movementType",
+          "amount",
+          "reason",
+          "userId",
+          "userName",
+          "atUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "movementType": {
+            "$ref": "#/components/schemas/PosCashMovementType"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "userId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "userName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "atUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PosCashMovementType": {
+        "enum": [
+          "CashIn",
+          "CashOut"
+        ],
+        "description": "Cash put into or taken out of a shift\u0027s drawer outside sales and refunds."
+      },
+      "PosCustomerResponse": {
+        "required": [
+          "id",
+          "code",
+          "nameAr",
+          "nameEn",
+          "customerType",
+          "taxRegistrationNumber",
+          "mobile"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerType": {
+            "$ref": "#/components/schemas/CustomerType"
+          },
+          "taxRegistrationNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mobile": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PosItemResponse": {
+        "required": [
+          "productId",
+          "sku",
+          "productName",
+          "productUnitId",
+          "unitId",
+          "unitCode",
+          "unitName",
+          "conversionFactor",
+          "isBaseUnit",
+          "unitAllowsFraction",
+          "currencyCode",
+          "unitPrice",
+          "unitPriceWithTax",
+          "taxTreatment",
+          "taxRate",
+          "availableBaseQuantity",
+          "availableQuantity",
+          "canSell",
+          "problemCode"
+        ],
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "productUnitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitCode": {
+            "type": "string"
+          },
+          "unitName": {
+            "type": "string"
+          },
+          "conversionFactor": {
+            "type": "number",
+            "format": "double"
+          },
+          "isBaseUnit": {
+            "type": "boolean"
+          },
+          "unitAllowsFraction": {
+            "type": "boolean"
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "unitPrice": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "unitPriceWithTax": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "taxTreatment": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PosTaxTreatment"
+              }
+            ]
+          },
+          "taxRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "availableBaseQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "availableQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "canSell": {
+            "type": "boolean"
+          },
+          "problemCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PosPaymentMethod": {
+        "enum": [
+          "Cash",
+          "Card"
+        ],
+        "description": "How a POS sale is paid or a return refunded."
+      },
+      "PosPaymentRequest": {
+        "required": [
+          "method",
+          "amount",
+          "reference",
+          "cardLast4"
+        ],
+        "type": "object",
+        "properties": {
+          "method": {
+            "$ref": "#/components/schemas/PosPaymentMethod"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "reference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cardLast4": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PosPaymentResponse": {
+        "required": [
+          "lineNumber",
+          "method",
+          "status",
+          "amount",
+          "tenderedAmount",
+          "changeAmount",
+          "reference",
+          "cardLast4"
+        ],
+        "type": "object",
+        "properties": {
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "method": {
+            "$ref": "#/components/schemas/PosPaymentMethod"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PosPaymentStatus"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "tenderedAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "changeAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "reference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cardLast4": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PosPaymentStatus": {
+        "enum": [
+          "Settled",
+          "ExternallyConfirmed"
+        ],
+        "description": "What POS knows about a payment or a refund it recorded."
+      },
+      "PosRefundResponse": {
+        "required": [
+          "lineNumber",
+          "method",
+          "status",
+          "amount",
+          "reference",
+          "cardLast4"
+        ],
+        "type": "object",
+        "properties": {
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "method": {
+            "$ref": "#/components/schemas/PosPaymentMethod"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PosPaymentStatus"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "reference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cardLast4": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PosReturnCondition": {
+        "enum": [
+          "FitForResale",
+          "Damaged",
+          "Uninspected"
+        ],
+        "description": "The state goods come back in. V1 takes back only goods fit for resale; anything else is refused."
+      },
+      "PosReturnLineRequest": {
+        "required": [
+          "saleLineId",
+          "quantity",
+          "condition"
+        ],
+        "type": "object",
+        "properties": {
+          "saleLineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/PosReturnCondition"
+          }
+        }
+      },
+      "PosReturnLineResponse": {
+        "required": [
+          "id",
+          "lineNumber",
+          "saleLineId",
+          "productId",
+          "sku",
+          "productName",
+          "productUnitId",
+          "unitCode",
+          "quantity",
+          "condition",
+          "unitPrice",
+          "discountPercent",
+          "taxTreatment",
+          "taxRate",
+          "netAmount",
+          "taxAmount",
+          "totalAmount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "saleLineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "productUnitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitCode": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/PosReturnCondition"
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxTreatment": {
+            "$ref": "#/components/schemas/PosTaxTreatment"
+          },
+          "taxRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "netAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PosReturnReferenceResponse": {
+        "required": [
+          "id",
+          "number",
+          "returnedAtUtc",
+          "totalAmount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "returnedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PosReturnResponse": {
+        "required": [
+          "id",
+          "number",
+          "isCopy",
+          "copyNumber",
+          "printCount",
+          "companyName",
+          "timeZoneId",
+          "branchId",
+          "branchCode",
+          "branchName",
+          "warehouseId",
+          "warehouseCode",
+          "terminalId",
+          "terminalCode",
+          "terminalName",
+          "receiptHeader",
+          "receiptFooter",
+          "shiftId",
+          "shiftNumber",
+          "cashierUserId",
+          "cashierName",
+          "saleId",
+          "saleNumber",
+          "soldAtUtc",
+          "customerId",
+          "customerName",
+          "reason",
+          "notes",
+          "currencyCode",
+          "currencyDecimals",
+          "returnedAtUtc",
+          "lines",
+          "netAmount",
+          "taxAmount",
+          "totalAmount",
+          "refunds",
+          "cashRefundAmount",
+          "cardRefundAmount",
+          "stockDocumentId",
+          "stockDocumentNumber"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "isCopy": {
+            "type": "boolean"
+          },
+          "copyNumber": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "printCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "timeZoneId": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchCode": {
+            "type": "string"
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalCode": {
+            "type": "string"
+          },
+          "terminalName": {
+            "type": "string"
+          },
+          "receiptHeader": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receiptFooter": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "shiftId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shiftNumber": {
+            "type": "string"
+          },
+          "cashierUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cashierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "saleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "saleNumber": {
+            "type": "string"
+          },
+          "soldAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "currencyDecimals": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "returnedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosReturnLineResponse"
+            }
+          },
+          "netAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "refunds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosRefundResponse"
+            }
+          },
+          "cashRefundAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cardRefundAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "stockDocumentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "stockDocumentNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PosReturnSummaryResponse": {
+        "required": [
+          "id",
+          "number",
+          "saleId",
+          "saleNumber",
+          "terminalId",
+          "terminalCode",
+          "shiftId",
+          "warehouseId",
+          "warehouseCode",
+          "cashierUserId",
+          "cashierName",
+          "customerName",
+          "returnedAtUtc",
+          "reason",
+          "totalAmount",
+          "cashRefundAmount",
+          "cardRefundAmount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "saleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "saleNumber": {
+            "type": "string"
+          },
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalCode": {
+            "type": "string"
+          },
+          "shiftId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "cashierUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cashierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "returnedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cashRefundAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cardRefundAmount": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PosSaleLineResponse": {
+        "required": [
+          "id",
+          "lineNumber",
+          "productId",
+          "sku",
+          "productName",
+          "productUnitId",
+          "unitCode",
+          "quantity",
+          "unitPrice",
+          "unitPriceWithTax",
+          "discountPercent",
+          "grossAmount",
+          "discountAmount",
+          "netAmount",
+          "taxTreatment",
+          "taxRate",
+          "taxAmount",
+          "totalAmount",
+          "returnedQuantity",
+          "returnableQuantity"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "productUnitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitCode": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitPriceWithTax": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "grossAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "netAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxTreatment": {
+            "$ref": "#/components/schemas/PosTaxTreatment"
+          },
+          "taxRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "returnedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "returnableQuantity": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PosSaleResponse": {
+        "required": [
+          "id",
+          "number",
+          "isTaxInvoice",
+          "isCopy",
+          "copyNumber",
+          "printCount",
+          "companyName",
+          "timeZoneId",
+          "branchId",
+          "branchCode",
+          "branchName",
+          "warehouseId",
+          "warehouseCode",
+          "terminalId",
+          "terminalCode",
+          "terminalName",
+          "receiptHeader",
+          "receiptFooter",
+          "shiftId",
+          "shiftNumber",
+          "cashierUserId",
+          "cashierName",
+          "customerId",
+          "customerName",
+          "customerPhone",
+          "customerTaxNumber",
+          "currencyCode",
+          "currencyDecimals",
+          "soldAtUtc",
+          "lines",
+          "taxBreakdown",
+          "grossAmount",
+          "discountAmount",
+          "netAmount",
+          "taxAmount",
+          "totalAmount",
+          "payments",
+          "cashTenderedAmount",
+          "changeAmount",
+          "cashReceivedAmount",
+          "cardAmount",
+          "refundedAmount",
+          "returns",
+          "stockDocumentId",
+          "stockDocumentNumber",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "isTaxInvoice": {
+            "type": "boolean"
+          },
+          "isCopy": {
+            "type": "boolean"
+          },
+          "copyNumber": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "printCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "companyName": {
+            "type": "string"
+          },
+          "timeZoneId": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchCode": {
+            "type": "string"
+          },
+          "branchName": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalCode": {
+            "type": "string"
+          },
+          "terminalName": {
+            "type": "string"
+          },
+          "receiptHeader": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receiptFooter": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "shiftId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shiftNumber": {
+            "type": "string"
+          },
+          "cashierUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cashierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerPhone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerTaxNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "currencyDecimals": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "soldAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosSaleLineResponse"
+            }
+          },
+          "taxBreakdown": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosTaxLineResponse"
+            }
+          },
+          "grossAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "discountAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "netAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosPaymentResponse"
+            }
+          },
+          "cashTenderedAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "changeAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cashReceivedAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cardAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "refundedAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "returns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosReturnReferenceResponse"
+            }
+          },
+          "stockDocumentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "stockDocumentNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PosSaleSummaryResponse": {
+        "required": [
+          "id",
+          "number",
+          "terminalId",
+          "terminalCode",
+          "shiftId",
+          "warehouseId",
+          "warehouseCode",
+          "cashierUserId",
+          "cashierName",
+          "customerId",
+          "customerName",
+          "soldAtUtc",
+          "lineCount",
+          "totalAmount",
+          "cashReceivedAmount",
+          "cardAmount",
+          "refundedAmount",
+          "returnCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalCode": {
+            "type": "string"
+          },
+          "shiftId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "cashierUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cashierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "soldAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lineCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cashReceivedAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cardAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "refundedAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "returnCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PosSettingsResponse": {
+        "required": [
+          "maxLineDiscountPercent",
+          "returnWindowDays",
+          "updatedAtUtc",
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "maxLineDiscountPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "returnWindowDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "updatedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "rowVersion": {
+            "type": "string"
+          }
+        }
+      },
+      "PosShiftAction": {
+        "enum": [
+          "Opened",
+          "CashIn",
+          "CashOut",
+          "Closed",
+          "ForceClosed"
+        ],
+        "description": "One step in a shift\u0027s history."
+      },
+      "PosShiftEventResponse": {
+        "required": [
+          "id",
+          "action",
+          "amount",
+          "note",
+          "userId",
+          "userName",
+          "atUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "action": {
+            "$ref": "#/components/schemas/PosShiftAction"
+          },
+          "amount": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "userId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "userName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "atUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PosShiftResponse": {
+        "required": [
+          "id",
+          "number",
+          "status",
+          "terminalId",
+          "terminalCode",
+          "terminalName",
+          "warehouseId",
+          "warehouseCode",
+          "branchId",
+          "branchCode",
+          "cashierUserId",
+          "cashierName",
+          "currencyCode",
+          "openedAtUtc",
+          "openingFloat",
+          "cashSalesAmount",
+          "cashRefundsAmount",
+          "cashInAmount",
+          "cashOutAmount",
+          "expectedCash",
+          "cardSalesAmount",
+          "cardRefundsAmount",
+          "salesAmount",
+          "refundsAmount",
+          "salesCount",
+          "returnsCount",
+          "closedAtUtc",
+          "closedByUserId",
+          "closedByName",
+          "isForceClosed",
+          "countedCash",
+          "cashDifference",
+          "closingNote",
+          "openCardIncidents",
+          "cashMovements",
+          "events",
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PosShiftStatus"
+          },
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalCode": {
+            "type": "string"
+          },
+          "terminalName": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchCode": {
+            "type": "string"
+          },
+          "cashierUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cashierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "currencyCode": {
+            "type": "string"
+          },
+          "openedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "openingFloat": {
+            "type": "number",
+            "format": "double"
+          },
+          "cashSalesAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cashRefundsAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cashInAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cashOutAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "expectedCash": {
+            "type": "number",
+            "format": "double"
+          },
+          "cardSalesAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "cardRefundsAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "salesAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "refundsAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "salesCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "returnsCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "closedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "closedByUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "closedByName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isForceClosed": {
+            "type": "boolean"
+          },
+          "countedCash": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "cashDifference": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "closingNote": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "openCardIncidents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cashMovements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosCashMovementResponse"
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosShiftEventResponse"
+            }
+          },
+          "rowVersion": {
+            "type": "string"
+          }
+        }
+      },
+      "PosShiftStatus": {
+        "enum": [
+          "Open",
+          "Closed"
+        ],
+        "description": "Where a cashier shift is in its life."
+      },
+      "PosShiftSummaryResponse": {
+        "required": [
+          "id",
+          "number",
+          "status",
+          "terminalId",
+          "terminalCode",
+          "warehouseId",
+          "warehouseCode",
+          "cashierUserId",
+          "cashierName",
+          "openedAtUtc",
+          "closedAtUtc",
+          "openingFloat",
+          "expectedCash",
+          "countedCash",
+          "cashDifference",
+          "cardSalesAmount",
+          "salesCount",
+          "salesAmount",
+          "isForceClosed"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PosShiftStatus"
+          },
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalCode": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "cashierUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cashierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "openedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "openingFloat": {
+            "type": "number",
+            "format": "double"
+          },
+          "expectedCash": {
+            "type": "number",
+            "format": "double"
+          },
+          "countedCash": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "cashDifference": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "cardSalesAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "salesCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "salesAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "isForceClosed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PosTaxLineResponse": {
+        "required": [
+          "taxTreatment",
+          "taxRate",
+          "netAmount",
+          "taxAmount"
+        ],
+        "type": "object",
+        "properties": {
+          "taxTreatment": {
+            "$ref": "#/components/schemas/PosTaxTreatment"
+          },
+          "taxRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "netAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxAmount": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PosTaxTreatment": {
+        "enum": [
+          "Standard",
+          "ZeroRated",
+          "Exempt",
+          null
+        ]
+      },
       "PostedDocumentResponse": {
         "required": [
           "id",
@@ -20640,6 +25374,126 @@
             "items": {
               "$ref": "#/components/schemas/OverReservationResponse"
             }
+          }
+        }
+      },
+      "PosTerminalResponse": {
+        "required": [
+          "id",
+          "code",
+          "name",
+          "branchId",
+          "branchCode",
+          "warehouseId",
+          "warehouseCode",
+          "sellingLocationId",
+          "sellingLocationCode",
+          "acceptsCash",
+          "acceptsCard",
+          "receiptHeader",
+          "receiptFooter",
+          "isActive",
+          "openShiftId",
+          "openShiftNumber",
+          "openShiftCashierUserId",
+          "openShiftCashierName",
+          "rowVersion",
+          "createdAtUtc",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchCode": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "sellingLocationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sellingLocationCode": {
+            "type": "string"
+          },
+          "acceptsCash": {
+            "type": "boolean"
+          },
+          "acceptsCard": {
+            "type": "boolean"
+          },
+          "receiptHeader": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receiptFooter": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "openShiftId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "openShiftNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "openShiftCashierUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "openShiftCashierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rowVersion": {
+            "type": "string"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -21048,6 +25902,56 @@
           "baseUnitId": {
             "type": "string",
             "format": "uuid"
+          }
+        }
+      },
+      "ProductTaxResponse": {
+        "required": [
+          "id",
+          "productId",
+          "sku",
+          "productName",
+          "taxTreatment",
+          "taxRate",
+          "createdAtUtc",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "productName": {
+            "type": "string"
+          },
+          "taxTreatment": {
+            "$ref": "#/components/schemas/SalesTaxTreatment"
+          },
+          "taxRate": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -21858,6 +26762,25 @@
           }
         }
       },
+      "QuotePosCartRequest": {
+        "required": [
+          "terminalId",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosCartLineRequest"
+            }
+          }
+        }
+      },
       "ReceiptLineRequest": {
         "required": [
           "purchaseOrderLineId",
@@ -21990,6 +26913,33 @@
             "items": {
               "$ref": "#/components/schemas/ReservationDifference"
             }
+          }
+        }
+      },
+      "RecordPosCashMovementRequest": {
+        "required": [
+          "movementType",
+          "amount",
+          "reason",
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "movementType": {
+            "$ref": "#/components/schemas/PosCashMovementType"
+          },
+          "amount": {
+            "type": "number",
+            "format": "double"
+          },
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rowVersion": {
+            "type": "string"
           }
         }
       },
@@ -22161,6 +27111,24 @@
         "type": "object",
         "properties": {
           "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "ResolvePosCardIncidentRequest": {
+        "required": [
+          "note",
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rowVersion": {
             "type": "string"
           }
         }
@@ -24605,9 +29573,9 @@
         "enum": [
           "Standard",
           "ZeroRated",
-          "Exempt",
-          null
-        ]
+          "Exempt"
+        ],
+        "description": "How VAT applies to a sales line. Anything else is refused, never treated as one of these."
       },
       "SecurityEventResponse": {
         "required": [
@@ -24862,6 +29830,25 @@
           },
           "rowVersion": {
             "type": "string"
+          }
+        }
+      },
+      "SetProductTaxRequest": {
+        "required": [
+          "taxTreatment",
+          "taxRate"
+        ],
+        "type": "object",
+        "properties": {
+          "taxTreatment": {
+            "$ref": "#/components/schemas/SalesTaxTreatment"
+          },
+          "taxRate": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },
@@ -25986,7 +30973,9 @@
           "PurchaseReceipt",
           "PurchaseReturn",
           "SalesDelivery",
-          "SalesReturn"
+          "SalesReturn",
+          "PosSale",
+          "PosReturn"
         ],
         "description": "What a stock document does; each type has its own number series."
       },
@@ -28352,6 +33341,72 @@
           }
         }
       },
+      "UpdatePosSettingsRequest": {
+        "required": [
+          "maxLineDiscountPercent",
+          "returnWindowDays",
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "maxLineDiscountPercent": {
+            "type": "number",
+            "format": "double"
+          },
+          "returnWindowDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rowVersion": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdatePosTerminalRequest": {
+        "required": [
+          "name",
+          "sellingLocationId",
+          "acceptsCash",
+          "acceptsCard",
+          "receiptHeader",
+          "receiptFooter",
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "sellingLocationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "acceptsCash": {
+            "type": "boolean"
+          },
+          "acceptsCard": {
+            "type": "boolean"
+          },
+          "receiptHeader": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receiptFooter": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "rowVersion": {
+            "type": "string"
+          }
+        }
+      },
       "UpdateProductRequest": {
         "required": [
           "nameAr",
@@ -29530,6 +34585,9 @@
       "name": "SalesPrices"
     },
     {
+      "name": "ProductTaxes"
+    },
+    {
       "name": "SalesQuotations"
     },
     {
@@ -29543,6 +34601,30 @@
     },
     {
       "name": "SalesReturns"
+    },
+    {
+      "name": "PosSettings"
+    },
+    {
+      "name": "PosTerminals"
+    },
+    {
+      "name": "PosItems"
+    },
+    {
+      "name": "PosCustomers"
+    },
+    {
+      "name": "PosShifts"
+    },
+    {
+      "name": "PosSales"
+    },
+    {
+      "name": "PosReturns"
+    },
+    {
+      "name": "PosCardIncidents"
     }
   ]
 }
