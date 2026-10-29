@@ -343,6 +343,10 @@ public sealed class PosApiTests(DatabaseFixture fx) : IAsyncLifetime
         Assert.Equal(($"{till.TerminalCode}-R-2026-000001", 10m, 1.40m, 11.40m),
             (first.Text("number"), first.Decimal("netAmount"), first.Decimal("taxAmount"), first.Decimal("totalAmount")));
         Assert.StartsWith("PSR-", first.Text("stockDocumentNumber"));
+        Assert.Equal(11.40m, first.GetProperty("lines")[0].Decimal("unitPriceWithTax"));
+        var refundedTax = Assert.Single(first.GetProperty("taxBreakdown").EnumerateArray());
+        Assert.Equal(("Standard", 14m, 10m, 1.40m), (refundedTax.Text("taxTreatment"), refundedTax.Decimal("taxRate"), refundedTax.Decimal("netAmount"),
+            refundedTax.Decimal("taxAmount")));
         Assert.Equal(8m, await InventoryTesting.BalanceAsync(admin, till.Room));
         await InventoryTesting.AssertValuedAsync(admin, till.Room.ProductId, 8m, 48m);
 
@@ -357,6 +361,7 @@ public sealed class PosApiTests(DatabaseFixture fx) : IAsyncLifetime
 
         await ReturnAsync(cashier, till.TerminalId, saleId, Lines(ReturnLine(lineId, 2m)), Pay(Cash(22.80m))).SoldAsync();
         var after = await admin.GetJsonAsync($"{SalesRoute}/{saleId}");
+        Assert.Equal((34.20m, 34.20m, 0m), (after.Decimal("refundedAmount"), after.Decimal("refundedCashAmount"), after.Decimal("refundedCardAmount")));
         Assert.Equal((34.20m, 3m, 0m, 2),
             (after.Decimal("refundedAmount"), after.GetProperty("lines")[0].Decimal("returnedQuantity"),
                 after.GetProperty("lines")[0].Decimal("returnableQuantity"), after.GetProperty("returns").GetArrayLength()));

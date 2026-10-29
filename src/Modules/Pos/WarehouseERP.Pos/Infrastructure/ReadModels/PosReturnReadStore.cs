@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.Pos.Application.Abstractions.Interfaces.Returns;
 using WarehouseERP.Pos.Application.Contracts.Returns;
+using WarehouseERP.Pos.Application.Contracts.Sales;
+using WarehouseERP.Pos.Application.Shared;
 using WarehouseERP.Pos.Domain;
 
 namespace WarehouseERP.Pos.Infrastructure.ReadModels;
@@ -22,6 +24,7 @@ internal sealed class PosReturnReadStore(DbContext db, PosNames names) : IPosRet
         var shiftNumber = await db.Set<PosShift>().AsNoTracking().Where(x => x.Id == posReturn.ShiftId).Select(x => x.Number).SingleAsync(ct);
         var sale = await db.Set<PosSale>().AsNoTracking().Where(x => x.Id == posReturn.SaleId)
             .Select(x => new { x.SoldAtUtc, x.CurrencyDecimals }).SingleAsync(ct);
+        var lines = posReturn.Lines.OrderBy(l => l.LineNumber).ToList();
         var lookup = await names.LoadAsync(branchIds: [posReturn.BranchId], warehouseIds: [posReturn.WarehouseId],
             userIds: [posReturn.CashierUserId], company: true, ct: ct);
 
@@ -32,9 +35,13 @@ internal sealed class PosReturnReadStore(DbContext db, PosNames names) : IPosRet
             terminal.ReceiptFooter, posReturn.ShiftId, shiftNumber, posReturn.CashierUserId, lookup.UserName(posReturn.CashierUserId),
             posReturn.SaleId, posReturn.SaleNumber, sale.SoldAtUtc, posReturn.CustomerId, posReturn.CustomerName, posReturn.Reason,
             posReturn.Notes, posReturn.CurrencyCode, sale.CurrencyDecimals, posReturn.ReturnedAtUtc,
-            posReturn.Lines.OrderBy(l => l.LineNumber).Select(l => new PosReturnLineResponse(
+            lines.Select(l => new PosReturnLineResponse(
                 l.Id, l.LineNumber, l.SaleLineId, l.ProductId, l.Sku, l.ProductName, l.ProductUnitId, l.UnitCode, l.Quantity, l.Condition,
-                l.UnitPrice, l.DiscountPercent, l.TaxTreatment, l.TaxRate, l.NetAmount, l.TaxAmount, l.TotalAmount)).ToList(),
+                l.UnitPrice, PosReferences.WithTax(l.UnitPrice, l.TaxRate, sale.CurrencyDecimals), l.DiscountPercent, l.TaxTreatment,
+                l.TaxRate, l.NetAmount, l.TaxAmount, l.TotalAmount)).ToList(),
+            lines.GroupBy(l => (l.TaxTreatment, l.TaxRate)).OrderBy(g => g.Key.TaxTreatment).ThenByDescending(g => g.Key.TaxRate)
+                .Select(g => new PosTaxLineResponse(g.Key.TaxTreatment, g.Key.TaxRate, g.Sum(l => l.NetAmount), g.Sum(l => l.TaxAmount)))
+                .ToList(),
             posReturn.NetAmount, posReturn.TaxAmount, posReturn.TotalAmount,
             posReturn.Refunds.OrderBy(r => r.LineNumber)
                 .Select(r => new PosRefundResponse(r.LineNumber, r.Method, r.Status, r.Amount, r.Reference, r.CardLast4)).ToList(),

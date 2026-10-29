@@ -8,6 +8,8 @@ namespace WarehouseERP.Pos.Application.Contracts.Sales;
 /// <param name="IsCopy">True when this is a reprint (or a view of a sale already printed); the receipt says COPY.</param>
 /// <param name="CopyNumber">Which copy a reprint is (1 for the first copy).</param>
 /// <param name="TimeZoneId">The company's time zone, to print local dates and times.</param>
+/// <param name="RefundedCashAmount">Refunded in cash so far; at most the cash received.</param>
+/// <param name="RefundedCardAmount">Refunded by card so far; at most the card payments.</param>
 public sealed record PosSaleResponse(
     Guid Id, string Number, bool IsTaxInvoice, bool IsCopy, int? CopyNumber, int PrintCount, string CompanyName, string TimeZoneId,
     Guid BranchId, string BranchCode, string BranchName, Guid WarehouseId, string WarehouseCode, Guid TerminalId, string TerminalCode,
@@ -16,5 +18,6 @@ public sealed record PosSaleResponse(
     string CurrencyCode, int CurrencyDecimals, DateTime SoldAtUtc, IReadOnlyList<PosSaleLineResponse> Lines,
     IReadOnlyList<PosTaxLineResponse> TaxBreakdown, decimal GrossAmount, decimal DiscountAmount, decimal NetAmount,
     decimal TaxAmount, decimal TotalAmount, IReadOnlyList<PosPaymentResponse> Payments, decimal CashTenderedAmount,
-    decimal ChangeAmount, decimal CashReceivedAmount, decimal CardAmount, decimal RefundedAmount,
+    decimal ChangeAmount, decimal CashReceivedAmount, decimal CardAmount, decimal RefundedAmount, decimal RefundedCashAmount,
+    decimal RefundedCardAmount,
     IReadOnlyList<PosReturnReferenceResponse> Returns, Guid? StockDocumentId, string? StockDocumentNumber, string? Notes);

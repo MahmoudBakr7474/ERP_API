@@ -44,7 +44,8 @@ internal sealed class PosSaleReadStore(DbContext db, PosNames names) : IPosSaleR
             sale.GrossAmount, sale.DiscountAmount, sale.NetAmount, sale.TaxAmount, sale.TotalAmount,
             sale.Payments.OrderBy(p => p.LineNumber).Select(p => new PosPaymentResponse(
                 p.LineNumber, p.Method, p.Status, p.Amount, p.TenderedAmount, p.ChangeAmount, p.Reference, p.CardLast4)).ToList(),
-            sale.CashTenderedAmount, sale.ChangeAmount, sale.CashReceivedAmount, sale.CardAmount, sale.RefundedAmount, returns,
+            sale.CashTenderedAmount, sale.ChangeAmount, sale.CashReceivedAmount, sale.CardAmount, sale.RefundedAmount,
+            sale.RefundedCashAmount, sale.RefundedCardAmount, returns,
             sale.StockDocumentId, sale.StockDocumentNumber, sale.Notes);
     }
 

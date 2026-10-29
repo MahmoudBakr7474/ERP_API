@@ -24033,6 +24033,7 @@
           "quantity",
           "condition",
           "unitPrice",
+          "unitPriceWithTax",
           "discountPercent",
           "taxTreatment",
           "taxRate",
@@ -24079,6 +24080,10 @@
             "$ref": "#/components/schemas/PosReturnCondition"
           },
           "unitPrice": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitPriceWithTax": {
             "type": "number",
             "format": "double"
           },
@@ -24167,6 +24172,7 @@
           "currencyDecimals",
           "returnedAtUtc",
           "lines",
+          "taxBreakdown",
           "netAmount",
           "taxAmount",
           "totalAmount",
@@ -24309,6 +24315,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/PosReturnLineResponse"
+            }
+          },
+          "taxBreakdown": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PosTaxLineResponse"
             }
           },
           "netAmount": {
@@ -24590,6 +24602,8 @@
           "cashReceivedAmount",
           "cardAmount",
           "refundedAmount",
+          "refundedCashAmount",
+          "refundedCardAmount",
           "returns",
           "stockDocumentId",
           "stockDocumentNumber",
@@ -24774,6 +24788,14 @@
             "format": "double"
           },
           "refundedAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "refundedCashAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "refundedCardAmount": {
             "type": "number",
             "format": "double"
           },
