@@ -1,9 +1,16 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-29 (Purchasing V1 with address lookups accepted and merged into `main` with the owner's
-approval; next module: Sales). Read this first; don't re-analyse the repository.
+Last verified: 2026-10-29 (Sales V1 implemented and verified on `feature/sales`, waiting for the owner's acceptance;
+not merged). Read this first; don't re-analyse the repository.
 
 ## Where things stand
+- **`feature/sales`** (cut from `main` at `60bb17c`; frontend baseline `main` `edbfea3`) holds Sales V1, **not merged
+  into `main`** (the owner's approval is needed). Commits:
+  * `e3e3756` Inventory: stock reservations (`IStockReservations`), sales stock posting (`ISalesStockPosting`, types
+    `SalesDelivery` = 11 / `SalesReturn` = 12), `GET /api/inventory/reservations`, reservation reconciliation,
+    `Migration09_InventoryReservations`;
+  * `203f484` the Sales module; `12831be` `Migration10_Sales`; `cb42d44` tests and the OpenAPI contract;
+  * the docs commit: `docs/modules/Sales/*`, ADR 0018, README, ARCHITECTURE and this handoff.
 - **`main` holds Identity, Organization, Catalog, Inventory and Purchasing V1 (2026-10-29).** On 2026-10-29, with the
   owner's approval after the final acceptance, it was fast-forwarded from `c791868` to the tip of `feature/purchasing`
   (Purchasing, the address lookups, tests, docs and this handoff). On 2026-10-28 it was fast-forwarded from `1a1aba1` to the tip of `feature/inventory` (Inventory code, tests, docs and this handoff).
@@ -37,6 +44,43 @@ approval; next module: Sales). Read this first; don't re-analyse the repository.
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
 - `src/WarehouseERP.Api/Properties/launchSettings.json` is the owner's untracked file: never commit or edit it.
+
+## Sales status
+- **Decisions:** approved by the owner on 2026-10-29 ("Sales V1 Final Owner Approval & Implementation", with
+  corrections): `docs/modules/Sales/V1_DECISIONS.md`. How the code implements them: `docs/adr/0018-sales-module.md`.
+- **Backend complete and verified on `feature/sales` (2026-10-29); waiting for the owner's acceptance:**
+  * customers (temporal, geography addresses, unique code and registrations, duplicate warnings, credit terms,
+    informational limit, manual hold), one company-wide price list per product unit, configurable sales settings
+    (seeded: nothing needs approval, VAT 14 %, hold blocks confirmation and deliveries);
+  * quotations → orders confirmed with every line reserved all-or-nothing through Inventory, reduce/close/cancel
+    releasing exactly their reservation, deliveries picked from several locations and posted with an
+    `Idempotency-Key`, partial invoices bounded by deliveries, customer returns (fit for resale only, always approved,
+    back at their delivery's cost, pending customer credit);
+  * 40 endpoints under `/api/sales`; twelve permissions in `SalesPermissions.All`; self-approval everywhere.
+- **Schema:** `Migration09_InventoryReservations` (two `inventory` tables; type and source checks widened to 12) and
+  `Migration10_Sales` (`sales` schema, 22 tables, 4 temporal, settings seed). Verified on a fresh LocalDB database:
+  all ten applied, rolled back to Migration08 and re-applied, `has-pending-model-changes` none. **Not applied to
+  `WarehouseERP_Dev`**: do it only with the owner's go-ahead, after a copy-only backup, then restart the dev API on the
+  `feature/sales` build.
+- **E2E (2026-10-29):** the real host over HTTPS with cookie sessions on throwaway `WarehouseERP_E2E_Sales_*`
+  databases (all dropped): a scoped rep approving their own order and return, a clerk (403 on approve) and an approver
+  of another warehouse (403); quotation → order (reserved) → delivery from two locations with an idempotent retry →
+  invoice → return (1 uninvoiced + 1 invoiced, credit 10.26) → close; discount threshold, credit hold, price and tax
+  refusals, Inventory's `ManagedBySales`, reservations, valuation and reconciliation. 49/49 checks; no 500s, no
+  passwords in the log. Scripts in `.artifacts/` (git-excluded): `e2e-sales-host.ps1` + `e2e-sales.mjs`,
+  `migration-check.ps1`, `drop-db.ps1`, `list-dbs.ps1`.
+- **Fixed during verification:** `CK_SalesQuotations_Converted` compared two predicates (invalid T-SQL) and failed the
+  migration on SQL Server; rewritten before the migration was committed. Four Sales contract names collided with
+  Purchasing's OpenAPI schema names (`DocumentEventResponse`, `LinkedDocumentResponse`, `InvoiceLineRequest`,
+  `ReturnLineRequest`) and now carry a `Sales` prefix.
+- **Frontend:** not built. `docs/modules/Sales/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` are ready (they follow the
+  frontend's `AGENTS.md` UI conventions and start with Inventory's compatibility changes).
+- **Production prerequisites (ADR 0018):** Egyptian e-invoicing (ETA) before production use; the accountant approves
+  the cost and credit treatment; Inventory's and Purchasing's prerequisites still apply.
+- **Backlog (not started):** backorders, reservation expiry (POS), reserving at quotation time, quarantine returns of
+  damaged/uninspected goods, customer price lists and promotions, header discounts, foreign currency, services and
+  non-stock lines, consolidated invoices, credit notes, refunds, customer payments, receivables, hard credit-limit
+  enforcement, GL posting, batch/serial tracking.
 
 ## Purchasing status
 - **Decisions:** approved by the owner on 2026-10-28 with corrections: `docs/modules/Purchasing/V1_DECISIONS.md`. How
@@ -151,7 +195,7 @@ approval; next module: Sales). Read this first; don't re-analyse the repository.
   3. `ALLOW_SNAPSHOT_ISOLATION` is on and verified on the production SQL Server (`Migration06`;
      `snapshot_isolation_state_desc` = `ON`). It is `ON` on `WarehouseERP_Dev`.
 - **Deferred backlog** (recorded, not started; implement only on the owner's request):
-  * stock reservations for Sales/POS;
+  * reservation expiry for POS (Sales order reservations exist since `e3e3756`, ADR 0018);
   * outbox integration;
   * general-ledger integration;
   * cancelling a transfer after dispatch (today: receive it or close it);
@@ -234,10 +278,10 @@ approval; next module: Sales). Read this first; don't re-analyse the repository.
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
 - The frontend's `main` is at `edbfea3` with the Purchasing screens and the address lookups. On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
-- **Next module: Sales (not started).** Start it from `main` on its own `feature/sales` branch when the owner asks, with
-  its business decisions for the owner's approval first (as for Purchasing). Reuse other modules only through their
-  `*.Contracts`; customer addresses can use Organization's `IGeographyDirectory` (ADR 0017). Neither repository is
-  merged into `main` without the owner's approval. Don't start POS or Accounting.
+- **Sales: backend on `feature/sales`, waiting for the owner's acceptance** (see *Sales status*). Next, on the owner's
+  word: apply Migrations 09–10 to `WarehouseERP_Dev` after a backup, restart the dev API on the branch, have Lovable
+  build the screens from `docs/modules/Sales/LOVABLE_PROMPT.md`, then accept and merge. Neither repository is merged
+  into `main` without the owner's approval. Don't start POS or Accounting.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -256,14 +300,15 @@ approval; next module: Sales). Read this first; don't re-analyse the repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-29, Purchasing + address lookups on `feature/purchasing`, LocalDB, `-m:1`)
+## Latest verified tests (2026-10-29, Sales V1 on `feature/sales`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 236/236 | 84/84 | 230/230 |
+| 242/242 | 99/99 | 252/252 |
 
-Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. All eight migrations applied to a fresh LocalDB
-database. Frontend (web `main` `edbfea3`): Vitest 67/67, `tsc --noEmit` clean, `vite build` succeeds, ESLint only the
-older Catalog error. Earlier (Inventory acceptance, 2026-10-28): 225 / 69 / 209. `MasterDataHistoryTests` passed 30 consecutive runs
+Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. All ten migrations applied to a fresh LocalDB
+database, Migrations 09–10 rolled back and re-applied. Sales E2E 49/49 (above). Earlier (Purchasing acceptance,
+2026-10-29): 236 / 84 / 230; frontend (web `main` `edbfea3`): Vitest 67/67, `tsc --noEmit` clean, `vite build`
+succeeds, ESLint only the older Catalog error. Earlier still (Inventory acceptance, 2026-10-28): 225 / 69 / 209. `MasterDataHistoryTests` passed 30 consecutive runs
 after its fix. Frontend (`4a3beec`): Vitest 53/53, `tsc --noEmit` clean, `vite build` succeeds; ESLint reports one
 older error (the Catalog backlog item above).
 

@@ -37,8 +37,10 @@ product unit, barcode, external item code, tax code/rate/assignment), **Identity
 permissions, user scope, sessions; authenticates every request and provides `ICurrentUser` to all modules, ADR 0009)
 **Inventory** (stock documents and their posting, balances, availability, the movement ledger, the
 company-wide valuation, transfers through transit warehouses, stock counts and the reconciliation report, ADR 0015)
-and **Purchasing** (suppliers, purchase requests and orders, goods receipts, supplier invoices and returns; it moves
-stock only through Inventory's `IPurchaseStockPosting`, ADR 0016).
+**Purchasing** (suppliers, purchase requests and orders, goods receipts, supplier invoices and returns; it moves
+stock only through Inventory's `IPurchaseStockPosting`, ADR 0016) and **Sales** (customers, the price list,
+quotations, orders, deliveries, invoices and customer returns; it reserves and moves stock only through Inventory's
+`IStockReservations` and `ISalesStockPosting`, ADR 0018).
 
 ## Dependency map
 
@@ -151,6 +153,10 @@ Purchasing: `Features/{Suppliers,PurchasingPolicies,PurchaseRequests,PurchaseOrd
 (numbering, references, idempotency and scope in `Shared/`), `Abstractions/Interfaces/{Suppliers,DocumentPolicies,PurchaseRequests,
 PurchaseOrders,GoodsReceipts,SupplierInvoices,SupplierReturns,Posting}`, `Errors/{Supplier,PurchaseRequest,PurchaseOrder,GoodsReceipt,
 SupplierInvoice,SupplierReturn,DocumentPolicy,Reference,Access,StockPosting,Idempotency,RowVersion}Errors`.
+Sales: `Features/{Customers,Prices,Settings,Quotations,Orders,Deliveries,Invoices,Returns}` (numbering, references, line
+pricing, idempotency and scope in `Shared/`), `Abstractions/Interfaces/{Customers,Prices,Settings,Quotations,Orders,
+Deliveries,Invoices,Returns,Posting}`, `Errors/{Customer,Price,Quotation,Order,Delivery,Invoice,Return,Reference,Access,
+Stock,Idempotency,RowVersion}Errors`.
 
 ### Where each type belongs
 

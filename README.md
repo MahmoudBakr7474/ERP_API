@@ -22,6 +22,8 @@ src/
                                     reconciliation (ADR 0015)
   Modules/Purchasing/               same layout: suppliers, purchase requests and orders, goods receipts, supplier
                                     invoices and returns; stock only through Inventory's IPurchaseStockPosting (ADR 0016)
+  Modules/Sales/                    same layout: customers, price list, quotations, orders, deliveries, invoices, returns;
+                                    reservations and stock only through Inventory's contracts (ADR 0018)
 tests/
   WarehouseERP.UnitTests/           no database
   WarehouseERP.IntegrationTests/    SQL Server (LocalDB) + the real HTTP host
@@ -76,6 +78,7 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET | `/api/inventory/counts?page&pageSize&warehouseId&status`, `/counts/{id}` (lines, history) | `inventory.documents.read` + warehouse in scope |
 | POST | `/api/inventory/counts/{id}/approve` (`Idempotency-Key` header; posts the differences), `/reject` (reason) | `inventory.documents.approve` + warehouse in scope, the creator included |
 | GET | `/api/inventory/reconciliation` (differences only; never corrects) | `inventory.reconciliation.read` + company-wide |
+| GET | `/api/inventory/reservations?page&pageSize&warehouseId&productId&includeClosed` (sales order reservations, read-only) | `inventory.stock.read` + warehouse in scope |
 | GET, POST, PUT | `/api/purchasing/suppliers?page&pageSize&search&isActive&countryCode`, `/suppliers/{id}`, `/suppliers/similar?nameAr&nameEn&exceptSupplierId` (duplicate warning) / create (code fixed), update (+ `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `purchasing.suppliers.read` / `purchasing.suppliers.manage` |
 | GET, PUT | `/api/purchasing/policies`, `/policies/{documentType}` (`PurchaseRequest`, `PurchaseOrder`: `requiresApproval` + `rowVersion`) | `purchasing.documents.read` / `purchasing.settings.manage` + company-wide |
 | GET, POST, PUT | `/api/purchasing/requests?page&pageSize&warehouseId&status&orderable&search`, `/requests/{id}` / draft, update, `/{id}/submit`, `/cancel`, `/close` (reason) | `purchasing.documents.read` / `purchasing.requests.manage` + warehouse in scope |
@@ -85,6 +88,16 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET, POST, PUT | `/api/purchasing/invoices?page&pageSize&supplierId&purchaseOrderId&status&search&dueOnOrBefore`, `/invoices/{id}` / draft, update, `/{id}/submit`, `/post` (`Idempotency-Key`), `/cancel` | `purchasing.documents.read` / `purchasing.invoices.manage` + warehouse in scope |
 | GET, POST, PUT | `/api/purchasing/returns?page&pageSize&supplierId&purchaseOrderId&goodsReceiptId&status&withCreditClaim&search`, `/returns/{id}` / draft, update, `/{id}/submit`, `/cancel` | `purchasing.documents.read` / `purchasing.returns.manage` + warehouse in scope |
 | POST | `/api/purchasing/{requests,orders}/{id}/approve`, `/reject` (reason); `/invoices/{id}/approve`, `/returns/{id}/approve` (`Idempotency-Key`; the return posts a PurchaseReturn to stock), `/reject` | `purchasing.documents.approve` + warehouse in scope, the creator included |
+| GET, POST, PUT | `/api/sales/customers?page&pageSize&search&isActive&customerType&isOnCreditHold&countryCode`, `/customers/{id}`, `/customers/similar?nameAr&nameEn&mobile&exceptCustomerId` (duplicate warning), `/customers/{id}/exposure` (partial, informational) / create (code and type fixed), update (+ `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `sales.customers.read` / `sales.customers.manage` |
+| PUT | `/api/sales/customers/{id}/credit` (payment terms, credit limit, credit hold + reason, `rowVersion`) | `sales.credit.manage` |
+| GET, PUT, DELETE | `/api/sales/prices?page&pageSize&productId&productUnitId` / `/prices/{productUnitId}` (`unitPrice`, 204) | `sales.documents.read` / `sales.prices.manage` |
+| GET, PUT | `/api/sales/settings` (approval rules, credit hold policy, default VAT, quotation validity; + `rowVersion`) | `sales.documents.read` / `sales.settings.manage` + company-wide |
+| GET, POST, PUT | `/api/sales/quotations?page&pageSize&warehouseId&customerId&status&search`, `/quotations/{id}` / draft, update, `/{id}/submit` (issues it unless approval is needed), `/decline` (reason), `/cancel`, `/convert` (→ draft order) | `sales.documents.read` / `sales.quotations.manage` + warehouse in scope |
+| GET, POST, PUT | `/api/sales/orders?page&pageSize&warehouseId&customerId&status&search`, `/orders/{id}` (lines, documents, history) / draft, update, `/{id}/submit` (confirms and reserves unless approval is needed), `/cancel`, `/close` (reason), `/lines/{lineId}/reduce` (quantity, reason) | `sales.documents.read` / `sales.orders.manage` + warehouse in scope |
+| GET, POST, PUT | `/api/sales/deliveries?page&pageSize&warehouseId&orderId&customerId&status&search`, `/deliveries/{id}` / draft (picking per location), update, `/{id}/cancel`, `/post` (`Idempotency-Key`; posts a SalesDelivery from the reservation) | `sales.documents.read` / `sales.deliveries.manage` + warehouse in scope |
+| GET, POST, PUT | `/api/sales/invoices?page&pageSize&warehouseId&orderId&customerId&status&search`, `/invoices/{id}` / draft, update, `/{id}/cancel`, `/post` (`Idempotency-Key`) | `sales.documents.read` / `sales.invoices.manage` + warehouse in scope |
+| GET, POST, PUT | `/api/sales/returns?page&pageSize&warehouseId&orderId&deliveryId&customerId&status&search`, `/returns/{id}` / draft, update, `/{id}/submit`, `/cancel` | `sales.documents.read` / `sales.returns.manage` + warehouse in scope |
+| POST | `/api/sales/{quotations,orders,returns}/{id}/approve`, `/reject` (reason); the return's approve takes an `Idempotency-Key` and posts a SalesReturn to stock | `sales.documents.approve` + warehouse in scope, the creator included |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
 | GET | `/api/identity/me`; POST `/api/identity/me/password`; GET `/api/identity/password-policy` | signed in |
@@ -165,7 +178,10 @@ widens `CK_StockDocuments_Type` to 1–10 and adds `SourceDocumentId` (nullable,
 purchase receipts and returns); it changes no data (ADR 0016 *Consequences*). `Migration08_Geography` adds
 `organization.Countries`, `Governorates` and `Cities` (temporal), seeds 249 countries and Egypt's 27 governorates and 271
 cities, and turns a supplier address's text city, region and country into `CityId`, matching existing rows by name; it
-stops, changing nothing, if one doesn't match (ADR 0017).
+stops, changing nothing, if one doesn't match (ADR 0017). `Migration09_InventoryReservations` adds
+`inventory.StockReservations` and `StockReservationEntries` and widens the stock document type and source checks to
+types 11–12 (sales delivery and return); `Migration10_Sales` adds the `sales` schema (22 tables; customers, contacts,
+addresses and prices temporal) and the settings row. Neither changes data (ADR 0018 *Consequences*).
 
 ## Running the API
 
@@ -210,10 +226,12 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 11. **Snapshot isolation**: `Migration06` turns `ALLOW_SNAPSHOT_ISOLATION` on for the reconciliation report's consistent read; everything else keeps READ COMMITTED.
 12. **Purchasing posts stock only through Inventory**: goods receipts and supplier returns call `IPurchaseStockPosting` inside their own transaction; the PRC/PRT stock documents name their source (`SourceDocumentId`) and can't be edited or reversed in Inventory. Order, invoice and return quantities are guarded by check constraints as well as the order's row lock (ADR 0016).
 13. **Approvals**: anyone with the approval permission and the warehouse in scope approves, the creator included (`CLAUDE.md`, *Document approvals*).
+14. **Reservations belong to Inventory**: Sales reserves, releases and consumes stock only through `IStockReservations` and `ISalesStockPosting`; `ProductWarehouseStock.ReservedQuantity` always equals what open `StockReservations` hold (the reconciliation report checks it). Delivery, invoice and return quantities are guarded by check constraints as well as the order's row lock (ADR 0018).
 
 ## Postponed
 
 See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, the outbox/inbox (until a consumer exists, ADR 0015),
 management of tax codes, rates, product tax assignments and EGS/GS1 external item codes (Sales/e-invoicing phase,
-ADR 0014), batch/serial tracking and reservations (`docs/modules/Inventory/V1_DECISIONS.md`, ADR 0015 *Not done*),
-foreign-currency purchasing, invoice revaluation, supplier payments and accounting (ADR 0016 *Not done*).
+ADR 0014), batch/serial tracking (`docs/modules/Inventory/V1_DECISIONS.md`, ADR 0015 *Not done*),
+foreign-currency purchasing, invoice revaluation, supplier payments and accounting (ADR 0016 *Not done*), backorders,
+quarantine returns, customer price lists, credit notes, customer payments and Egyptian e-invoicing (ADR 0018 *Not done*).
