@@ -1,11 +1,13 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-29 (Sales V1 implemented and verified on `feature/sales`, waiting for the owner's acceptance;
-not merged). Read this first; don't re-analyse the repository.
+Last verified: 2026-10-29 (Sales V1 accepted and merged into `main` in both repositories with the owner's approval;
+next module only on the owner's request). Read this first; don't re-analyse the repository.
 
 ## Where things stand
-- **`feature/sales`** (cut from `main` at `60bb17c`; frontend baseline `main` `edbfea3`) holds Sales V1, **not merged
-  into `main`** (the owner's approval is needed). Commits:
+- **`main` holds Sales V1 (2026-10-29).** With the owner's approval after the acceptance on the dev database, `main`
+  was fast-forwarded from `60bb17c` to `0eb88af`, the tip of `feature/sales` (cut from `main` at `60bb17c`; it stays on
+  the remote for reference). The frontend's `main` was fast-forwarded from `c958638` to `526a7e6` (`fix/sales-api-contract`).
+  No merge commits. Commits:
   * `e3e3756` Inventory: stock reservations (`IStockReservations`), sales stock posting (`ISalesStockPosting`, types
     `SalesDelivery` = 11 / `SalesReturn` = 12), `GET /api/inventory/reservations`, reservation reconciliation,
     `Migration09_InventoryReservations`;
@@ -48,7 +50,7 @@ not merged). Read this first; don't re-analyse the repository.
 ## Sales status
 - **Decisions:** approved by the owner on 2026-10-29 ("Sales V1 Final Owner Approval & Implementation", with
   corrections): `docs/modules/Sales/V1_DECISIONS.md`. How the code implements them: `docs/adr/0018-sales-module.md`.
-- **Backend complete and verified on `feature/sales` (2026-10-29); waiting for the owner's acceptance:**
+- **Backend complete, verified, accepted and merged into `main` (2026-10-29):**
   * customers (temporal, geography addresses, unique code and registrations, duplicate warnings, credit terms,
     informational limit, manual hold), one company-wide price list per product unit, configurable sales settings
     (seeded: nothing needs approval, VAT 14 %, hold blocks confirmation and deliveries);
@@ -76,7 +78,7 @@ not merged). Read this first; don't re-analyse the repository.
   Purchasing's OpenAPI schema names (`DocumentEventResponse`, `LinkedDocumentResponse`, `InvoiceLineRequest`,
   `ReturnLineRequest`) and now carry a `Sales` prefix.
 - **Frontend:** Lovable built the screens (web `main` `c958638`). Contract fixes are on the web branch
-  `fix/sales-api-contract` (`526a7e6`, pushed, not merged): `customerType`, the two settings flags, exposure fields,
+  `fix/sales-api-contract` (`526a7e6`, merged into web `main` 2026-10-29): `customerType`, the two settings flags, exposure fields,
   invoice `customerTaxNumber`, the draft order's shipping address kept on edit, cancel without an ignored reason, id-only
   list filters, return credit totals.
 - **Acceptance on `WarehouseERP_Dev` (2026-10-29), signed in as `admin` in the app's browser pane, through the Vite
@@ -297,10 +299,11 @@ not merged). Read this first; don't re-analyse the repository.
   - Radix `DirectionProvider` makes RTL correct.
   - Every module's Lovable prompt must tell Lovable to follow those conventions. Where the older
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
-- The frontend's `main` is at `edbfea3` with the Purchasing screens and the address lookups. On this machine the frontend is cloned to
+- The frontend's `main` is at `526a7e6` with the Sales screens (and Purchasing, address lookups before them). On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
-- **Sales: backend `feature/sales` and web `fix/sales-api-contract` accepted end to end on the dev database; merging
-  both into their `main` waits for the owner's explicit approval** (see *Sales status*). Don't start POS or Accounting.
+- **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). Start the next module only
+  when the owner asks, from `main` on its own `feature/...` branch, decisions first. Don't start POS or Accounting
+  unasked.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
