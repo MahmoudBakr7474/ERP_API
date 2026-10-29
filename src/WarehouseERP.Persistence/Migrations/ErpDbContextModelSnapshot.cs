@@ -2069,11 +2069,11 @@ namespace WarehouseERP.Persistence.Migrations
 
                             t.HasCheckConstraint("CK_StockDocuments_Reversal", "([DocumentType] = 5 AND [ReversalOfDocumentId] IS NOT NULL AND [RequiresApproval] = 1) OR ([DocumentType] <> 5 AND [ReversalOfDocumentId] IS NULL)");
 
-                            t.HasCheckConstraint("CK_StockDocuments_Source", "([DocumentType] IN (9, 10, 11, 12) AND [SourceDocumentId] IS NOT NULL) OR ([DocumentType] NOT IN (9, 10, 11, 12) AND [SourceDocumentId] IS NULL)");
+                            t.HasCheckConstraint("CK_StockDocuments_Source", "([DocumentType] IN (9, 10, 11, 12, 13, 14) AND [SourceDocumentId] IS NOT NULL) OR ([DocumentType] NOT IN (9, 10, 11, 12, 13, 14) AND [SourceDocumentId] IS NULL)");
 
                             t.HasCheckConstraint("CK_StockDocuments_Status", "[Status] BETWEEN 1 AND 4");
 
-                            t.HasCheckConstraint("CK_StockDocuments_Type", "[DocumentType] BETWEEN 1 AND 12");
+                            t.HasCheckConstraint("CK_StockDocuments_Type", "[DocumentType] BETWEEN 1 AND 14");
                         });
                 });
 
@@ -3116,6 +3116,1253 @@ namespace WarehouseERP.Persistence.Migrations
                     b.ToTable(tb => tb.IsTemporal(ttb =>
                             {
                                 ttb.UseHistoryTable("WarehouseLocationsHistory", "history");
+                                ttb
+                                    .HasPeriodStart("ValidFrom")
+                                    .HasColumnName("ValidFrom");
+                                ttb
+                                    .HasPeriodEnd("ValidTo")
+                                    .HasColumnName("ValidTo");
+                            }));
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Key")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("SubjectId");
+
+                    b.ToTable("IdempotencyRecords", "pos");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosCardIncident", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("CardAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid?>("CashierUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ErrorCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(100)");
+
+                    b.Property<string>("ErrorMessage")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("IdempotencyKey")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("LastAttemptAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("References")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ResolutionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ResolvedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid?>("SaleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ShiftId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("SaleId");
+
+                    b.HasIndex("ShiftId");
+
+                    b.HasIndex("TerminalId");
+
+                    b.HasIndex("WarehouseId", "Status");
+
+                    b.HasIndex(new[] { "IdempotencyKey" }, "UX_PosCardIncidents_Key")
+                        .IsUnique();
+
+                    b.ToTable("PosCardIncidents", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosCardIncidents_Amount", "[CardAmount] > 0 AND [Attempts] >= 1");
+
+                            t.HasCheckConstraint("CK_PosCardIncidents_Resolved", "([Status] = 1 AND [ResolvedAtUtc] IS NULL) OR ([Status] = 2 AND [SaleId] IS NOT NULL AND [ResolvedAtUtc] IS NOT NULL) OR ([Status] = 3 AND [ResolvedAtUtc] IS NOT NULL AND [ResolutionNote] IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_PosCardIncidents_Status", "[Status] BETWEEN 1 AND 3");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosCashMovement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte>("MovementType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId");
+
+                    b.ToTable("PosCashMovements", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosCashMovements_Amount", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_PosCashMovements_Type", "[MovementType] IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosNumberSequence", b =>
+                {
+                    b.Property<byte>("DocumentType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<short>("FiscalYear")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("LastNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("DocumentType", "TerminalId", "FiscalYear");
+
+                    b.HasIndex("TerminalId");
+
+                    b.ToTable("PosNumberSequences", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosNumberSequences_LastNumber", "[LastNumber] > 0");
+
+                            t.HasCheckConstraint("CK_PosNumberSequences_Type", "[DocumentType] BETWEEN 1 AND 3");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosRefund", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("CardLast4")
+                        .HasMaxLength(4)
+                        .IsUnicode(false)
+                        .HasColumnType("char(4)")
+                        .IsFixedLength();
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Method")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("ReturnId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReturnId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("PosRefunds", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosRefunds_Amount", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_PosRefunds_Method", "([Method] = 1 AND [Status] = 1 AND [CardLast4] IS NULL) OR ([Method] = 2 AND [Status] = 2 AND [Reference] IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosReturn", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("CardRefundAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CashRefundAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("CashierUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("CostAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<short>("FiscalYear")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime?>("LastPrintedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("LastPrintedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("NetAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<int>("PrintCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("ReturnedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SaleNumber")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("StockDocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StockDocumentNumber")
+                        .HasMaxLength(60)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("SaleId");
+
+                    b.HasIndex("ShiftId");
+
+                    b.HasIndex("WarehouseId", "ReturnedAtUtc");
+
+                    b.HasIndex("TerminalId", "FiscalYear", "SequenceNumber")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "StockDocumentId" }, "UX_PosReturns_StockDocument")
+                        .IsUnique()
+                        .HasFilter("[StockDocumentId] IS NOT NULL");
+
+                    b.ToTable("PosReturns", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosReturns_Amounts", "[NetAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] = [NetAmount] + [TaxAmount] AND [CostAmount] >= 0 AND [CashRefundAmount] >= 0 AND [CardRefundAmount] >= 0 AND [CashRefundAmount] + [CardRefundAmount] = [TotalAmount]");
+
+                            t.HasCheckConstraint("CK_PosReturns_Posted", "[StockDocumentId] IS NOT NULL AND [StockDocumentNumber] IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_PosReturns_PrintCount", "[PrintCount] >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosReturnLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Condition")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("ConversionFactor")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal?>("CostAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("DiscountPercent")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("NetAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("ProductUnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("ReturnId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SaleLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("SoldStockLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("StockLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<byte>("TaxTreatment")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("UnitCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(19, 8)
+                        .HasColumnType("decimal(19,8)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("ProductUnitId");
+
+                    b.HasIndex("SaleLineId");
+
+                    b.HasIndex("SoldStockLineId");
+
+                    b.HasIndex("StockLineId")
+                        .IsUnique()
+                        .HasFilter("[StockLineId] IS NOT NULL");
+
+                    b.HasIndex("UnitId");
+
+                    b.HasIndex("ReturnId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("PosReturnLines", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosReturnLines_Amounts", "[NetAmount] >= 0 AND [TaxAmount] >= 0 AND [TotalAmount] = [NetAmount] + [TaxAmount]");
+
+                            t.HasCheckConstraint("CK_PosReturnLines_Condition", "[Condition] = 1");
+
+                            t.HasCheckConstraint("CK_PosReturnLines_Quantity", "[Quantity] > 0 AND [ConversionFactor] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosSale", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("CardAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CashReceivedAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CashTenderedAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("CashierUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ChangeAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CostAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<byte>("CurrencyDecimals")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid?>("CustomerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("CustomerPhone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("CustomerTaxNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<short>("FiscalYear")
+                        .HasColumnType("smallint");
+
+                    b.Property<decimal>("GrossAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime?>("LastPrintedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("LastPrintedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("NetAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<int>("PrintCount")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("RefundedCardAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("RefundedCashAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<int>("ReturnCount")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("SoldAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("StockDocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("StockDocumentNumber")
+                        .HasMaxLength(60)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("ShiftId");
+
+                    b.HasIndex("SoldAtUtc");
+
+                    b.HasIndex("WarehouseId", "SoldAtUtc");
+
+                    b.HasIndex("TerminalId", "FiscalYear", "SequenceNumber")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "StockDocumentId" }, "UX_PosSales_StockDocument")
+                        .IsUnique()
+                        .HasFilter("[StockDocumentId] IS NOT NULL");
+
+                    b.ToTable("PosSales", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosSales_Amounts", "[GrossAmount] >= 0 AND [DiscountAmount] >= 0 AND [NetAmount] = [GrossAmount] - [DiscountAmount] AND [TaxAmount] >= 0 AND [TotalAmount] = [NetAmount] + [TaxAmount] AND [CostAmount] >= 0");
+
+                            t.HasCheckConstraint("CK_PosSales_Payments", "[CashTenderedAmount] >= 0 AND [ChangeAmount] >= 0 AND [ChangeAmount] <= [CashTenderedAmount] AND [CashReceivedAmount] = [CashTenderedAmount] - [ChangeAmount] AND [CardAmount] >= 0 AND [CardAmount] <= [TotalAmount] AND [CashReceivedAmount] + [CardAmount] = [TotalAmount]");
+
+                            t.HasCheckConstraint("CK_PosSales_Posted", "[StockDocumentId] IS NOT NULL AND [StockDocumentNumber] IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_PosSales_PrintCount", "[PrintCount] >= 1");
+
+                            t.HasCheckConstraint("CK_PosSales_Refunds", "[RefundedCashAmount] >= 0 AND [RefundedCashAmount] <= [CashReceivedAmount] AND [RefundedCardAmount] >= 0 AND [RefundedCardAmount] <= [CardAmount] AND [ReturnCount] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosSaleLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ConversionFactor")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<decimal?>("CostAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("DiscountPercent")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<decimal>("GrossAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("NetAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("NetUnitPrice")
+                        .HasPrecision(19, 8)
+                        .HasColumnType("decimal(19,8)");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid>("ProductUnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("RefundedNetAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("RefundedTaxAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("ReturnedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid?>("StockLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("TaxRate")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<byte>("TaxTreatment")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("UnitCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(19, 8)
+                        .HasColumnType("decimal(19,8)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("ProductUnitId");
+
+                    b.HasIndex("StockLineId")
+                        .IsUnique()
+                        .HasFilter("[StockLineId] IS NOT NULL");
+
+                    b.HasIndex("UnitId");
+
+                    b.HasIndex("SaleId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("PosSaleLines", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosSaleLines_Amounts", "[GrossAmount] >= 0 AND [DiscountAmount] >= 0 AND [NetAmount] = [GrossAmount] - [DiscountAmount] AND [TaxAmount] >= 0 AND [TotalAmount] = [NetAmount] + [TaxAmount]");
+
+                            t.HasCheckConstraint("CK_PosSaleLines_Price", "[UnitPrice] > 0 AND [DiscountPercent] BETWEEN 0 AND 100");
+
+                            t.HasCheckConstraint("CK_PosSaleLines_Quantity", "[Quantity] > 0 AND [ConversionFactor] > 0");
+
+                            t.HasCheckConstraint("CK_PosSaleLines_Returned", "[ReturnedQuantity] >= 0 AND [ReturnedQuantity] <= [Quantity] AND [RefundedNetAmount] >= 0 AND [RefundedNetAmount] <= [NetAmount] AND [RefundedTaxAmount] >= 0 AND [RefundedTaxAmount] <= [TaxAmount]");
+
+                            t.HasCheckConstraint("CK_PosSaleLines_Tax", "([TaxTreatment] = 1 AND [TaxRate] > 0 AND [TaxRate] <= 100) OR ([TaxTreatment] IN (2, 3) AND [TaxRate] = 0)");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosSalePayment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("CardLast4")
+                        .HasMaxLength(4)
+                        .IsUnicode(false)
+                        .HasColumnType("char(4)")
+                        .IsFixedLength();
+
+                    b.Property<decimal>("ChangeAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Method")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("SaleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("TenderedAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SaleId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("PosSalePayments", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosSalePayments_Amounts", "[Amount] >= 0 AND [ChangeAmount] >= 0 AND [Amount] = [TenderedAmount] - [ChangeAmount]");
+
+                            t.HasCheckConstraint("CK_PosSalePayments_CardLast4", "[CardLast4] IS NULL OR [CardLast4] LIKE '[0-9][0-9][0-9][0-9]'");
+
+                            t.HasCheckConstraint("CK_PosSalePayments_Method", "([Method] = 1 AND [Status] = 1 AND [CardLast4] IS NULL) OR ([Method] = 2 AND [Status] = 2 AND [Reference] IS NOT NULL AND [ChangeAmount] = 0 AND [Amount] > 0)");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("MaxLineDiscountPercent")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<int>("ReturnWindowDays")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PosSettings", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosSettings_MaxDiscount", "[MaxLineDiscountPercent] BETWEEN 0 AND 100");
+
+                            t.HasCheckConstraint("CK_PosSettings_ReturnWindow", "[ReturnWindowDays] BETWEEN 0 AND 365");
+
+                            t.HasCheckConstraint("CK_PosSettings_Single", "[Id] = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAtUtc = new DateTime(2026, 10, 29, 0, 0, 0, 0, DateTimeKind.Utc),
+                            MaxLineDiscountPercent = 10m,
+                            ReturnWindowDays = 14
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosShift", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("CardRefundsAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CardSalesAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal?>("CashDifference")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CashInAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CashOutAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CashRefundsAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("CashSalesAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("CashierUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ClosedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ClosedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ClosingNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("CountedCash")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("ExpectedCashAtClose")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<short>("FiscalYear")
+                        .HasColumnType("smallint");
+
+                    b.Property<bool>("IsForceClosed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<DateTime>("OpenedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<decimal>("OpeningFloat")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("RefundsAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<int>("ReturnsCount")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal>("SalesAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<int>("SalesCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("TerminalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("Number")
+                        .IsUnique();
+
+                    b.HasIndex("OpenedAtUtc");
+
+                    b.HasIndex("WarehouseId", "Status");
+
+                    b.HasIndex("TerminalId", "FiscalYear", "SequenceNumber")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "CashierUserId" }, "UX_PosShifts_OpenCashier")
+                        .IsUnique()
+                        .HasFilter("[Status] = 1");
+
+                    b.HasIndex(new[] { "TerminalId" }, "UX_PosShifts_OpenTerminal")
+                        .IsUnique()
+                        .HasFilter("[Status] = 1");
+
+                    b.ToTable("PosShifts", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosShifts_Amounts", "[OpeningFloat] >= 0 AND [CashSalesAmount] >= 0 AND [CashRefundsAmount] >= 0 AND [CashInAmount] >= 0 AND [CashOutAmount] >= 0 AND [CardSalesAmount] >= 0 AND [CardRefundsAmount] >= 0 AND [SalesAmount] >= 0 AND [RefundsAmount] >= 0 AND [SalesCount] >= 0 AND [ReturnsCount] >= 0");
+
+                            t.HasCheckConstraint("CK_PosShifts_Closed", "([Status] = 2 AND [ClosedAtUtc] IS NOT NULL AND [CountedCash] IS NOT NULL AND [ExpectedCashAtClose] IS NOT NULL AND [CashDifference] = [CountedCash] - [ExpectedCashAtClose]) OR ([Status] = 1 AND [ClosedAtUtc] IS NULL AND [CountedCash] IS NULL AND [CashDifference] IS NULL)");
+
+                            t.HasCheckConstraint("CK_PosShifts_Drawer", "[OpeningFloat] + [CashSalesAmount] - [CashRefundsAmount] + [CashInAmount] - [CashOutAmount] >= 0");
+
+                            t.HasCheckConstraint("CK_PosShifts_Status", "[Status] IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosShiftEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<byte>("Action")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal?>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ShiftId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ShiftId");
+
+                    b.ToTable("PosShiftEvents", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosShiftEvents_Action", "[Action] BETWEEN 1 AND 5");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosTerminal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AcceptsCard")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AcceptsCash")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ReceiptFooter")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ReceiptHeader")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SellingLocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidFrom");
+
+                    b.Property<DateTime>("ValidTo")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidTo");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("SellingLocationId");
+
+                    b.HasIndex("WarehouseId");
+
+                    b.HasIndex(new[] { "Code" }, "UX_PosTerminals_Code")
+                        .IsUnique();
+
+                    b.ToTable("PosTerminals", "pos", t =>
+                        {
+                            t.HasCheckConstraint("CK_PosTerminals_PaymentMethod", "[AcceptsCash] = 1 OR [AcceptsCard] = 1");
+                        });
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("PosTerminalsHistory", "history");
                                 ttb
                                     .HasPeriodStart("ValidFrom")
                                     .HasColumnName("ValidFrom");
@@ -5009,6 +6256,79 @@ namespace WarehouseERP.Persistence.Migrations
                     b.HasIndex("SubjectId");
 
                     b.ToTable("IdempotencyRecords", "sales");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Sales.Domain.ProductTax", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal?>("TaxRate")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("decimal(9,4)");
+
+                    b.Property<byte>("TaxTreatment")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidFrom");
+
+                    b.Property<DateTime>("ValidTo")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidTo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex(new[] { "ProductId" }, "UX_ProductTaxes_Product")
+                        .IsUnique();
+
+                    b.ToTable("ProductTaxes", "sales", t =>
+                        {
+                            t.HasCheckConstraint("CK_ProductTaxes_Rate", "([TaxTreatment] = 1 AND ([TaxRate] IS NULL OR ([TaxRate] > 0 AND [TaxRate] <= 100))) OR ([TaxTreatment] IN (2, 3) AND [TaxRate] IS NULL)");
+                        });
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("ProductTaxesHistory", "history");
+                                ttb
+                                    .HasPeriodStart("ValidFrom")
+                                    .HasColumnName("ValidFrom");
+                                ttb
+                                    .HasPeriodEnd("ValidTo")
+                                    .HasColumnName("ValidTo");
+                            }));
                 });
 
             modelBuilder.Entity("WarehouseERP.Sales.Domain.SalesDelivery", b =>
@@ -7220,6 +8540,287 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosCardIncident", b =>
+                {
+                    b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosSale", null)
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosShift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosTerminal", null)
+                        .WithMany()
+                        .HasForeignKey("TerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosCashMovement", b =>
+                {
+                    b.HasOne("WarehouseERP.Pos.Domain.PosShift", null)
+                        .WithMany("CashMovements")
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosNumberSequence", b =>
+                {
+                    b.HasOne("WarehouseERP.Pos.Domain.PosTerminal", null)
+                        .WithMany()
+                        .HasForeignKey("TerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosRefund", b =>
+                {
+                    b.HasOne("WarehouseERP.Pos.Domain.PosReturn", null)
+                        .WithMany("Refunds")
+                        .HasForeignKey("ReturnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosReturn", b =>
+                {
+                    b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.WarehouseLocation", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosSale", null)
+                        .WithMany()
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosShift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Inventory.Domain.StockDocument", null)
+                        .WithMany()
+                        .HasForeignKey("StockDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosTerminal", null)
+                        .WithMany()
+                        .HasForeignKey("TerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosReturnLine", b =>
+                {
+                    b.HasOne("WarehouseERP.Catalog.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Catalog.Domain.ProductUnit", null)
+                        .WithMany()
+                        .HasForeignKey("ProductUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosReturn", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("ReturnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosSaleLine", null)
+                        .WithMany()
+                        .HasForeignKey("SaleLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Inventory.Domain.StockDocumentLine", null)
+                        .WithMany()
+                        .HasForeignKey("SoldStockLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Inventory.Domain.StockDocumentLine", null)
+                        .WithMany()
+                        .HasForeignKey("StockLineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Catalog.Domain.Unit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosSale", b =>
+                {
+                    b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Sales.Domain.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Organization.Domain.WarehouseLocation", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosShift", null)
+                        .WithMany()
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Inventory.Domain.StockDocument", null)
+                        .WithMany()
+                        .HasForeignKey("StockDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosTerminal", null)
+                        .WithMany()
+                        .HasForeignKey("TerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosSaleLine", b =>
+                {
+                    b.HasOne("WarehouseERP.Catalog.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Catalog.Domain.ProductUnit", null)
+                        .WithMany()
+                        .HasForeignKey("ProductUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosSale", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Inventory.Domain.StockDocumentLine", null)
+                        .WithMany()
+                        .HasForeignKey("StockLineId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Catalog.Domain.Unit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosSalePayment", b =>
+                {
+                    b.HasOne("WarehouseERP.Pos.Domain.PosSale", null)
+                        .WithMany("Payments")
+                        .HasForeignKey("SaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosShift", b =>
+                {
+                    b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Pos.Domain.PosTerminal", null)
+                        .WithMany()
+                        .HasForeignKey("TerminalId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosShiftEvent", b =>
+                {
+                    b.HasOne("WarehouseERP.Pos.Domain.PosShift", null)
+                        .WithMany("Events")
+                        .HasForeignKey("ShiftId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosTerminal", b =>
+                {
+                    b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.WarehouseLocation", null)
+                        .WithMany()
+                        .HasForeignKey("SellingLocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("WarehouseERP.Purchasing.Domain.DocumentNumberSequence", b =>
                 {
                     b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
@@ -7634,6 +9235,15 @@ namespace WarehouseERP.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("FK_SalesNumberSequences_Branches_BranchId");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Sales.Domain.ProductTax", b =>
+                {
+                    b.HasOne("WarehouseERP.Catalog.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("WarehouseERP.Sales.Domain.SalesDelivery", b =>
@@ -8099,6 +9709,27 @@ namespace WarehouseERP.Persistence.Migrations
             modelBuilder.Entity("WarehouseERP.Organization.Domain.Warehouse", b =>
                 {
                     b.Navigation("Locations");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosReturn", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("Refunds");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosSale", b =>
+                {
+                    b.Navigation("Lines");
+
+                    b.Navigation("Payments");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Pos.Domain.PosShift", b =>
+                {
+                    b.Navigation("CashMovements");
+
+                    b.Navigation("Events");
                 });
 
             modelBuilder.Entity("WarehouseERP.Purchasing.Domain.GoodsReceipt", b =>
