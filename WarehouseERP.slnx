@@ -32,6 +32,12 @@
     <Project Path="src/Modules/Organization/WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
     <Project Path="src/Modules/Organization/WarehouseERP.Organization.Domain/WarehouseERP.Organization.Domain.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Pos/">
+    <Project Path="src/Modules/Pos/WarehouseERP.Pos/WarehouseERP.Pos.csproj" />
+    <Project Path="src/Modules/Pos/WarehouseERP.Pos.Application/WarehouseERP.Pos.Application.csproj" />
+    <Project Path="src/Modules/Pos/WarehouseERP.Pos.Contracts/WarehouseERP.Pos.Contracts.csproj" />
+    <Project Path="src/Modules/Pos/WarehouseERP.Pos.Domain/WarehouseERP.Pos.Domain.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Purchasing/">
     <Project Path="src/Modules/Purchasing/WarehouseERP.Purchasing/WarehouseERP.Purchasing.csproj" />
     <Project Path="src/Modules/Purchasing/WarehouseERP.Purchasing.Application/WarehouseERP.Purchasing.Application.csproj" />

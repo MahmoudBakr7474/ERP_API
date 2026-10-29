@@ -10,6 +10,8 @@ using WarehouseERP.Inventory;
 using WarehouseERP.Inventory.Domain;
 using WarehouseERP.Organization;
 using WarehouseERP.Organization.Domain;
+using WarehouseERP.Pos;
+using WarehouseERP.Pos.Domain;
 using WarehouseERP.Purchasing;
 using WarehouseERP.Purchasing.Domain;
 using WarehouseERP.Sales;
@@ -38,6 +40,7 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfigurationsFromAssembly(typeof(InventoryModule).Assembly);
         builder.ApplyConfigurationsFromAssembly(typeof(PurchasingModule).Assembly);
         builder.ApplyConfigurationsFromAssembly(typeof(SalesModule).Assembly);
+        builder.ApplyConfigurationsFromAssembly(typeof(PosModule).Assembly);
         builder.Entity<DataProtectionKey>().ToTable("DataProtectionKeys", "identity");
 
         // Foreign keys between modules are configured here, the only place that sees every module.
@@ -51,6 +54,60 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
         ConfigureInventoryReferences(builder);
         ConfigurePurchasingReferences(builder);
         ConfigureSalesReferences(builder);
+        ConfigurePosReferences(builder);
+    }
+
+    // POS's rows point at Organization's structure, Catalog's products and units, Sales' customers, and the stock documents
+    // and lines Inventory posted for its sales and returns (which name them back through SourceDocumentId). Restrict:
+    // nothing they name is ever deleted.
+    private static void ConfigurePosReferences(ModelBuilder builder)
+    {
+        builder.Entity<PosTerminal>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WarehouseLocation>().WithMany().HasForeignKey(x => x.SellingLocationId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PosShift>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PosSale>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WarehouseLocation>().WithMany().HasForeignKey(x => x.LocationId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<StockDocument>().WithMany().HasForeignKey(x => x.StockDocumentId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PosSaleLine>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<StockDocumentLine>().WithMany().HasForeignKey(x => x.StockLineId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PosReturn>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<WarehouseLocation>().WithMany().HasForeignKey(x => x.LocationId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<StockDocument>().WithMany().HasForeignKey(x => x.StockDocumentId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PosReturnLine>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Unit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<StockDocumentLine>().WithMany().HasForeignKey(x => x.StockLineId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<StockDocumentLine>().WithMany().HasForeignKey(x => x.SoldStockLineId).OnDelete(DeleteBehavior.Restrict);
+        });
+        builder.Entity<PosCardIncident>(b =>
+        {
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        });
     }
 
     // Sales's rows point at Organization's structure and address lookups, Catalog's products and units, and the stock
@@ -68,6 +125,8 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne<ProductUnit>().WithMany().HasForeignKey(x => x.ProductUnitId).OnDelete(DeleteBehavior.Restrict);
         });
+        builder.Entity<ProductTax>()
+            .HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
         builder.Entity<SalesQuotation>(b =>
         {
             b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);

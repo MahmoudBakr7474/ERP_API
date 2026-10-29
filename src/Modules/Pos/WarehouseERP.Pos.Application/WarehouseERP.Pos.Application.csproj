@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- POS use cases (vertical slices) and the ports they need. No EF Core, HTTP or Serilog: persistence goes through ports
+       implemented in WarehouseERP.Pos, other modules only through their Contracts (prices and customers through Sales,
+       stock through Inventory's IPosStockPosting and IStockAvailabilityLookup). -->
+  <ItemGroup>
+    <ProjectReference Include="../WarehouseERP.Pos.Domain/WarehouseERP.Pos.Domain.csproj" />
+    <ProjectReference Include="../WarehouseERP.Pos.Contracts/WarehouseERP.Pos.Contracts.csproj" />
+    <ProjectReference Include="../../Organization/WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
+    <ProjectReference Include="../../Catalog/WarehouseERP.Catalog.Contracts/WarehouseERP.Catalog.Contracts.csproj" />
+    <ProjectReference Include="../../Inventory/WarehouseERP.Inventory.Contracts/WarehouseERP.Inventory.Contracts.csproj" />
+    <ProjectReference Include="../../Sales/WarehouseERP.Sales.Contracts/WarehouseERP.Sales.Contracts.csproj" />
+    <ProjectReference Include="../../Identity/WarehouseERP.Identity.Contracts/WarehouseERP.Identity.Contracts.csproj" />
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.BuildingBlocks.Application/WarehouseERP.BuildingBlocks.Application.csproj" />
+  </ItemGroup>
+</Project>

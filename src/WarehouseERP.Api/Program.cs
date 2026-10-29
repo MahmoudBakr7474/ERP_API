@@ -9,6 +9,7 @@ using WarehouseERP.Identity;
 using WarehouseERP.Inventory;
 using WarehouseERP.Organization;
 using WarehouseERP.Persistence;
+using WarehouseERP.Pos;
 using WarehouseERP.Purchasing;
 using WarehouseERP.Sales;
 
@@ -25,7 +26,8 @@ builder.Services
     .AddCatalogModule()
     .AddInventoryModule()
     .AddPurchasingModule()
-    .AddSalesModule();
+    .AddSalesModule()
+    .AddPosModule();
 
 builder.Services.AddOptions<PaginationOptions>()
     .BindConfiguration(PaginationOptions.SectionName)
@@ -67,6 +69,7 @@ app.MapCatalogEndpoints();
 app.MapInventoryEndpoints();
 app.MapPurchasingEndpoints();
 app.MapSalesEndpoints();
+app.MapPosEndpoints();
 
 app.Run();
 
