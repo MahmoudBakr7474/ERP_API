@@ -6,6 +6,7 @@
     <ProjectReference Include="../Modules/Identity/WarehouseERP.Identity/WarehouseERP.Identity.csproj" />
     <ProjectReference Include="../Modules/Inventory/WarehouseERP.Inventory/WarehouseERP.Inventory.csproj" />
     <ProjectReference Include="../Modules/Purchasing/WarehouseERP.Purchasing/WarehouseERP.Purchasing.csproj" />
+    <ProjectReference Include="../Modules/Sales/WarehouseERP.Sales/WarehouseERP.Sales.csproj" />
     <ProjectReference Include="../BuildingBlocks/WarehouseERP.BuildingBlocks.Infrastructure/WarehouseERP.BuildingBlocks.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />

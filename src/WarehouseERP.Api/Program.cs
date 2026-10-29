@@ -10,6 +10,7 @@ using WarehouseERP.Inventory;
 using WarehouseERP.Organization;
 using WarehouseERP.Persistence;
 using WarehouseERP.Purchasing;
+using WarehouseERP.Sales;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,7 +24,8 @@ builder.Services
     .AddOrganizationModule()
     .AddCatalogModule()
     .AddInventoryModule()
-    .AddPurchasingModule();
+    .AddPurchasingModule()
+    .AddSalesModule();
 
 builder.Services.AddOptions<PaginationOptions>()
     .BindConfiguration(PaginationOptions.SectionName)
@@ -64,6 +66,7 @@ app.MapOrganizationEndpoints();
 app.MapCatalogEndpoints();
 app.MapInventoryEndpoints();
 app.MapPurchasingEndpoints();
+app.MapSalesEndpoints();
 
 app.Run();
 
