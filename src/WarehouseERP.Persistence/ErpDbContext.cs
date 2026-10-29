@@ -181,6 +181,12 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
             b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
             b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
         });
+        // Sales: a sales order line's reservation of a product in a warehouse.
+        builder.Entity<StockReservation>(b =>
+        {
+            b.HasOne<Product>().WithMany().HasForeignKey(x => x.ProductId).OnDelete(DeleteBehavior.Restrict);
+            b.HasOne<Warehouse>().WithMany().HasForeignKey(x => x.WarehouseId).OnDelete(DeleteBehavior.Restrict);
+        });
 
         // Milestone B: a transfer names three warehouses and, once dispatched, its own location in the transit one.
         builder.Entity<StockTransfer>(b =>

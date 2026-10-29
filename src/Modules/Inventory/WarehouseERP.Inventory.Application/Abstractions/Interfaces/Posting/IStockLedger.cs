@@ -9,4 +9,13 @@ public interface IStockLedger
     /// movement per change. Stops at the first shortage, which the caller rolls back.
     /// </summary>
     Task<StockLedgerOutcome> ApplyAsync(StockPosting posting, CancellationToken ct);
+
+    /// <summary>
+    /// Raises a warehouse's reserved quantity with an atomic conditional update that matches only while that much is on
+    /// hand and not reserved yet; false when it isn't (nothing changed).
+    /// </summary>
+    Task<bool> TryReserveAsync(Guid productId, Guid warehouseId, decimal baseQuantity, CancellationToken ct);
+
+    /// <summary>Lowers a warehouse's reserved quantity by what a reservation gave back.</summary>
+    Task ReleaseReservedAsync(Guid productId, Guid warehouseId, decimal baseQuantity, CancellationToken ct);
 }

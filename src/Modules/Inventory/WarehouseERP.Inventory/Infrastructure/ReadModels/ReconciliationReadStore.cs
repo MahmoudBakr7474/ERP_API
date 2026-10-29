@@ -30,6 +30,14 @@ internal sealed class ReconciliationReadStore(DbContext db, IWarehouseDirectory 
             .GroupBy(b => (b.ProductId, b.WarehouseId))
             .ToDictionary(g => g.Key, g => g.Sum(b => b.Quantity));
         var onHand = snapshot.Availability.ToDictionary(a => (a.ProductId, a.WarehouseId), a => a.OnHandSellable);
+        // Each warehouse's reserved quantity against what its reservations still hold.
+        var reservedTotals = snapshot.Availability.Where(a => a.ReservedQuantity != 0)
+            .ToDictionary(a => (a.ProductId, a.WarehouseId), a => a.ReservedQuantity);
+        var held = snapshot.Reservations.Where(r => r.Remaining != 0).ToDictionary(r => (r.ProductId, r.WarehouseId), r => r.Remaining);
+        var reservationDifferences = reservedTotals.Keys.Union(held.Keys)
+            .Select(k => (Key: k, Reserved: reservedTotals.GetValueOrDefault(k), Held: held.GetValueOrDefault(k)))
+            .Where(x => x.Reserved != x.Held)
+            .ToList();
         var availabilityDifferences = sellable.Keys.Union(onHand.Keys)
             .Select(k => (Key: k, Balance: sellable.GetValueOrDefault(k), OnHand: onHand.GetValueOrDefault(k)))
             .Where(x => x.Balance != x.OnHand)
@@ -79,7 +87,8 @@ internal sealed class ReconciliationReadStore(DbContext db, IWarehouseDirectory 
         }
 
         var productIds = stockByProduct.Keys.Union(states.Keys).Union(availabilityDifferences.Select(a => a.Key.ProductId))
-            .Union(ledgerDifferences.Select(l => l.Key.ProductId)).Union(transferDifferences.Select(t => t.ProductId)).ToList();
+            .Union(ledgerDifferences.Select(l => l.Key.ProductId)).Union(transferDifferences.Select(t => t.ProductId))
+            .Union(reservationDifferences.Select(r => r.Key.ProductId)).ToList();
         var lookup = await names.LoadAsync(
             productIds: productIds,
             warehouseIds: warehouseIds,
@@ -119,10 +128,15 @@ internal sealed class ReconciliationReadStore(DbContext db, IWarehouseDirectory 
                 x.ProductId, lookup.Sku(x.ProductId), x.Stock, x.ValuedQuantity, x.EntriesQuantity, x.ValuedValue, x.EntriesValue))
             .ToList();
         var transfersOut = transferDifferences.Select(t => t with { Sku = lookup.Sku(t.ProductId) }).ToList();
+        var reservations = reservationDifferences
+            .Select(x => new ReservationDifference(
+                x.Key.ProductId, lookup.Sku(x.Key.ProductId), x.Key.WarehouseId, lookup.WarehouseCode(x.Key.WarehouseId), x.Reserved, x.Held))
+            .ToList();
 
         return new ReconciliationReport(
-            nowUtc, availability.Count == 0 && ledger.Count == 0 && valuation.Count == 0 && transfersOut.Count == 0,
-            availability, ledger, valuation, transfersOut, positions, openTransfers);
+            nowUtc,
+            availability.Count == 0 && ledger.Count == 0 && valuation.Count == 0 && transfersOut.Count == 0 && reservations.Count == 0,
+            availability, ledger, valuation, transfersOut, positions, openTransfers, reservations);
     }
 
     // SQL Server keeps a session's isolation level when its connection goes back to the pool, so the connection is set back
@@ -139,7 +153,12 @@ internal sealed class ReconciliationReadStore(DbContext db, IWarehouseDirectory 
                 .Select(b => new BalanceRow(b.ProductId, b.WarehouseId, b.LocationId, b.StockStatus, b.Quantity))
                 .ToListAsync(ct);
             var availability = await db.Set<ProductWarehouseStock>().AsNoTracking()
-                .Select(a => new AvailabilityRow(a.ProductId, a.WarehouseId, a.OnHandSellable))
+                .Select(a => new AvailabilityRow(a.ProductId, a.WarehouseId, a.OnHandSellable, a.ReservedQuantity))
+                .ToListAsync(ct);
+            var reservations = await db.Set<StockReservation>().AsNoTracking()
+                .GroupBy(r => new { r.ProductId, r.WarehouseId })
+                .Select(g => new ReservationRow(g.Key.ProductId, g.Key.WarehouseId,
+                    g.Sum(r => r.ReservedQuantity - r.ConsumedQuantity - r.ReleasedQuantity)))
                 .ToListAsync(ct);
             var movements = await db.Set<StockMovement>().AsNoTracking()
                 .GroupBy(m => new { m.ProductId, m.WarehouseId, m.LocationId })
@@ -157,7 +176,7 @@ internal sealed class ReconciliationReadStore(DbContext db, IWarehouseDirectory 
                             || (t.TransitLocationId != null && transitLocations.Contains(t.TransitLocationId.Value)))
                 .ToListAsync(ct);
             await transaction.CommitAsync(ct);
-            return new Snapshot(balances, availability, movements, states, entries, transfers);
+            return new Snapshot(balances, availability, movements, states, entries, transfers, reservations);
         }
         finally
         {
@@ -168,7 +187,9 @@ internal sealed class ReconciliationReadStore(DbContext db, IWarehouseDirectory 
 
     private sealed record BalanceRow(Guid ProductId, Guid WarehouseId, Guid LocationId, StockStatus StockStatus, decimal Quantity);
 
-    private sealed record AvailabilityRow(Guid ProductId, Guid WarehouseId, decimal OnHandSellable);
+    private sealed record AvailabilityRow(Guid ProductId, Guid WarehouseId, decimal OnHandSellable, decimal ReservedQuantity);
+
+    private sealed record ReservationRow(Guid ProductId, Guid WarehouseId, decimal Remaining);
 
     private sealed record MovementRow(Guid ProductId, Guid WarehouseId, Guid LocationId, decimal Quantity);
 
@@ -176,5 +197,5 @@ internal sealed class ReconciliationReadStore(DbContext db, IWarehouseDirectory 
 
     private sealed record Snapshot(
         List<BalanceRow> Balances, List<AvailabilityRow> Availability, List<MovementRow> Movements,
-        List<InventoryCostState> States, List<EntryRow> Entries, List<StockTransfer> Transfers);
+        List<InventoryCostState> States, List<EntryRow> Entries, List<StockTransfer> Transfers, List<ReservationRow> Reservations);
 }

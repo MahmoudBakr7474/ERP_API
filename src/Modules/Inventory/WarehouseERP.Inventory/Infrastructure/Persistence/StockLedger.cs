@@ -12,7 +12,8 @@ namespace WarehouseERP.Inventory.Infrastructure.Persistence;
 // decrease matches no row when it would go below zero (or, for an ordinary issue, below the reserved quantity), and the
 // posting stops with a shortage. Rows are taken in one fixed order (availability by warehouse then product, then
 // balances by warehouse, location, product), so concurrent postings queue instead of deadlocking. Upserts hold a
-// key-range lock (UPDLOCK, HOLDLOCK) so two postings can't both insert the same new row.
+// key-range lock (UPDLOCK, HOLDLOCK) so two postings can't both insert the same new row. Reservations raise and lower
+// ReservedQuantity here too, with the same conditional updates, so a reservation and an issue can't both take the last unit.
 internal sealed class StockLedger(DbContext db) : IStockLedger
 {
     private const string AddAvailable = """
@@ -38,6 +39,29 @@ internal sealed class StockLedger(DbContext db) : IStockLedger
         SET [OnHandSellable] = [OnHandSellable] - @quantity
         OUTPUT inserted.[OnHandSellable], inserted.[ReservedQuantity]
         WHERE [ProductId] = @product AND [WarehouseId] = @warehouse AND [OnHandSellable] >= @quantity;
+        """;
+
+    // A sales delivery takes the stock its order reserved: on hand and reserved go down together, and the stock must be
+    // physically there (an over-reserved warehouse may hold less than is reserved).
+    private const string TakeReserved = """
+        UPDATE [inventory].[ProductWarehouseStock]
+        SET [OnHandSellable] = [OnHandSellable] - @quantity, [ReservedQuantity] = [ReservedQuantity] - @quantity
+        OUTPUT inserted.[OnHandSellable], inserted.[ReservedQuantity]
+        WHERE [ProductId] = @product AND [WarehouseId] = @warehouse AND [OnHandSellable] >= @quantity
+          AND [ReservedQuantity] >= @quantity;
+        """;
+
+    // A reservation takes only stock that is on hand and not reserved by anyone else.
+    private const string Reserve = """
+        UPDATE [inventory].[ProductWarehouseStock]
+        SET [ReservedQuantity] = [ReservedQuantity] + @quantity
+        WHERE [ProductId] = @product AND [WarehouseId] = @warehouse AND [OnHandSellable] - [ReservedQuantity] >= @quantity;
+        """;
+
+    private const string Release = """
+        UPDATE [inventory].[ProductWarehouseStock]
+        SET [ReservedQuantity] = [ReservedQuantity] - @quantity
+        WHERE [ProductId] = @product AND [WarehouseId] = @warehouse AND [ReservedQuantity] >= @quantity;
         """;
 
     private const string AddBalance = """
@@ -73,7 +97,8 @@ internal sealed class StockLedger(DbContext db) : IStockLedger
                 await db.Database.ExecuteSqlRawAsync(AddAvailable, [Product(productId), Warehouse(warehouseId), Quantity(delta)], ct);
             else if (delta < 0)
             {
-                var after = await TakeAvailableAsync(posting.MayOverReserve ? TakeOnHand : TakeUnreserved, productId, warehouseId, -delta, ct);
+                var sql = posting.ConsumesReservations ? TakeReserved : posting.MayOverReserve ? TakeOnHand : TakeUnreserved;
+                var after = await TakeAvailableAsync(sql, productId, warehouseId, -delta, ct);
                 if (after is null)
                     return new StockLedgerOutcome(new StockShortage(productId, warehouseId, LocationId: null), []);
                 if (after.Value.OnHand < after.Value.Reserved)
@@ -109,6 +134,17 @@ internal sealed class StockLedger(DbContext db) : IStockLedger
                 posting.DocumentId, change.LineId, change.AllocationId, change.ProductId, change.WarehouseId, change.LocationId,
                 lotId: null, StockStatus.Available, change.Quantity, posting.PostedAtUtc));
         return new StockLedgerOutcome(Shortage: null, overReserved);
+    }
+
+    public async Task<bool> TryReserveAsync(Guid productId, Guid warehouseId, decimal baseQuantity, CancellationToken ct) =>
+        await db.Database.ExecuteSqlRawAsync(Reserve, [Product(productId), Warehouse(warehouseId), Quantity(baseQuantity)], ct) == 1;
+
+    // The reservation rows say this much is reserved, so the warehouse's total must hold it; anything else is corruption.
+    public async Task ReleaseReservedAsync(Guid productId, Guid warehouseId, decimal baseQuantity, CancellationToken ct)
+    {
+        if (await db.Database.ExecuteSqlRawAsync(Release, [Product(productId), Warehouse(warehouseId), Quantity(baseQuantity)], ct) != 1)
+            throw new InvalidOperationException(
+                $"Warehouse {warehouseId} reserves less of product {productId} than its reservations release ({baseQuantity}).");
     }
 
     // The row after the decrease, or null when the condition matched nothing.

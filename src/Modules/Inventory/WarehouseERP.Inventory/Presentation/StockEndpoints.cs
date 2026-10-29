@@ -9,6 +9,7 @@ using WarehouseERP.Inventory.Application.Features.Stock.ListOverReservations;
 using WarehouseERP.Inventory.Application.Features.Stock.ListStockAvailability;
 using WarehouseERP.Inventory.Application.Features.Stock.ListStockBalances;
 using WarehouseERP.Inventory.Application.Features.Stock.ListStockMovements;
+using WarehouseERP.Inventory.Application.Features.Stock.ListStockReservations;
 using WarehouseERP.Inventory.Contracts;
 
 namespace WarehouseERP.Inventory.Presentation;
@@ -46,6 +47,12 @@ internal static class StockEndpoints
             .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status403Forbidden);
 
+        group.MapGet("/reservations", ListReservationsAsync)
+            .WithName("ListStockReservations")
+            .Produces<PagedResult<StockReservationResponse>>()
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+
         return app;
     }
 
@@ -74,5 +81,11 @@ internal static class StockEndpoints
         IQueryHandler<ListOverReservationsQuery, PagedResult<OverReservationResponse>> handler, CancellationToken ct,
         int page = 1, int? pageSize = null, Guid? warehouseId = null, Guid? productId = null) =>
         (await handler.HandleAsync(new ListOverReservationsQuery(page, pageSize, warehouseId, productId), ct))
+            .ToHttpResult(TypedResults.Ok);
+
+    private static async Task<IResult> ListReservationsAsync(
+        IQueryHandler<ListStockReservationsQuery, PagedResult<StockReservationResponse>> handler, CancellationToken ct,
+        int page = 1, int? pageSize = null, Guid? warehouseId = null, Guid? productId = null, bool includeClosed = false) =>
+        (await handler.HandleAsync(new ListStockReservationsQuery(page, pageSize, warehouseId, productId, includeClosed), ct))
             .ToHttpResult(TypedResults.Ok);
 }

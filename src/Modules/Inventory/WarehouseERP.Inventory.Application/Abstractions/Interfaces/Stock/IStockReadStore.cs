@@ -14,4 +14,7 @@ public interface IStockReadStore
 
     /// <summary>Newest first.</summary>
     Task<PagedResult<OverReservationResponse>> ListOverReservationsAsync(StockFilter filter, int page, int pageSize, CancellationToken ct);
+
+    /// <summary>Oldest first; without IncludeZero only reservations that still hold something.</summary>
+    Task<PagedResult<StockReservationResponse>> ListReservationsAsync(StockFilter filter, int page, int pageSize, CancellationToken ct);
 }

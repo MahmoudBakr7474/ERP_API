@@ -52,8 +52,14 @@ public sealed partial class StockDocumentPosting(
     /// it posted. Posting a transfer's loss adjustment also closes the transfer. The caller saves; on failure its
     /// transaction rolls everything back.
     /// </summary>
+    public Task<Result<PostedDocumentResponse>> ApplyAsync(
+        StockDocument document, PostingMode mode, Guid? approvedBy, CancellationToken ct) =>
+        ApplyAsync(document, mode, approvedBy, lineValues: null, ct);
+
+    /// <inheritdoc cref="ApplyAsync(StockDocument, PostingMode, Guid?, CancellationToken)"/>
+    /// <param name="lineValues">When given, receives the value each line moved at cost (negative going out), by line id.</param>
     public async Task<Result<PostedDocumentResponse>> ApplyAsync(
-        StockDocument document, PostingMode mode, Guid? approvedBy, CancellationToken ct)
+        StockDocument document, PostingMode mode, Guid? approvedBy, IDictionary<Guid, decimal>? lineValues, CancellationToken ct)
     {
         var userId = currentUser.UserId;
         var places = StockReferences.PlacesOf(document);
@@ -77,7 +83,9 @@ public sealed partial class StockDocumentPosting(
         var now = clock.GetUtcNow().UtcDateTime;
         var mayOverReserve = document.DocumentType is StockDocumentType.Adjustment or StockDocumentType.Reversal
             or StockDocumentType.CountAdjustment;
-        var outcome = await ledger.ApplyAsync(new StockPosting(document.Id, now, mayOverReserve, Changes(document, refs.Warehouses)), ct);
+        var consumesReservations = document.DocumentType == StockDocumentType.SalesDelivery;
+        var outcome = await ledger.ApplyAsync(
+            new StockPosting(document.Id, now, mayOverReserve, consumesReservations, Changes(document, refs.Warehouses)), ct);
         if (outcome.Shortage is { } shortage)
         {
             var sku = refs.Products[shortage.ProductId].Sku;
@@ -86,7 +94,7 @@ public sealed partial class StockDocumentPosting(
                 : StockErrors.Insufficient(sku);
         }
 
-        var valued = await ValueAsync(document, now, ct);
+        var valued = await ValueAsync(document, now, lineValues, ct);
         if (valued.IsFailure)
             return valued.Error;
 
@@ -189,8 +197,10 @@ public sealed partial class StockDocumentPosting(
 
     // Moving weighted average, line by line. Stock coming in with a cost is valued at it; an increase without one at the
     // current average (refused for a product that was never valued); a reversed issue comes back at the value it left
-    // with; stock going out leaves at the current average. A transfer moves stock inside the company: no valuation.
-    private async Task<Result> ValueAsync(StockDocument document, DateTime now, CancellationToken ct)
+    // with; stock going out leaves at the current average. A customer return comes back at the cost its delivery line left
+    // with, in proportion, the last units taking whatever value that line has left, so a delivery's cost is never returned
+    // twice. A transfer moves stock inside the company: no valuation.
+    private async Task<Result> ValueAsync(StockDocument document, DateTime now, IDictionary<Guid, decimal>? lineValues, CancellationToken ct)
     {
         if (document.DocumentType is StockDocumentType.TransferDispatch or StockDocumentType.TransferReceipt)
             return Result.Success();
@@ -201,6 +211,11 @@ public sealed partial class StockDocumentPosting(
         IReadOnlyDictionary<Guid, decimal> leftWith = document.ReversalOfDocumentId is { } originalId
             ? await valuation.GetLineValuesAsync(originalId, ct)
             : new Dictionary<Guid, decimal>();
+        // Read once the products' valuation is locked, so returns of one delivery line value one after the other.
+        var deliveries = document.DocumentType == StockDocumentType.SalesReturn
+            ? new Dictionary<Guid, DeliveryCost>(await valuation.GetDeliveryCostsAsync(
+                document.Lines.Select(l => l.ReversesLineId!.Value).Distinct().ToList(), ct))
+            : [];
 
         foreach (var line in document.Lines.OrderBy(l => l.LineNumber))
         {
@@ -216,6 +231,23 @@ public sealed partial class StockDocumentPosting(
                 change = state.Issue(line.BaseQuantity, now);
             else if (line.UnitCost is { } unitCost)
                 change = state.Receive(line.BaseQuantity, line.Quantity * unitCost, now);
+            else if (document.DocumentType == StockDocumentType.SalesReturn)
+            {
+                var deliveredLine = line.ReversesLineId!.Value;
+                if (!deliveries.TryGetValue(deliveredLine, out var delivered)
+                    || line.BaseQuantity > delivered.IssuedQuantity - delivered.ReturnedQuantity)
+                    return StockDocumentErrors.ReturnExceedsDelivery(line.LineNumber);
+                var valueLeft = delivered.IssuedValue - delivered.ReturnedValue;
+                var returnedValue = line.BaseQuantity == delivered.IssuedQuantity - delivered.ReturnedQuantity
+                    ? valueLeft
+                    : Math.Min(Quantities.RoundValue(delivered.IssuedValue * line.BaseQuantity / delivered.IssuedQuantity), valueLeft);
+                change = state.Receive(line.BaseQuantity, returnedValue, now);
+                deliveries[deliveredLine] = delivered with
+                {
+                    ReturnedQuantity = delivered.ReturnedQuantity + line.BaseQuantity,
+                    ReturnedValue = delivered.ReturnedValue + change.ValueDelta,
+                };
+            }
             else if (line.ReversesLineId is { } reversedLine && leftWith.TryGetValue(reversedLine, out var value))
                 change = state.Receive(line.BaseQuantity, -value, now);
             else if (valued.Contains(line.ProductId))
@@ -225,6 +257,7 @@ public sealed partial class StockDocumentPosting(
 
             valued.Add(line.ProductId);
             valuation.Add(InventoryCostEntry.Record(state, change, document.Id, line.Id, now));
+            lineValues?.Add(line.Id, change.ValueDelta);
         }
         return Result.Success();
     }

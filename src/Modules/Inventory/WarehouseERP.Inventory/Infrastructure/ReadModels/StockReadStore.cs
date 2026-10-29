@@ -144,4 +144,35 @@ internal sealed class StockReadStore(DbContext db, ReferenceNames names) : IStoc
                 .ToList(),
             page, pageSize, total);
     }
+
+    public async Task<PagedResult<StockReservationResponse>> ListReservationsAsync(StockFilter filter, int page, int pageSize, CancellationToken ct)
+    {
+        var query = db.Set<StockReservation>().AsNoTracking();
+        if (filter.ScopeWarehouseIds is { } scope)
+        {
+            var ids = scope.ToArray();
+            query = query.Where(x => ids.Contains(x.WarehouseId));
+        }
+        if (filter.WarehouseId is { } warehouseId)
+            query = query.Where(x => x.WarehouseId == warehouseId);
+        if (filter.ProductId is { } productId)
+            query = query.Where(x => x.ProductId == productId);
+        if (!filter.IncludeZero)
+            query = query.Where(x => x.ReservedQuantity - x.ConsumedQuantity - x.ReleasedQuantity > 0);
+
+        var total = await query.CountAsync(ct);
+        var rows = await query.OrderBy(x => x.CreatedAtUtc).ThenBy(x => x.SourceLineId)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .ToListAsync(ct);
+        var lookup = await names.LoadAsync(
+            productIds: rows.Select(r => r.ProductId), warehouseIds: rows.Select(r => r.WarehouseId), ct: ct);
+
+        return new PagedResult<StockReservationResponse>(
+            rows.Select(r => new StockReservationResponse(
+                r.Id, r.SourceDocumentId, r.SourceLineId, r.SourceNumber, r.ProductId, lookup.Sku(r.ProductId), r.WarehouseId,
+                lookup.WarehouseCode(r.WarehouseId), r.ReservedQuantity, r.ConsumedQuantity, r.ReleasedQuantity, r.RemainingQuantity,
+                r.CreatedAtUtc, r.UpdatedAtUtc))
+                .ToList(),
+            page, pageSize, total);
+    }
 }

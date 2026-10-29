@@ -2069,11 +2069,11 @@ namespace WarehouseERP.Persistence.Migrations
 
                             t.HasCheckConstraint("CK_StockDocuments_Reversal", "([DocumentType] = 5 AND [ReversalOfDocumentId] IS NOT NULL AND [RequiresApproval] = 1) OR ([DocumentType] <> 5 AND [ReversalOfDocumentId] IS NULL)");
 
-                            t.HasCheckConstraint("CK_StockDocuments_Source", "([DocumentType] IN (9, 10) AND [SourceDocumentId] IS NOT NULL) OR ([DocumentType] NOT IN (9, 10) AND [SourceDocumentId] IS NULL)");
+                            t.HasCheckConstraint("CK_StockDocuments_Source", "([DocumentType] IN (9, 10, 11, 12) AND [SourceDocumentId] IS NOT NULL) OR ([DocumentType] NOT IN (9, 10, 11, 12) AND [SourceDocumentId] IS NULL)");
 
                             t.HasCheckConstraint("CK_StockDocuments_Status", "[Status] BETWEEN 1 AND 4");
 
-                            t.HasCheckConstraint("CK_StockDocuments_Type", "[DocumentType] BETWEEN 1 AND 10");
+                            t.HasCheckConstraint("CK_StockDocuments_Type", "[DocumentType] BETWEEN 1 AND 12");
                         });
                 });
 
@@ -2230,6 +2230,123 @@ namespace WarehouseERP.Persistence.Migrations
                     b.ToTable("StockMovements", "inventory", t =>
                         {
                             t.HasCheckConstraint("CK_StockMovements_Quantity", "[Quantity] <> 0");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Inventory.Domain.StockReservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ConsumedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ReleasedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<decimal>("ReservedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<Guid>("SourceDocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("SourceLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SourceNumber")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(60)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProductId");
+
+                    b.HasIndex("SourceDocumentId");
+
+                    b.HasIndex("SourceLineId")
+                        .IsUnique();
+
+                    b.HasIndex("WarehouseId", "ProductId");
+
+                    b.ToTable("StockReservations", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("CK_StockReservations_Quantities", "[ReservedQuantity] > 0 AND [ConsumedQuantity] >= 0 AND [ReleasedQuantity] >= 0 AND [ConsumedQuantity] + [ReleasedQuantity] <= [ReservedQuantity]");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Inventory.Domain.StockReservationEntry", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<Guid>("ReservationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("StockDocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReservationId");
+
+                    b.HasIndex("StockDocumentId");
+
+                    b.ToTable("StockReservationEntries", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("CK_StockReservationEntries_Document", "([Kind] = 2 AND [StockDocumentId] IS NOT NULL) OR ([Kind] <> 2 AND [StockDocumentId] IS NULL)");
+
+                            t.HasCheckConstraint("CK_StockReservationEntries_Kind", "[Kind] BETWEEN 1 AND 3");
+
+                            t.HasCheckConstraint("CK_StockReservationEntries_Quantity", "[Quantity] > 0");
                         });
                 });
 
@@ -5042,6 +5159,35 @@ namespace WarehouseERP.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("WarehouseERP.Inventory.Domain.StockReservation", b =>
+                {
+                    b.HasOne("WarehouseERP.Catalog.Domain.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.Warehouse", null)
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Inventory.Domain.StockReservationEntry", b =>
+                {
+                    b.HasOne("WarehouseERP.Inventory.Domain.StockReservation", null)
+                        .WithMany("Entries")
+                        .HasForeignKey("ReservationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Inventory.Domain.StockDocument", null)
+                        .WithMany()
+                        .HasForeignKey("StockDocumentId")
+                        .OnDelete(DeleteBehavior.NoAction);
+                });
+
             modelBuilder.Entity("WarehouseERP.Inventory.Domain.StockTransfer", b =>
                 {
                     b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
@@ -5593,6 +5739,11 @@ namespace WarehouseERP.Persistence.Migrations
             modelBuilder.Entity("WarehouseERP.Inventory.Domain.StockDocumentLine", b =>
                 {
                     b.Navigation("Allocations");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Inventory.Domain.StockReservation", b =>
+                {
+                    b.Navigation("Entries");
                 });
 
             modelBuilder.Entity("WarehouseERP.Inventory.Domain.StockTransfer", b =>

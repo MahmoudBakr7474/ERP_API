@@ -12,7 +12,7 @@ internal sealed class StockDocumentConfiguration : IEntityTypeConfiguration<Stoc
     {
         b.ToTable("StockDocuments", "inventory", t =>
         {
-            t.HasCheckConstraint("CK_StockDocuments_Type", "[DocumentType] BETWEEN 1 AND 10");
+            t.HasCheckConstraint("CK_StockDocuments_Type", "[DocumentType] BETWEEN 1 AND 12");
             t.HasCheckConstraint("CK_StockDocuments_Status", "[Status] BETWEEN 1 AND 4");
             t.HasCheckConstraint("CK_StockDocuments_Posted",
                 "([Status] = 3 AND [Number] IS NOT NULL AND [FiscalYear] IS NOT NULL AND [SequenceNumber] IS NOT NULL AND [PostedAtUtc] IS NOT NULL)"
@@ -22,10 +22,11 @@ internal sealed class StockDocumentConfiguration : IEntityTypeConfiguration<Stoc
             t.HasCheckConstraint("CK_StockDocuments_Reversal",
                 "([DocumentType] = 5 AND [ReversalOfDocumentId] IS NOT NULL AND [RequiresApproval] = 1)"
                 + " OR ([DocumentType] <> 5 AND [ReversalOfDocumentId] IS NULL)");
-            // Purchase receipts and returns (9, 10) always name the Purchasing document that posted them; nothing else does.
+            // Purchase receipts and returns (9, 10) and sales deliveries and returns (11, 12) always name the Purchasing or
+            // Sales document that posted them; nothing else does.
             t.HasCheckConstraint("CK_StockDocuments_Source",
-                "([DocumentType] IN (9, 10) AND [SourceDocumentId] IS NOT NULL)"
-                + " OR ([DocumentType] NOT IN (9, 10) AND [SourceDocumentId] IS NULL)");
+                "([DocumentType] IN (9, 10, 11, 12) AND [SourceDocumentId] IS NOT NULL)"
+                + " OR ([DocumentType] NOT IN (9, 10, 11, 12) AND [SourceDocumentId] IS NULL)");
         });
         b.HasKey(x => x.Id);
         b.Property(x => x.Id).ValueGeneratedOnAdd();
@@ -58,7 +59,7 @@ internal sealed class StockDocumentConfiguration : IEntityTypeConfiguration<Stoc
         b.HasIndex(x => new { x.WarehouseId, x.Status });
         b.HasIndex(x => x.TransferId);
         b.HasIndex(x => x.CountId);
-        // One stock document per Purchasing goods receipt or supplier return.
+        // One stock document per Purchasing goods receipt or supplier return, and per Sales delivery or customer return.
         b.HasIndex(x => x.SourceDocumentId, "UX_StockDocuments_Source").IsUnique().HasFilter("[SourceDocumentId] IS NOT NULL");
         b.HasIndex(x => x.CreatedAtUtc);
     }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.Posting;
+using WarehouseERP.Inventory.Contracts;
 using WarehouseERP.Inventory.Domain;
 
 namespace WarehouseERP.Inventory.Infrastructure.Persistence;
@@ -26,6 +27,32 @@ internal sealed class InventoryValuation(DbContext db) : IInventoryValuation
         await db.Set<InventoryCostEntry>().AsNoTracking()
             .Where(x => x.DocumentId == documentId)
             .ToDictionaryAsync(x => x.LineId, x => x.ValueDelta, ct);
+
+    public async Task<IReadOnlyDictionary<Guid, DeliveryCost>> GetDeliveryCostsAsync(
+        IReadOnlyCollection<Guid> deliveryLineIds, CancellationToken ct)
+    {
+        var ids = deliveryLineIds.Distinct().ToList();
+        var issued = await (
+                from entry in db.Set<InventoryCostEntry>().AsNoTracking()
+                join document in db.Set<StockDocument>() on entry.DocumentId equals document.Id
+                where ids.Contains(entry.LineId) && document.DocumentType == StockDocumentType.SalesDelivery
+                select new { entry.LineId, Quantity = -entry.QuantityDelta, Value = -entry.ValueDelta })
+            .ToListAsync(ct);
+        var returned = await (
+                from line in db.Set<StockDocumentLine>().AsNoTracking()
+                join document in db.Set<StockDocument>() on line.DocumentId equals document.Id
+                join entry in db.Set<InventoryCostEntry>() on line.Id equals entry.LineId
+                where line.ReversesLineId != null && ids.Contains(line.ReversesLineId.Value)
+                      && document.DocumentType == StockDocumentType.SalesReturn
+                group entry by line.ReversesLineId!.Value into g
+                select new { LineId = g.Key, Quantity = g.Sum(e => e.QuantityDelta), Value = g.Sum(e => e.ValueDelta) })
+            .ToDictionaryAsync(x => x.LineId, ct);
+        return issued.ToDictionary(
+            x => x.LineId,
+            x => returned.TryGetValue(x.LineId, out var back)
+                ? new DeliveryCost(x.Quantity, x.Value, back.Quantity, back.Value)
+                : new DeliveryCost(x.Quantity, x.Value, 0m, 0m));
+    }
 
     public void Add(InventoryCostState state) => db.Add(state);
 

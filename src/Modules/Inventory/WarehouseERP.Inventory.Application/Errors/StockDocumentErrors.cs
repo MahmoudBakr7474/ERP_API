@@ -25,12 +25,27 @@ public static class StockDocumentErrors
         "Inventory.StockDocument.ManagedByPurchasing",
         "Purchase receipts and returns are posted by Purchasing; correct them there with a supplier return.");
 
+    public static readonly Error ManagedBySales = Error.BusinessRule(
+        "Inventory.StockDocument.ManagedBySales",
+        "Sales deliveries and customer returns are posted by Sales; correct them there with a sales return.");
+
     public static readonly Error SourceAlreadyPosted = Error.Conflict(
-        "Inventory.StockDocument.SourceAlreadyPosted", "This purchasing document has already been posted to stock.");
+        "Inventory.StockDocument.SourceAlreadyPosted", "This purchasing or sales document has already been posted to stock.");
+
+    public static Error DeliveryLineNotFound(int line) => Error.BusinessRule(
+        "Inventory.StockDocument.DeliveryLineNotFound",
+        $"Line {line}: the goods must come back from a posted sales delivery line of the same product and warehouse.");
+
+    public static Error ReturnExceedsDelivery(int line) => Error.BusinessRule(
+        "Inventory.StockDocument.ReturnExceedsDelivery", $"Line {line}: more would come back than its delivery line still has unreturned.");
 
     /// <summary>Why a document of this type can't be drafted or changed through Inventory's document endpoints.</summary>
-    public static Error NotManagedHere(StockDocumentType documentType) =>
-        documentType is StockDocumentType.PurchaseReceipt or StockDocumentType.PurchaseReturn ? ManagedByPurchasing : TypeNotDrafted;
+    public static Error NotManagedHere(StockDocumentType documentType) => documentType switch
+    {
+        StockDocumentType.PurchaseReceipt or StockDocumentType.PurchaseReturn => ManagedByPurchasing,
+        StockDocumentType.SalesDelivery or StockDocumentType.SalesReturn => ManagedBySales,
+        _ => TypeNotDrafted,
+    };
 
     public static readonly Error WarehouseNotFound = Error.BusinessRule(
         "Inventory.StockDocument.WarehouseNotFound", "The warehouse does not exist.");

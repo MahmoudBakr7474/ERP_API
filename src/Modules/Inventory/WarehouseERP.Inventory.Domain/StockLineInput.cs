@@ -13,6 +13,8 @@ namespace WarehouseERP.Inventory.Domain;
 /// <param name="Direction">In or out.</param>
 /// <param name="UnitCost">Cost of one entered unit in the base currency, for stock coming in.</param>
 /// <param name="LocationId">Where the stock goes or comes from, in the document's warehouse.</param>
+/// <param name="ReturnsLineId">On a sales return, the posted delivery line the goods come back from.</param>
 public sealed record StockLineInput(
     Guid ProductId, Guid ProductUnitId, Guid UnitId, decimal ConversionFactor, bool UnitAllowsFraction,
-    bool BaseUnitAllowsFraction, decimal Quantity, StockDirection Direction, decimal? UnitCost, Guid LocationId);
+    bool BaseUnitAllowsFraction, decimal Quantity, StockDirection Direction, decimal? UnitCost, Guid LocationId,
+    Guid? ReturnsLineId = null);

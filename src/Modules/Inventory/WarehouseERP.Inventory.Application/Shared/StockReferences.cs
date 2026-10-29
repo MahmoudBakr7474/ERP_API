@@ -68,7 +68,9 @@ public sealed class StockReferences(
                 direction = chosen;
             }
             else
-                direction = documentType is StockDocumentType.Issue or StockDocumentType.PurchaseReturn ? StockDirection.Out : StockDirection.In;
+                direction = documentType is StockDocumentType.Issue or StockDocumentType.PurchaseReturn or StockDocumentType.SalesDelivery
+                    ? StockDirection.Out
+                    : StockDirection.In;
 
             var product = CheckProduct(productInfos.GetValueOrDefault(line.ProductId), direction, number);
             if (product.IsFailure)

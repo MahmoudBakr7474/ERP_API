@@ -8,6 +8,7 @@ using WarehouseERP.Inventory.Application.Abstractions.Interfaces.Counts;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.DocumentPolicies;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.Posting;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.Reconciliation;
+using WarehouseERP.Inventory.Application.Abstractions.Interfaces.Reservations;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.Stock;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.StockDocuments;
 using WarehouseERP.Inventory.Application.Abstractions.Interfaces.Transfers;
@@ -31,10 +32,12 @@ using WarehouseERP.Inventory.Application.Features.Counts.SubmitStockCount;
 using WarehouseERP.Inventory.Application.Features.DocumentPolicies.ListDocumentPolicies;
 using WarehouseERP.Inventory.Application.Features.DocumentPolicies.UpdateDocumentPolicy;
 using WarehouseERP.Inventory.Application.Features.Reconciliation.GetReconciliation;
+using WarehouseERP.Inventory.Application.Features.Reservations;
 using WarehouseERP.Inventory.Application.Features.Stock.ListOverReservations;
 using WarehouseERP.Inventory.Application.Features.Stock.ListStockAvailability;
 using WarehouseERP.Inventory.Application.Features.Stock.ListStockBalances;
 using WarehouseERP.Inventory.Application.Features.Stock.ListStockMovements;
+using WarehouseERP.Inventory.Application.Features.Stock.ListStockReservations;
 using WarehouseERP.Inventory.Application.Features.StockDocuments;
 using WarehouseERP.Inventory.Application.Features.StockDocuments.ApproveStockDocument;
 using WarehouseERP.Inventory.Application.Features.StockDocuments.CancelStockDocument;
@@ -75,8 +78,9 @@ namespace WarehouseERP.Inventory;
 // (Milestone A), transfers through transit warehouses, stock counts and the reconciliation report (Milestone B); see
 // docs/modules/Inventory/V1_DECISIONS.md and ADR 0015. Other modules see only Inventory.Contracts: Organization asks
 // IWarehouseStockGuard before deactivating a warehouse or a location and opens transit locations through
-// ITransitLocations; Purchasing posts its goods receipts and supplier returns through IPurchaseStockPosting. The host
-// calls AddInventoryModule and MapInventoryEndpoints; ITransactionRunner comes from Persistence.
+// ITransitLocations; Purchasing posts its goods receipts and supplier returns through IPurchaseStockPosting; Sales
+// reserves and releases stock through IStockReservations and posts deliveries and customer returns through
+// ISalesStockPosting. The host calls AddInventoryModule and MapInventoryEndpoints; ITransactionRunner comes from Persistence.
 public static class InventoryModule
 {
     public static IServiceCollection AddInventoryModule(this IServiceCollection services)
@@ -98,6 +102,7 @@ public static class InventoryModule
         services.AddQueryHandler<ListStockAvailabilityQuery, PagedResult<StockAvailabilityResponse>, ListStockAvailabilityHandler>();
         services.AddQueryHandler<ListStockMovementsQuery, PagedResult<StockMovementResponse>, ListStockMovementsHandler>();
         services.AddQueryHandler<ListOverReservationsQuery, PagedResult<OverReservationResponse>, ListOverReservationsHandler>();
+        services.AddQueryHandler<ListStockReservationsQuery, PagedResult<StockReservationResponse>, ListStockReservationsHandler>();
 
         services.AddQueryHandler<ListInventoryValuationQuery, PagedResult<InventoryValuationResponse>, ListInventoryValuationHandler>();
         services.AddQueryHandler<ListCostEntriesQuery, PagedResult<InventoryCostEntryResponse>, ListCostEntriesHandler>();
@@ -152,6 +157,9 @@ public static class InventoryModule
         services.AddScoped<IReconciliationReadStore, ReconciliationReadStore>();
         services.AddScoped<IWarehouseStockGuard, WarehouseStockGuard>();
         services.AddScoped<IPurchaseStockPosting, PurchaseStockPosting>();
+        services.AddScoped<IStockReservationRepository, StockReservationRepository>();
+        services.AddScoped<IStockReservations, StockReservations>();
+        services.AddScoped<ISalesStockPosting, SalesStockPosting>();
 
         services.AddPermissions("Inventory", InventoryPermissions.All);
         return services;

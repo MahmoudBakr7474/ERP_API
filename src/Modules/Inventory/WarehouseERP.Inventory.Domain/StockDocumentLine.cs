@@ -34,7 +34,7 @@ public sealed class StockDocumentLine
     /// <summary>Cost of one entered unit in the base currency; only stock coming in carries one.</summary>
     public decimal? UnitCost { get; private set; }
 
-    /// <summary>On a reversal, the posted line it undoes.</summary>
+    /// <summary>On a reversal, the posted line it undoes; on a sales return, the delivery line the goods come back from.</summary>
     public Guid? ReversesLineId { get; private set; }
 
     public IReadOnlyList<StockAllocation> Allocations => _allocations;
@@ -48,7 +48,9 @@ public sealed class StockDocumentLine
         {
             StockDocumentType.OpeningBalance or StockDocumentType.Receipt or StockDocumentType.PurchaseReceipt =>
                 input.Direction == StockDirection.In,
-            StockDocumentType.Issue or StockDocumentType.PurchaseReturn => input.Direction == StockDirection.Out,
+            StockDocumentType.SalesReturn => input.Direction == StockDirection.In,
+            StockDocumentType.Issue or StockDocumentType.PurchaseReturn or StockDocumentType.SalesDelivery =>
+                input.Direction == StockDirection.Out,
             StockDocumentType.Adjustment => input.Direction is StockDirection.In or StockDirection.Out,
             _ => false,
         };
@@ -66,9 +68,12 @@ public sealed class StockDocumentLine
             input.Quantity, input.ConversionFactor, input.UnitAllowsFraction, input.BaseUnitAllowsFraction, lineNumber);
         if (baseQuantity.IsFailure)
             return baseQuantity.Error;
+        if ((documentType == StockDocumentType.SalesReturn) != input.ReturnsLineId.HasValue)
+            throw new ArgumentException("A sales return line, and only one, names the delivery line it returns.", nameof(input));
 
         var line = New(lineNumber, input.ProductId, input.ProductUnitId, input.UnitId, input.ConversionFactor, input.Quantity,
             baseQuantity.Value, input.Direction, input.UnitCost);
+        line.ReversesLineId = input.ReturnsLineId;
         line._allocations.Add(input.Direction == StockDirection.In
             ? StockAllocation.Into(warehouseId, input.LocationId, baseQuantity.Value)
             : StockAllocation.OutOf(warehouseId, input.LocationId, baseQuantity.Value));

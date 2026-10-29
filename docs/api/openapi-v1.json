@@ -6564,6 +6564,89 @@
         }
       }
     },
+    "/api/inventory/reservations": {
+      "get": {
+        "tags": [
+          "Stock"
+        ],
+        "operationId": "ListStockReservations",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "productId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "includeClosed",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfStockReservationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/inventory/valuation": {
       "get": {
         "tags": [
@@ -14781,6 +14864,39 @@
           }
         }
       },
+      "PagedResultOfStockReservationResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StockReservationResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "PagedResultOfStockTransferSummaryResponse": {
         "required": [
           "items",
@@ -16298,7 +16414,8 @@
           "valuationDifferences",
           "transferDifferences",
           "stockPositions",
-          "openTransfers"
+          "openTransfers",
+          "reservationDifferences"
         ],
         "type": "object",
         "properties": {
@@ -16343,6 +16460,12 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OpenTransferPosition"
+            }
+          },
+          "reservationDifferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReservationDifference"
             }
           }
         }
@@ -16450,6 +16573,41 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "ReservationDifference": {
+        "required": [
+          "productId",
+          "sku",
+          "warehouseId",
+          "warehouseCode",
+          "reservedQuantity",
+          "heldByReservations"
+        ],
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "reservedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "heldByReservations": {
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -17859,7 +18017,9 @@
           "TransferReceipt",
           "CountAdjustment",
           "PurchaseReceipt",
-          "PurchaseReturn"
+          "PurchaseReturn",
+          "SalesDelivery",
+          "SalesReturn"
         ],
         "description": "What a stock document does; each type has its own number series."
       },
@@ -17995,6 +18155,83 @@
           "valuedValue": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "StockReservationResponse": {
+        "required": [
+          "id",
+          "sourceDocumentId",
+          "sourceLineId",
+          "sourceNumber",
+          "productId",
+          "sku",
+          "warehouseId",
+          "warehouseCode",
+          "reservedQuantity",
+          "consumedQuantity",
+          "releasedQuantity",
+          "remainingQuantity",
+          "createdAtUtc",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceDocumentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceLineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceNumber": {
+            "type": "string"
+          },
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "reservedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "consumedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "releasedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "remainingQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },

@@ -32,4 +32,10 @@ public enum StockDocumentType : byte
 
     /// <summary>Received goods sent back to their supplier, posted only by Purchasing through IPurchaseStockPosting (PRT).</summary>
     PurchaseReturn = 10,
+
+    /// <summary>Goods delivered to a customer out of a sales order's reservation, posted only by Sales through ISalesStockPosting (SDL).</summary>
+    SalesDelivery = 11,
+
+    /// <summary>Delivered goods a customer sent back fit for resale, posted only by Sales through ISalesStockPosting (SRT).</summary>
+    SalesReturn = 12,
 }
