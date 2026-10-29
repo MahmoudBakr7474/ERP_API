@@ -97,7 +97,7 @@ Checkout — 2 tea at 10 with 5% discount (standard 14%) + 4 sugar at 5 (zero-ra
   "payments": [ { "lineNumber": 1, "method": "Cash", "status": "Settled", "amount": 41.66, "tenderedAmount": 50,
                   "changeAmount": 8.34, "reference": null, "cardLast4": null } ],
   "cashTenderedAmount": 50, "changeAmount": 8.34, "cashReceivedAmount": 41.66, "cardAmount": 0, "refundedAmount": 0,
-  "returns": [], "stockDocumentId": "c3af…476d", "stockDocumentNumber": "PSL-CAI-2026-000001", "notes": null }
+  "refundedCashAmount": 0, "refundedCardAmount": 0, "returns": [], "stockDocumentId": "c3af…476d", "stockDocumentNumber": "PSL-CAI-2026-000001", "notes": null }
 ```
 Split payment of a carton (125.40): `payments` = `[{ "method": "Card", "status": "ExternallyConfirmed", "amount": 100,
 "tenderedAmount": 100, "changeAmount": 0, "reference": "AUTH-778899", "cardLast4": "4242" }, { "method": "Cash", "status":
@@ -114,10 +114,12 @@ and `GET /api/pos/card-incidents?status=ReversalRequired` → `{ "terminalCode":
 
 Return of one tea from that sale — `POST /api/pos/returns` with `lines: [{ saleLineId, quantity: 1, condition:
 "FitForResale" }]`, `refunds: [{ method: "Cash", amount: 10.83 }]` → `{ "number": "CAI-T1-R-2026-000001", "saleNumber":
-"CAI-T1-2026-000001", "lines": [{ "quantity": 1, "unitPrice": 10, "discountPercent": 5, "taxRate": 14, "netAmount": 9.5,
-"taxAmount": 1.33, "totalAmount": 10.83 }], "totalAmount": 10.83, "refunds": [{ "method": "Cash", "status": "Settled",
+"CAI-T1-2026-000001", "lines": [{ "quantity": 1, "unitPrice": 10, "unitPriceWithTax": 11.4, "discountPercent": 5, "taxRate":
+14, "netAmount": 9.5, "taxAmount": 1.33, "totalAmount": 10.83 }], "taxBreakdown": [{ "taxTreatment": "Standard", "taxRate":
+14, "netAmount": 9.5, "taxAmount": 1.33 }], "totalAmount": 10.83, "refunds": [{ "method": "Cash", "status": "Settled",
 "amount": 10.83 }], "cashRefundAmount": 10.83, "stockDocumentNumber": "PSR-CAI-2026-000001" }`. The second unit also
-refunds 10.83 (cumulative shares; the last unit takes the rest).
+refunds 10.83 (cumulative shares; the last unit takes the rest). The sale then reports `refundedCashAmount` /
+`refundedCardAmount`, so a return screen proposes refunds within what each method may still give back.
 
 Shift report while open (X) → `{ "number": "CAI-T1-SH-2026-000001", "status": "Open", "openingFloat": 200,
 "cashSalesAmount": 124.06, "cashRefundsAmount": 21.66, "cashInAmount": 0, "cashOutAmount": 0, "expectedCash": 302.4,

@@ -1,12 +1,14 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-29 (POS V1 backend implemented and verified on `feature/pos`, not merged; `main` holds Sales V1).
+Last verified: 2026-10-29 (POS V1 accepted on `WarehouseERP_Dev` through the browser; `feature/pos` and the frontend's
+`fix/pos-integration` pushed, neither merged; `main` holds Sales V1).
 Read this first; don't re-analyse the repository.
 
 ## Where things stand
-- **POS V1 backend is complete on `feature/pos` (2026-10-29), cut from `main` at `ea122c1`; not pushed, not merged.**
-  Merging into `main`, pushing, and applying Migrations 11–13 to `WarehouseERP_Dev` all wait for the owner. Details in
-  *POS status* below.
+- **POS V1 is complete and accepted on the dev database (2026-10-29), not merged.** Backend `feature/pos` (cut from
+  `main` at `ea122c1`) and frontend `fix/pos-integration` (cut from the web `main` at `e9da46f`, Lovable's POS screens)
+  are pushed with tracking. Migrations 11–13 are applied to `WarehouseERP_Dev`. Merging either branch into `main` waits
+  for the owner. Details in *POS status* below.
 - **`main` holds Sales V1 (2026-10-29).** With the owner's approval after the acceptance on the dev database, `main`
   was fast-forwarded from `60bb17c` to `0eb88af`, the tip of `feature/sales` (cut from `main` at `60bb17c`; it stays on
   the remote for reference). The frontend's `main` was fast-forwarded from `c958638` to `526a7e6` (`fix/sales-api-contract`).
@@ -78,10 +80,53 @@ Read this first; don't re-analyse the repository.
   (git-excluded): `e2e-pos-host.ps1` + `e2e-pos.mjs`, `pos-migration-check.ps1`, `drop-db.ps1` (now also accepts
   `E2E_Pos`). SQL Server tests and scripts were run in the app's terminal (outside the sandbox), as the LocalDB caveat
   below requires; the dev API stayed healthy.
-- **Frontend:** not built yet. `docs/modules/POS/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` are ready (till screen,
-  receipt, returns, back-office pages, Inventory `PosSale`/`PosReturn` labels, the Sales product taxes page).
-- **Not done / next (owner's call):** apply Migrations 11–13 to `WarehouseERP_Dev` after a copy-only backup and restart the
-  dev API on the `feature/pos` build; classify products; Lovable builds the screens; acceptance; merge.
+- **Contract fix after the frontend review (`2665824`, additive, OpenAPI regenerated, 4 properties):** `PosSaleResponse` gained
+  `refundedCashAmount` / `refundedCardAmount` (the till proposes refunds within each method's cap);
+  `PosReturnResponse` gained `taxBreakdown` and `PosReturnLineResponse` `unitPriceWithTax` (a return receipt prints like a
+  sale receipt). `FRONTEND_HANDOFF.md` samples updated.
+- **Dev database (2026-10-29, owner-authorised):** copy-only checksummed backup
+  `D:\work\WarehouseERP\db-backups\WarehouseERP_Dev_before_Migration11_20261029_181849.bak`, `RESTORE VERIFYONLY` valid,
+  test restore matched all 124 tables' row counts (copy dropped); then `dotnet ef database update` applied exactly
+  Migrations 11–13 (17 new tables, only `__EFMigrationsHistory` among existing tables changed). Logs and scripts:
+  `.artifacts/dev-db-backup-pos.*`, `dev-db-migrate-pos.*`. The dev API runs the `feature/pos` build (app terminal);
+  readiness 200, 401 unauthenticated, HTTPS, live OpenAPI equal to the committed one (except the `servers` block).
+- **Acceptance data on the dev database (labelled, keep or deactivate):** products `POS-ACC-STD` (Standard 14%, PCS 10 /
+  CTN×12 110, EAN `6221234500027` / `…034`), `POS-ACC-ZERO` (ZeroRated, 5, `…041`), `POS-ACC-EXM` (Exempt, 3.50,
+  `…058`), `POS-ACC-NOTAX` (unclassified on purpose, 7); receipt `RCV-CAI-2026-000007` into STORE; terminals
+  `POS-ACC-T1` (cash+card) and `POS-ACC-T2` (cash) in STORE; roles `POS-ACC *` and users `posacc.*` (cashier1/2, viewer,
+  supervisor, back office scoped to STORE; outsider scoped to MAIN). Their generated passwords are only in
+  `.artifacts/pos-acc-users.json` (git-excluded). All acceptance shifts are closed, the count and the sales order used
+  for the checks are cancelled, and the one card incident is resolved.
+- **Browser acceptance (2026-10-29, `http://localhost:8082`, admin session):** product taxes page; terminal registered
+  through the UI (only selling warehouses offered); shift opened with a 500 float; barcode scans of piece and carton
+  (same barcode twice merges), quantities, server-quoted VAT-inclusive prices for Standard/ZeroRated/Exempt; unclassified
+  item refused; line discount capped at 10%; cash sale with change (200 → 44.44); split card 20 (simulated reference
+  `SIM-ACC-0001`, last 4) + cash 10 with change 2.20, card amount above the due blocked, reference fields only after the
+  pre-charge check; idempotent retry (first answer dropped in the page, Retry sent the same key, one sale, one receipt);
+  receipt with VAT per rate and "not a tax invoice"; copy printed as "COPY #1"; partial return 1 tea + 1 sugar refunded
+  16.40 cash (card refund on a cash sale blocked) with its own receipt; cash in 50 / out 100; X report; card charged
+  then stock taken by another sale → "reverse the card" with incident, cart kept, incident resolved in the UI; close
+  counted 600.00 vs 600.46 with a note; Z report; English/LTR shift page. Stock and moving-average valuation checked
+  for the sale (`PSL-`) and the return at the sold cost (`PSR-`). Receipts were read from the print area (the browser
+  print dialog was stubbed after the first one froze the hidden pane).
+- **API-only acceptance on the dev database (multi-user, `.artifacts/acc-pos-dev.mjs`, 31/31):** MAIN-scoped cashier sees
+  and opens nothing in STORE (403 `Pos.Access.WarehouseDenied`); a user with `pos.read` only cannot open a shift or check
+  out; one shift per terminal; no selling on another cashier's shift; discount without `pos.discounts.apply` 403;
+  unclassified 422; short quote flagged and 422 `Inventory.Stock.Insufficient`; a confirmed Sales order's reservation is
+  never sold (only the 2 unreserved units sell; reservation unchanged; released on cancel); a started count freezes the
+  till (`Inventory.StockCount.ScopeFrozen`, nothing recorded); two tills racing for the last 13 units: exactly one sells,
+  nothing negative; copies need `pos.receipts.reprint`; a supervisor's forced close needs a note; no sale on a closed
+  shift. Earlier modules' screens (Sales, Purchasing, Inventory lists) and the POS back-office pages render without
+  errors.
+- **Frontend (`fix/pos-integration`):** Lovable built the POS screens on the web `main` (`e9da46f`); the review against the
+  prompt, handoff and OpenAPI found field-name mismatches, fixed in `cdc2cc8` (API names for shift/cash/event fields,
+  return receipts, per-method refund caps, terminal code rule, translations, tests) and `fd44db5` (the pre-charge check
+  stops on short stock; the Z report printed nowhere because closing unmounted the view owning the printer).
+  `src/routeTree.gen.ts` shows a line-ending-only change: never commit it.
+- **Known gaps (not defects, not fixed):** a till refund method above its cap disables Confirm without a message; error
+  `detail` texts from the API are English (the screens show the translated `err.<code>` first); page titles are English
+  in every module.
+- **Not done / next (owner's call):** merge `feature/pos` and `fix/pos-integration` into their `main`s.
 - **Production prerequisites (ADR 0019):** Egyptian ETA e-Receipt (registration, EGS/GS1 codes, device registration,
   integration) where required — V1 receipts are internal commercial receipts; reviewed tax classification of every
   product sold at tills; the accountant approves cost treatment and the handling of card incidents and cash
@@ -344,8 +389,8 @@ Read this first; don't re-analyse the repository.
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
 - The frontend's `main` is at `526a7e6` with the Sales screens (and Purchasing, address lookups before them). On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
-- **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). **POS V1** was started on
-  the owner's request (2026-10-29) and its backend is on `feature/pos` (see *POS status*). Start the next module only
+- **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). **POS V1** is accepted on
+  the dev database: backend `feature/pos`, frontend `fix/pos-integration`, both pushed, not merged (see *POS status*). Start the next module only
   when the owner asks, from `main` on its own `feature/...` branch, decisions first. Don't start Accounting unasked.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
@@ -365,10 +410,14 @@ Read this first; don't re-analyse the repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-29, POS V1 on `feature/pos`, LocalDB, `-m:1`)
+## Latest verified tests (2026-10-29, POS V1 acceptance, `feature/pos` at `2665824`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
 | 259/259 | 114/114 | 275/275 |
+
+Frontend `fix/pos-integration` (`fd44db5`): Vitest 112/112, `tsc --noEmit` clean, `vite build` succeeds, ESLint only
+Prettier formatting in Lovable's files and two older fast-refresh warnings in `Receipt.tsx`. POS dev acceptance: browser
+flow above, API 31/31 (`.artifacts/acc-pos-dev.out`, `acc-pos-dev-tail.out`).
 
 Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. All thirteen migrations applied to a fresh LocalDB
 database, Migrations 11–13 rolled back and re-applied. POS E2E 60/60 (above). Earlier (Sales, 2026-10-29): 242 / 99 / 252,
