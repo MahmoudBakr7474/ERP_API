@@ -1,19 +1,20 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-29 (Purchasing V1 with address lookups on `feature/purchasing`, pushed, final acceptance done;
-not merged into `main`). Read this first; don't re-analyse the repository.
+Last verified: 2026-10-29 (Purchasing V1 with address lookups accepted and merged into `main` with the owner's
+approval; next module: Sales). Read this first; don't re-analyse the repository.
 
 ## Where things stand
-- **`main` holds Identity, Organization, Catalog and Inventory V1 (2026-10-28).** With the owner's approval it was
-  fast-forwarded from `1a1aba1` to the tip of `feature/inventory` (Inventory code, tests, docs and this handoff).
+- **`main` holds Identity, Organization, Catalog, Inventory and Purchasing V1 (2026-10-29).** On 2026-10-29, with the
+  owner's approval after the final acceptance, it was fast-forwarded from `c791868` to the tip of `feature/purchasing`
+  (Purchasing, the address lookups, tests, docs and this handoff). On 2026-10-28 it was fast-forwarded from `1a1aba1` to the tip of `feature/inventory` (Inventory code, tests, docs and this handoff).
   Earlier on 2026-10-28 it went from `383d5be` to the tip of `feature/catalog` (Catalog code `adf4a7d`, docs
   `bb536a0`), and on 2026-10-27 from `67a7473` to `4b1048d` (`feature/organization`, which includes
   `feature/identity-completion`). There are no merge commits.
 - **Remote (2026-10-28):** `origin` = `https://github.com/MahmoudBakr7474/ERP_API.git` (the owner's GitHub, used to work
   from other machines and from Claude in the cloud). `main` and `feature/inventory` are pushed with upstream tracking;
   never force-push, never push `launchSettings.json`.
-- **Current branch: `feature/purchasing`** (cut from `main` at `c791868`; pushed to `origin/feature/purchasing`, last
-  push 2026-10-29 at `28d351d` plus the acceptance handoff after it; not merged). **The owner accepted the Purchasing backend for this milestone on 2026-10-29**:
+- **`feature/purchasing`** (cut from `main` at `c791868`) is merged into `main` (fast-forward, 2026-10-29) and stays on
+  the remote for reference. **The owner accepted the Purchasing backend for this milestone on 2026-10-29**:
   * `16a15ce` global self-approval rule (`CLAUDE.md`), stale "another user approves" comments fixed, README approval
     rows corrected, `InventorySelfApprovalTests` (no Inventory behaviour change: it already allowed it since `29cbdb3`);
   * `84e8c19` Inventory: `IPurchaseStockPosting`, stock document types `PurchaseReceipt`/`PurchaseReturn`,
@@ -22,7 +23,7 @@ not merged into `main`). Read this first; don't re-analyse the repository.
   * the docs commit with ADR 0016, `docs/modules/Purchasing/*` and this handoff;
   * address lookups (owner request 2026-10-29, ADR 0017): `6f81a99` Organization countries/governorates/cities,
     `3e8721c` supplier addresses name a city, `48cdff5` `Migration08_Geography`, `dc31696` tests and OpenAPI, then docs.
-  Merging into `main` needs the owner's approval.
+  * acceptance: `ec91836` supplier timestamps read back as UTC, then this handoff.
 - `feature/inventory` (cut from `main` at `1a1aba1`) is merged and stays on the remote for reference:
   * Milestone A: `5dfdf1a` (code), `574217c` (handoff).
   * Milestone B: `cc75d3d` (code, Migration05, tests), `171f9b1` (ADR 0015), `4c3170d` (transfer destinations lookup,
@@ -41,7 +42,7 @@ not merged into `main`). Read this first; don't re-analyse the repository.
 - **Decisions:** approved by the owner on 2026-10-28 with corrections: `docs/modules/Purchasing/V1_DECISIONS.md`. How
   the code implements them: `docs/adr/0016-purchasing-module.md`. Self-approval is allowed everywhere (owner's
   permanent rule, `CLAUDE.md` *Document approvals*); the corrections' maker-checker wording is superseded by it.
-- **Backend complete and verified (2026-10-29), waiting for the owner's review:**
+- **Backend complete, verified and accepted (2026-10-29); merged into `main`:**
   * suppliers (temporal, unique code and registrations per jurisdiction, similar-name warning), optional purchase
     requests that orders draw on, purchase orders (one warehouse, base currency, line discount and recoverable VAT,
     approval policy seeded required), goods receipts posted to stock through Inventory with an `Idempotency-Key`,
@@ -231,13 +232,12 @@ not merged into `main`). Read this first; don't re-analyse the repository.
   - Radix `DirectionProvider` makes RTL correct.
   - Every module's Lovable prompt must tell Lovable to follow those conventions. Where the older
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
-- The frontend's `main` is at `4a3beec` with the accepted Inventory screens. On this machine the frontend is cloned to
+- The frontend's `main` is at `edbfea3` with the Purchasing screens and the address lookups. On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
-- **Next step: the Purchasing screens.** The owner pastes `docs/modules/Purchasing/LOVABLE_PROMPT.md` (section 0
-  first: Inventory's `PurchaseReceipt`/`PurchaseReturn`/`sourceDocumentId`) into Lovable on the frontend's `main`;
-  then pull it locally, run Vitest, `tsc`, the build, and targeted end-to-end acceptance through the Vite proxy against
-  the dev API. Neither repository is merged into `main` without the owner's approval. Don't start Sales, POS or
-  Accounting.
+- **Next module: Sales (not started).** Start it from `main` on its own `feature/sales` branch when the owner asks, with
+  its business decisions for the owner's approval first (as for Purchasing). Reuse other modules only through their
+  `*.Contracts`; customer addresses can use Organization's `IGeographyDirectory` (ADR 0017). Neither repository is
+  merged into `main` without the owner's approval. Don't start POS or Accounting.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
