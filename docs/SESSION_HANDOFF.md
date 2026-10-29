@@ -59,9 +59,11 @@ not merged). Read this first; don't re-analyse the repository.
   * 40 endpoints under `/api/sales`; twelve permissions in `SalesPermissions.All`; self-approval everywhere.
 - **Schema:** `Migration09_InventoryReservations` (two `inventory` tables; type and source checks widened to 12) and
   `Migration10_Sales` (`sales` schema, 22 tables, 4 temporal, settings seed). Verified on a fresh LocalDB database:
-  all ten applied, rolled back to Migration08 and re-applied, `has-pending-model-changes` none. **Not applied to
-  `WarehouseERP_Dev`**: do it only with the owner's go-ahead, after a copy-only backup, then restart the dev API on the
-  `feature/sales` build.
+  all ten applied, rolled back to Migration08 and re-applied, `has-pending-model-changes` none. **Applied to
+  `WarehouseERP_Dev` on 2026-10-29** with the owner's authorization, after a verified copy-only backup
+  (`db-backups\WarehouseERP_Dev_before_Migration09_20261029_132609.bak`: `RESTORE VERIFYONLY` valid, test-restored and
+  compared, 96 tables identical): only 09–10 applied, no existing row changed, 28 tables added. The dev API (terminal tab
+  "ERP dev API", same `dotnet run` command) runs the `feature/sales` build; its live OpenAPI equals the committed one.
 - **E2E (2026-10-29):** the real host over HTTPS with cookie sessions on throwaway `WarehouseERP_E2E_Sales_*`
   databases (all dropped): a scoped rep approving their own order and return, a clerk (403 on approve) and an approver
   of another warehouse (403); quotation → order (reserved) → delivery from two locations with an idempotent retry →
@@ -73,8 +75,27 @@ not merged). Read this first; don't re-analyse the repository.
   migration on SQL Server; rewritten before the migration was committed. Four Sales contract names collided with
   Purchasing's OpenAPI schema names (`DocumentEventResponse`, `LinkedDocumentResponse`, `InvoiceLineRequest`,
   `ReturnLineRequest`) and now carry a `Sales` prefix.
-- **Frontend:** not built. `docs/modules/Sales/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` are ready (they follow the
-  frontend's `AGENTS.md` UI conventions and start with Inventory's compatibility changes).
+- **Frontend:** Lovable built the screens (web `main` `c958638`). Contract fixes are on the web branch
+  `fix/sales-api-contract` (`526a7e6`, pushed, not merged): `customerType`, the two settings flags, exposure fields,
+  invoice `customerTaxNumber`, the draft order's shipping address kept on edit, cancel without an ignored reason, id-only
+  list filters, return credit totals.
+- **Acceptance on `WarehouseERP_Dev` (2026-10-29), signed in as `admin` in the app's browser pane, through the Vite
+  proxy.** Test records are labelled `SALES-ACC*` / `SALACC*` (product `SALES-ACC-01`, location `SALSHELF` in STORE,
+  customer `SALACC-C1`, roles `SALES-ACC clerk`/`outsider`, users `salacc-clerk`/`salacc-outsider`, both deactivated).
+  * Browser: customer with address created and edited (registration kept), price set, quotation issued and converted,
+    order confirmed (reserved 4), delivery from DEFAULT + SALSHELF posted, reservations page (consumed 3, remaining 1),
+    invoice posted (20.52), return submitted and approved by its creator (credit 10.26, back at cost 12.00), order
+    closed (reservation released), another order reduced then cancelled, 50 PCS refused for stock (Arabic message),
+    settings saved without losing flags, draft order edit keeps its address, English/LTR pages without raw keys.
+  * API only (in the signed-in session): same `Idempotency-Key` replays one delivery (stock out once), key reused 409,
+    no key 400; clerk 403 on approve/settings/prices/manual price; MAIN-scoped approver 403 `WarehouseDenied` and an
+    empty list; Inventory issue and receipt, Purchasing order approved and received; valuation 13 × 6 = 78;
+    reconciliation consistent for the whole database.
+  * Frontend checks: `tsc` clean, Vitest 98/98, `vite build` succeeds; ESLint has no new errors in Sales code (the
+    translations file's prettier formatting and CRLF noise are pre-existing).
+  * Remaining cosmetic items (not blocking): the quotation/order submit button reads "send for approval" even when
+    nothing needs approval; English mode shows customers' Arabic names in headers; the picking dialog's stock hint
+    for "Default" lists all locations unlabelled.
 - **Production prerequisites (ADR 0018):** Egyptian e-invoicing (ETA) before production use; the accountant approves
   the cost and credit treatment; Inventory's and Purchasing's prerequisites still apply.
 - **Backlog (not started):** backorders, reservation expiry (POS), reserving at quotation time, quarantine returns of
@@ -278,10 +299,8 @@ not merged). Read this first; don't re-analyse the repository.
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
 - The frontend's `main` is at `edbfea3` with the Purchasing screens and the address lookups. On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
-- **Sales: backend on `feature/sales`, waiting for the owner's acceptance** (see *Sales status*). Next, on the owner's
-  word: apply Migrations 09–10 to `WarehouseERP_Dev` after a backup, restart the dev API on the branch, have Lovable
-  build the screens from `docs/modules/Sales/LOVABLE_PROMPT.md`, then accept and merge. Neither repository is merged
-  into `main` without the owner's approval. Don't start POS or Accounting.
+- **Sales: backend `feature/sales` and web `fix/sales-api-contract` accepted end to end on the dev database; merging
+  both into their `main` waits for the owner's explicit approval** (see *Sales status*). Don't start POS or Accounting.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
