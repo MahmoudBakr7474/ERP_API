@@ -46,4 +46,39 @@ internal sealed class ProductCatalog(DbContext db) : IProductCatalog
                 .Select(ToUnitInfo)
                 .ToListAsync(ct);
     }
+
+    public async Task<IReadOnlyList<ProductUnitInfo>> FindUnitsOfProductsAsync(IReadOnlyCollection<Guid> productIds, CancellationToken ct)
+    {
+        var ids = productIds.Distinct().ToArray();
+        return ids.Length == 0
+            ? []
+            : await db.Set<ProductUnit>().AsNoTracking()
+                .Where(x => ids.Contains(x.ProductId))
+                .OrderBy(x => x.ProductId).ThenBy(x => x.ConversionFactor)
+                .Select(ToUnitInfo)
+                .ToListAsync(ct);
+    }
+
+    public Task<ProductUnitInfo?> FindUnitByBarcodeAsync(string barcode, CancellationToken ct) =>
+        db.Set<ProductBarcode>().AsNoTracking()
+            .Where(b => b.Barcode == barcode && b.IsActive
+                        && b.ProductUnit.IsActive && b.ProductUnit.Product.IsActive && b.ProductUnit.Unit.IsActive)
+            .Select(b => b.ProductUnit)
+            .Select(ToUnitInfo)
+            .SingleOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyList<ProductInfo>> SearchActiveAsync(string text, int take, CancellationToken ct)
+    {
+        var search = text.Trim();
+        if (search.Length == 0 || take <= 0)
+            return [];
+        return await db.Set<Product>().AsNoTracking()
+            .Where(x => x.IsActive)
+            .Where(x => x.SKU.Contains(search) || x.NameAr.Contains(search) || (x.NameEn != null && x.NameEn.Contains(search))
+                        || x.Units.Any(u => u.Barcodes.Any(b => b.Barcode == search && b.IsActive)))
+            .OrderBy(x => x.SKU)
+            .Take(take)
+            .Select(ToInfo)
+            .ToListAsync(ct);
+    }
 }

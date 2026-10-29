@@ -14,13 +14,14 @@ namespace WarehouseERP.Sales.Infrastructure.Persistence;
 // save write the row, check the version the client sent and renew it.
 internal static class SalesSaves
 {
-    // Unique indexes whose violation is an expected business conflict. Names come from Migration10.
+    // Unique indexes whose violation is an expected business conflict. Names come from Migration10 and Migration12.
     private static readonly Dictionary<string, Error> KnownUniqueConstraints = new(StringComparer.Ordinal)
     {
         ["UX_Customers_Code"] = CustomerErrors.CodeTaken,
         ["UX_Customers_TaxNumber"] = CustomerErrors.TaxNumberTaken,
         ["UX_Customers_CommercialRegistration"] = CustomerErrors.CommercialRegistrationTaken,
         ["UX_SalesPrices_ProductUnit"] = PriceErrors.AlreadyPriced,
+        ["UX_ProductTaxes_Product"] = ProductTaxErrors.AlreadyClassified,
     };
 
     public static Task<Result> SaveAsync(DbContext db, CancellationToken ct)

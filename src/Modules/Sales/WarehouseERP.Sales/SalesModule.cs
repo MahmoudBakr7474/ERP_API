@@ -10,6 +10,7 @@ using WarehouseERP.Sales.Application.Abstractions.Interfaces.Invoices;
 using WarehouseERP.Sales.Application.Abstractions.Interfaces.Orders;
 using WarehouseERP.Sales.Application.Abstractions.Interfaces.Posting;
 using WarehouseERP.Sales.Application.Abstractions.Interfaces.Prices;
+using WarehouseERP.Sales.Application.Abstractions.Interfaces.ProductTaxes;
 using WarehouseERP.Sales.Application.Abstractions.Interfaces.Quotations;
 using WarehouseERP.Sales.Application.Abstractions.Interfaces.Returns;
 using WarehouseERP.Sales.Application.Abstractions.Interfaces.Settings;
@@ -18,6 +19,7 @@ using WarehouseERP.Sales.Application.Contracts.Deliveries;
 using WarehouseERP.Sales.Application.Contracts.Invoices;
 using WarehouseERP.Sales.Application.Contracts.Orders;
 using WarehouseERP.Sales.Application.Contracts.Prices;
+using WarehouseERP.Sales.Application.Contracts.ProductTaxes;
 using WarehouseERP.Sales.Application.Contracts.Quotations;
 using WarehouseERP.Sales.Application.Contracts.Returns;
 using WarehouseERP.Sales.Application.Features.Customers.CreateCustomer;
@@ -51,9 +53,13 @@ using WarehouseERP.Sales.Application.Features.Orders.ReduceSalesOrderLine;
 using WarehouseERP.Sales.Application.Features.Orders.RejectSalesOrder;
 using WarehouseERP.Sales.Application.Features.Orders.SubmitSalesOrder;
 using WarehouseERP.Sales.Application.Features.Orders.UpdateSalesOrder;
+using WarehouseERP.Sales.Application.Features.Prices;
 using WarehouseERP.Sales.Application.Features.Prices.ListSalesPrices;
 using WarehouseERP.Sales.Application.Features.Prices.RemoveSalesPrice;
 using WarehouseERP.Sales.Application.Features.Prices.SetSalesPrice;
+using WarehouseERP.Sales.Application.Features.ProductTaxes.ListProductTaxes;
+using WarehouseERP.Sales.Application.Features.ProductTaxes.RemoveProductTax;
+using WarehouseERP.Sales.Application.Features.ProductTaxes.SetProductTax;
 using WarehouseERP.Sales.Application.Features.Quotations.ApproveSalesQuotation;
 using WarehouseERP.Sales.Application.Features.Quotations.CancelSalesQuotation;
 using WarehouseERP.Sales.Application.Features.Quotations.ConvertSalesQuotation;
@@ -84,9 +90,11 @@ using WarehouseERP.SharedKernel.Results;
 namespace WarehouseERP.Sales;
 
 // Customers, the price list, quotations, orders, deliveries, invoices and customer returns (docs/modules/Sales and ADR
-// 0018). Stock is reserved, delivered and taken back only through Inventory's IStockReservations and ISalesStockPosting;
+// 0018), and products' tax classifications (ADR 0019). Stock is reserved, delivered and taken back only through
+// Inventory's IStockReservations and ISalesStockPosting;
 // products and units come from Catalog, warehouses, locations, branches, the company and address lookups from Organization,
-// display names from Identity, all through their Contracts. The host calls AddSalesModule and MapSalesEndpoints;
+// display names from Identity, all through their Contracts. POS prices lines through ISalesPricing and names registered
+// customers through ICustomerDirectory. The host calls AddSalesModule and MapSalesEndpoints;
 // ITransactionRunner comes from Persistence.
 public static class SalesModule
 {
@@ -109,6 +117,10 @@ public static class SalesModule
         services.AddQueryHandler<ListSalesPricesQuery, PagedResult<SalesPriceResponse>, ListSalesPricesHandler>();
         services.AddCommandHandler<SetSalesPriceCommand, Done, SetSalesPriceHandler>();
         services.AddCommandHandler<RemoveSalesPriceCommand, Done, RemoveSalesPriceHandler>();
+
+        services.AddQueryHandler<ListProductTaxesQuery, PagedResult<ProductTaxResponse>, ListProductTaxesHandler>();
+        services.AddCommandHandler<SetProductTaxCommand, Done, SetProductTaxHandler>();
+        services.AddCommandHandler<RemoveProductTaxCommand, Done, RemoveProductTaxHandler>();
 
         services.AddCommandHandler<CreateSalesQuotationCommand, Guid, CreateSalesQuotationHandler>();
         services.AddCommandHandler<UpdateSalesQuotationCommand, string, UpdateSalesQuotationHandler>();
@@ -163,6 +175,10 @@ public static class SalesModule
         services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.AddScoped<ISalesSettingsRepository, SalesSettingsRepository>();
         services.AddScoped<ISalesPriceRepository, SalesPriceRepository>();
+        services.AddScoped<IProductTaxRepository, ProductTaxRepository>();
+        services.AddScoped<IProductTaxReadStore, ProductTaxReadStore>();
+        services.AddScoped<ISalesPricing, SalesPricing>();
+        services.AddScoped<ICustomerDirectory, CustomerDirectory>();
         services.AddScoped<ISalesQuotationRepository, SalesQuotationRepository>();
         services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
         services.AddScoped<ISalesDeliveryRepository, SalesDeliveryRepository>();
@@ -188,6 +204,7 @@ public static class SalesModule
         app.MapCustomerEndpoints()
             .MapSalesSettingsEndpoints()
             .MapSalesPriceEndpoints()
+            .MapProductTaxEndpoints()
             .MapSalesQuotationEndpoints()
             .MapSalesOrderEndpoints()
             .MapSalesDeliveryEndpoints()

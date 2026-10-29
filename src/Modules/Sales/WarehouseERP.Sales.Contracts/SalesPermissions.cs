@@ -18,8 +18,8 @@ public static class SalesPermissions
     public const string CreditManage = "sales.credit.manage";
 
     /// <summary>
-    /// Maintain the sales price list, and set a manual selling price on a quotation or order line (where the list has no
-    /// price, or instead of it).
+    /// Maintain the sales price list and products' tax classifications (which POS prices with), and set a manual selling
+    /// price on a quotation or order line (where the list has no price, or instead of it).
     /// </summary>
     public const string PricesManage = "sales.prices.manage";
 
