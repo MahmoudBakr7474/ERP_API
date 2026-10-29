@@ -13,6 +13,9 @@ internal sealed class SupplierConfiguration : IEntityTypeConfiguration<Supplier>
     public void Configure(EntityTypeBuilder<Supplier> b)
     {
         TemporalMasterMapping.Map(b, "Suppliers", "purchasing");
+        // Read back as UTC, like every Purchasing timestamp, so the API sends them with "Z".
+        b.Property(x => x.CreatedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
         b.ToTable(t => t.HasCheckConstraint("CK_Suppliers_PaymentTerms", "[PaymentTermDays] BETWEEN 0 AND 365"));
         b.Property(x => x.Code).HasMaxLength(20).IsUnicode(false);
         b.Property(x => x.NameAr).HasMaxLength(200);

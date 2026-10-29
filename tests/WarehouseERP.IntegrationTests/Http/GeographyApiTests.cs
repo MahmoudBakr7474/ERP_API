@@ -201,4 +201,25 @@ public sealed class GeographyApiTests(DatabaseFixture fx) : IAsyncLifetime
         await (await client.PostJsonAsync(PurchasingTesting.Suppliers, Supplier(DatabaseFixture.Code("S"), "EG", Address(city))))
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Purchasing.Supplier.CityNotFound");
     }
+
+    [Fact]
+    public async Task Supplier_timestamps_read_back_as_UTC()
+    {
+        var client = Admin();
+        var id = await client.PostJsonAsync(PurchasingTesting.Suppliers, Supplier(DatabaseFixture.Code("S"), "EG")).CreatedIdAsync();
+        var supplier = await client.GetJsonAsync($"{PurchasingTesting.Suppliers}/{id}");
+        await client.PutJsonAsync($"{PurchasingTesting.Suppliers}/{id}", new
+        {
+            nameAr = "مورد", nameEn = (string?)null, countryCode = "EG", taxRegistrationNumber = (string?)null,
+            commercialRegistrationNumber = (string?)null, commercialRegistry = (string?)null, paymentTermDays = 0, phone = (string?)null,
+            email = (string?)null, notes = (string?)null, contacts = Array.Empty<object>(), addresses = Array.Empty<object>(),
+            rowVersion = supplier.GetProperty("rowVersion").GetString(),
+        });
+
+        var updated = await client.GetJsonAsync($"{PurchasingTesting.Suppliers}/{id}");
+
+        // Without the kind the JSON has no "Z" and browsers read the time as local.
+        Assert.EndsWith("Z", updated.GetProperty("createdAtUtc").GetString());
+        Assert.EndsWith("Z", updated.GetProperty("updatedAtUtc").GetString());
+    }
 }
