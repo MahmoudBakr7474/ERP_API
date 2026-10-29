@@ -1,7 +1,7 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-29 (Purchasing V1 backend complete on `feature/purchasing`, waiting for the owner's review;
-not merged). Read this first; don't re-analyse the repository.
+Last verified: 2026-10-29 (Purchasing V1 with address lookups on `feature/purchasing`, pushed, final acceptance done;
+not merged into `main`). Read this first; don't re-analyse the repository.
 
 ## Where things stand
 - **`main` holds Identity, Organization, Catalog and Inventory V1 (2026-10-28).** With the owner's approval it was
@@ -12,8 +12,8 @@ not merged). Read this first; don't re-analyse the repository.
 - **Remote (2026-10-28):** `origin` = `https://github.com/MahmoudBakr7474/ERP_API.git` (the owner's GitHub, used to work
   from other machines and from Claude in the cloud). `main` and `feature/inventory` are pushed with upstream tracking;
   never force-push, never push `launchSettings.json`.
-- **Current branch: `feature/purchasing`** (cut from `main` at `c791868`; pushed to `origin/feature/purchasing` on
-  2026-10-29; not merged). **The owner accepted the Purchasing backend for this milestone on 2026-10-29**:
+- **Current branch: `feature/purchasing`** (cut from `main` at `c791868`; pushed to `origin/feature/purchasing`, last
+  push 2026-10-29 at `28d351d` plus the acceptance handoff after it; not merged). **The owner accepted the Purchasing backend for this milestone on 2026-10-29**:
   * `16a15ce` global self-approval rule (`CLAUDE.md`), stale "another user approves" comments fixed, README approval
     rows corrected, `InventorySelfApprovalTests` (no Inventory behaviour change: it already allowed it since `29cbdb3`);
   * `84e8c19` Inventory: `IPurchaseStockPosting`, stock document types `PurchaseReceipt`/`PurchaseReturn`,
@@ -69,12 +69,29 @@ not merged). Read this first; don't re-analyse the repository.
   existing supplier addresses converted (and their history row), 20 stock documents untouched, still temporal. The dev
   API was restarted on that build. Note: from this session's sandboxed shell LocalDB may look stopped once it idled;
   run database commands in the app's terminal (outside the sandbox).
-- **Frontend:** Lovable built the Purchasing screens (`1971216` on the web repo's `main`). Local branch
-  `fix/purchasing-api-contract` in `warehouse-erp-web` (not pushed): `32736df` property names matched to the API
-  (supplierName, productName, paymentTermDays, countryCode, addressType, linked `documentType`, `withCreditClaim`), then
-  the address lookups (cascading searchable pickers, `/organization/geography`). Pushing it to `main` syncs to Lovable:
-  owner's decision. API acceptance through the Vite proxy on the dev DB: 31/31, request bodies 11/11, lookups 7/7.
-  Browser checks still need a signed-in session (credentials are not typed by the agent).
+- **Frontend (web repo `main`, pushed 2026-10-29 at `edbfea3`, synced to Lovable):** Lovable built the Purchasing
+  screens (`1971216`); on top of it, fast-forwarded with the owner's approval: `32736df` property names matched to the
+  API (supplierName, productName, paymentTermDays, countryCode, addressType, linked `documentType`, `withCreditClaim`)
+  and `edbfea3` the address lookups (cascading searchable pickers, `/organization/geography`). The local branch
+  `fix/purchasing-api-contract` is merged into it. API acceptance through the Vite proxy on the dev DB: 31/31, request
+  bodies 11/11, lookups 7/7; browser checks signed in as `admin` in the app's browser pane (the owner signs in; the
+  agent never types credentials).
+- **Final acceptance (2026-10-29), on the dev DB through the Vite proxy and the app's browser pane:**
+  * Migration08 kept existing data: the pre-Migration08 backup restored as a temporary database (dropped after) and
+    compared table by table: 90 tables, none with fewer rows; the only pre-migration ids not current are one address
+    and one contact of `E2ESUP01`, replaced by a supplier edit and present in the history tables.
+  * Contracts: frontend types and request bodies match the API for suppliers, addresses, contacts, countries,
+    governorates and cities (no field read that the API doesn't send; bodies match the OpenAPI request schemas).
+  * Browser (admin): supplier created with country → governorate → city, duplicate code shown on the field, edited
+    (governorate change clears the city), reloaded and persisted; lookups page, deactivated city hidden from pickers.
+  * Regression smoke 25/25: supplier with address, 403s (clerk create/approve, buyer lookups, no-read user), 400/422
+    (missing or unknown city, country not listed), order self-approved, partial receipt with idempotent retry (+6,
+    value +600.00), invoice posted (684.00, value unchanged), return approved (claim 228.00, out at the moving
+    average), valuation = balances, reconciliation consistent.
+  * One bug fixed: supplier `createdAtUtc`/`updatedAtUtc` came back without "Z" (shown 3 hours early); the supplier
+    mapping now reads them as UTC like every Purchasing timestamp (no schema change), with a test.
+  * Caveat: running `sqlcmd`/LocalDB from the agent's sandboxed shell can start or end the shared LocalDB instance and
+    cut the dev API off (503); run database commands and the integration tests in the app's terminal.
 - **Production prerequisite:** the accountant approves the provisional cost treatment (receipts at the order's net
   price, invoice variances kept without revaluation, returns at the moving average). ADR 0016 *Not done* lists the
   deferred backlog (foreign currency, revaluation/landed cost, credit notes, payments/AP/GL, header discounts,
@@ -242,11 +259,11 @@ not merged). Read this first; don't re-analyse the repository.
 ## Latest verified tests (2026-10-29, Purchasing + address lookups on `feature/purchasing`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 236/236 | 84/84 | 229/229 |
+| 236/236 | 84/84 | 230/230 |
 
 Build: 0 warnings, 0 errors. `has-pending-model-changes`: none. All eight migrations applied to a fresh LocalDB
-database. Frontend (`fix/purchasing-api-contract`): Vitest 67/67, `tsc --noEmit` clean, `vite build` succeeds, ESLint
-no new errors. Earlier (Inventory acceptance, 2026-10-28): 225 / 69 / 209. `MasterDataHistoryTests` passed 30 consecutive runs
+database. Frontend (web `main` `edbfea3`): Vitest 67/67, `tsc --noEmit` clean, `vite build` succeeds, ESLint only the
+older Catalog error. Earlier (Inventory acceptance, 2026-10-28): 225 / 69 / 209. `MasterDataHistoryTests` passed 30 consecutive runs
 after its fix. Frontend (`4a3beec`): Vitest 53/53, `tsc --noEmit` clean, `vite build` succeeds; ESLint reports one
 older error (the Catalog backlog item above).
 
