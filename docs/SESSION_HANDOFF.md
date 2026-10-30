@@ -1,11 +1,17 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-30 (Catalog operational enhancements on `feature/catalog-operational-enhancements` in both
-repositories — brand identity, server-generated PDF/XLSX/CSV, Catalog reports and import; **not merged**, waiting for the
-owner's approval). Before that: Accounting V1 merged into `main` (technical development acceptance only).
+Last verified: 2026-10-31 (Organization operational enhancements on `feature/organization-enhancements` in both
+repositories — company contact details and profile PDF, Organization reports and files, storage location import;
+**not merged**, waiting for the owner's approval). Before that: Catalog operational enhancements (backend still unmerged,
+frontend on `main`), Accounting V1 merged into `main` (technical development acceptance only).
 Read this first; don't re-analyse the repository.
 
 ## Where things stand
+- **Organization operational enhancements (2026-10-31) on `feature/organization-enhancements`**, cut from backend
+  `feature/catalog-operational-enhancements` `ce2e62b` (the Catalog work is **not** in backend `main`, so the Organization
+  branch carries it; merging it merges both) and from frontend `main` `3189996` (= `origin/main`, which already holds the
+  Catalog screens). Not merged. **`Migration17_CompanyContactDetails` is applied to `WarehouseERP_Dev`** (verified backup
+  first). Details in *Organization operational enhancements* below.
 - **Catalog operational enhancements (2026-10-30) on `feature/catalog-operational-enhancements`**, cut from backend `main`
   `6c90f00` and frontend `main` `ecd86a4` (both equal to `origin/main`). Not merged, not pushed until the owner says so.
   Details in *Catalog operational enhancements* below. No migration; `WarehouseERP_Dev` untouched; accounting still not
@@ -500,6 +506,52 @@ Read this first; don't re-analyse the repository.
 - **Inventory integration requirement:** deactivating a warehouse or location that holds stock must be refused before
   stock operations go live. It's recorded in ADR 0013 and `docs/INVENTORY_DECISIONS.md`.
 
+## Organization operational enhancements (2026-10-31, `feature/organization-enhancements`)
+- **Brief:** "Organization Module Operational Enhancements" (owner, 2026-10-31): the Catalog pattern applied to Organization
+  without rebuilding it or changing ADR 0013's rules. Decisions in ADR 0022; specifics in
+  `docs/modules/Organization/REPORTS_AND_IMPORTS.md`.
+- **Company:** six optional contact columns (commercial registration number and registry, phone, e-mail, address line,
+  city of the lookups) — the only schema change, `Migration17_CompanyContactDetails` (nullable, temporal history too, FK to
+  `organization.Cities`). New city must be usable (422 `Organization.Company.CityNotUsable`). Company Profile PDF
+  `GET /api/organization/company/profile?lang` for any signed-in user; unrecorded details are left out.
+- **Lists:** branches gain `warehouseCount`/`activeWarehouseCount`, `hasWarehouses`, `sort`, `descending`; warehouses gain
+  branch code/names/status, location counts, default location, `type`, `allowsSelling`, `sort`, `descending`; new
+  `GET /api/organization/locations` (directory across warehouses, scoped). Scoped users' counts count their warehouses only.
+- **Reports** (`/api/organization/reports/summary|structure|data-quality`, both read permissions) and **files**
+  (`/api/organization/exports/branches|warehouses|locations|structure|data-quality`, XLSX/CSV/PDF, whole filtered result,
+  422 `Organization.Export.TooManyRows`). Data quality reports only states the database still allows.
+- **Location import** (`/api/organization/imports/locations/template|preview|commit|error-report`): the Catalog workflow
+  (token-bound, all or nothing, domain methods, one save). Warehouse named by branch code + warehouse code; never moves a
+  location, changes a code or status, touches `DEFAULT` or a transit warehouse; scope per row without existence leaks.
+  Branch and warehouse imports deferred (ADR 0022 decision 7).
+- **Shared foundation:** `ImportColumn`, `ImportColumnKind`, `ImportChoice`, `ImportColumns`, `ImportTemplateSheet` moved
+  from Catalog to `BuildingBlocks.Infrastructure/Documents` (Catalog behaviour unchanged).
+- **Frontend:** `/organization/reports` (overview figures, expandable structure with location drill-down, location
+  directory, data quality; `?tab=`), `/organization/import`, export menus and filters/sort on the branch and warehouse
+  lists, location export and import link on the warehouse page, breadcrumbs, company contact form (country → governorate →
+  city pickers) and Company Profile PDF button; 115 ar/en strings; shared `Imports.tsx`/`importRows.ts`/`Stat.tsx`.
+- **PDF verification:** every Organization PDF rendered (PyMuPDF) and inspected in Arabic and English with long, mixed and
+  Arabic-only names, multi-page directories (repeated headers) and glyph-order checks of dates and codes (none out of
+  order). Fixed from the inspection: Arabic "code · name" cells wrapped around the code (Arabic documents now print
+  "name · code"), clipped "Warehouses"/"Warehouse" headers (wider columns), the tree dash of an Arabic-only name in an
+  English document (now on the reading side); the summary counted transit warehouses' default locations as open transfers.
+- **`WarehouseERP_Dev`:** state checked (01–16 applied), copy-only checksummed backup
+  `D:\work\WarehouseERP\db-backups\WarehouseERP_Dev_before_Migration17_20261031_012457.bak` (`RESTORE VERIFYONLY` valid,
+  test restore matched all 164 tables' row counts, copy dropped), then exactly Migration17 applied
+  (`.artifacts/dev-db-migrate-org.ps1`): no table's row count changed, the company's values unchanged, 12 columns (current +
+  history), no contact value set, accounting not activated. Throwaway check (`.artifacts/org-migration-check.ps1`): 01–17 on
+  a fresh database, 17 rolled back to 16 and re-applied, `has-pending-model-changes` none. Down() drops the six columns.
+- **Browser acceptance (throwaway host `WarehouseERP_E2E_Org_20261031012720`, `e2e.localhost:8081`, users `ui-org` and
+  `ui-alx` scoped to ALX/WH-01; database dropped):** reports overview with real counts, structure drill-down branch →
+  warehouse → locations, location directory search and filtered PDF preview, company page and Company Profile PDF in
+  Arabic RTL, invalid workbook (7 precise errors, duplicates counted, confirm disabled, error report downloaded), valid CSV
+  in Update mode (3 created incl. lower-case codes, 1 renamed; checked through the API), warehouse list at phone width in
+  Arabic (no page overflow), scoped user (only ALX/WH-01 in lists, summary and structure; a CAI row refused with
+  AccessDenied). Files were attached through a DataTransfer and the SweetAlert confirm was clicked through the DOM
+  (hidden pane); the built-in PDF viewer drew dark while hidden, the previewed blobs were checked as `application/pdf`.
+- **Not done:** branch and warehouse imports, branch addresses, importing status changes, changing a warehouse's default
+  location, moving a warehouse (ADR 0013/0022).
+
 ## Catalog operational enhancements (2026-10-30, `feature/catalog-operational-enhancements`)
 - **Brief:** "Operational Excellence, Document Generation, Reporting & Brand Identity" (owner, 2026-10-30): official
   files generated by the API, React selects/previews/downloads; one module at a time, Catalog first; the owner's Codlek
@@ -612,7 +664,28 @@ Read this first; don't re-analyse the repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-30, Catalog operational enhancements, `feature/catalog-operational-enhancements`, LocalDB, `-m:1`)
+## Latest verified tests (2026-10-31, Organization operational enhancements, `feature/organization-enhancements`, LocalDB, `-m:1`)
+| UnitTests | ArchitectureTests | IntegrationTests |
+|---|---|---|
+| 304/304 | 129/129 | 336/336 |
+
+New: 1 unit test (company contact details: usable new city, a retired current city kept) and 16 integration tests
+(`OrganizationReportApiTests` 9, `LocationImportApiTests` 7): list counts/filters/sort, the whole filtered result in every
+file beyond the page, codes as text, formula-safe UTF-8 CSV, multi-page PDFs with title, scope everywhere (lists, summary,
+structure, data quality, directory, exports, import rows), structure with locations, data-quality states set by SQL
+(inactive default location, active warehouse in an inactive branch), company contact details and profile PDF, permissions
+per file and report, row limits; import create/update/skip/unchanged, every row error by row and column, Create mode on an
+existing code, the default location never changed, a change after the preview, a second confirmation, a different file or
+mode, a database failure at save rolling everything back (temporary trigger), per-row scope and permissions, template
+lists, CSV with Arabic headers and semicolons, missing column, unsupported file, missing mode. OpenAPI snapshot regenerated
+and reviewed (additive only: 14 paths, 20 schemas, new optional request fields, new response fields and list parameters).
+Build: 0 warnings, 0 errors. After the last presentation fixes the Organization, Catalog import/export, Organization CRUD
+and host tests were re-run: 99/99. Migration check as in *Organization operational enhancements*.
+
+Frontend `feature/organization-enhancements`: Vitest 197/197 (6 new), `tsc --noEmit` clean, `vite build` succeeds, ESLint
+clean on the new files (Lovable's existing files keep their older Prettier formatting).
+
+## Earlier: Catalog operational enhancements (2026-10-30, `feature/catalog-operational-enhancements`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
 | 303/303 | 129/129 | 320/320 |

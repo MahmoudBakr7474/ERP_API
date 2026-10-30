@@ -1,7 +1,8 @@
 # Generated documents: PDF, XLSX, CSV and imports
 
 How WarehouseERP produces official files and reads uploaded tables. Decided in ADR 0021; Catalog is the first module
-that uses it (`docs/modules/Catalog/IMPORT_EXPORT.md`). Every later module reuses the same foundation.
+that uses it (`docs/modules/Catalog/IMPORT_EXPORT.md`), Organization the second (`docs/modules/Organization/REPORTS_AND_IMPORTS.md`,
+ADR 0022). Every later module reuses the same foundation.
 
 ## Principles
 - **The API generates every official file.** React only selects a report and its filters, previews, downloads and
@@ -38,6 +39,8 @@ BuildingBlocks.Infrastructure/Documents/
   BrandedPdf, PdfDocumentInfo, TabularPdfWriter        page frame + table
   XlsxReportWriter, CsvReportWriter, ReportValues      spreadsheets, CSV, value formatting
   TabularFileReader, ImportSheet, ImportRow, ImportLimits, ImportFileErrors   uploads
+  ImportColumn, ImportColumnKind, ImportChoice, ImportColumns                 a module's import columns, header/choice matching
+  ImportTemplateSheet                                  a template's data sheet (headers, notes, text formats, drop-downs)
 ```
 
 ## Adding a report to a module (the Catalog pattern)
@@ -101,7 +104,10 @@ its cached value), never uses the uploaded name as a path, and refuses (400 `Val
 `Empty`, `Unreadable` (not a zip, corrupt, or a "zip bomb": more than 200 entries, 100 MB inflated, or a 1 MB+ entry
 compressed over 200×). Endpoints add a `RequestSizeLimit` just above the file limit and `.DisableAntiforgery()`: the
 Identity middleware already validates the XSRF header of every unsafe cookie request. What the rows mean, and every
-business rule, is the importing module's (see Catalog).
+business rule, is the importing module's (see Catalog and Organization). A module describes its columns as `ImportColumn`s;
+`ImportColumns.Map` finds them in the header row (Arabic, English or the key; case, spaces and `*` ignored) and reports the
+required ones missing, `ImportColumns.Value` turns a choice label into its API name, and `ImportTemplateSheet.Add` writes
+the template's data sheet from the same columns.
 
 ## Not in this foundation
 Background export jobs, report scheduling, a generic report builder, barcode label printing (next small enhancement:
