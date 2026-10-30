@@ -1,19 +1,29 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-31 (Organization operational enhancements on `feature/organization-enhancements` in both
-repositories — company contact details and profile PDF, Organization reports and files, storage location import;
-**not merged**, waiting for the owner's approval). Before that: Catalog operational enhancements (backend still unmerged,
-frontend on `main`), Accounting V1 merged into `main` (technical development acceptance only).
+Last verified: 2026-10-31 (**`main` holds the Catalog and Organization operational enhancements** in both repositories,
+fast-forwarded with the owner's approval after a post-merge smoke). Before that: Accounting V1 merged into `main`
+(technical development acceptance only). Next planned module: Inventory operational enhancements (new session).
 Read this first; don't re-analyse the repository.
 
 ## Where things stand
-- **Organization operational enhancements (2026-10-31) on `feature/organization-enhancements`**, cut from backend
-  `feature/catalog-operational-enhancements` `ce2e62b` (the Catalog work is **not** in backend `main`, so the Organization
-  branch carries it; merging it merges both) and from frontend `main` `3189996` (= `origin/main`, which already holds the
-  Catalog screens). Not merged. **`Migration17_CompanyContactDetails` is applied to `WarehouseERP_Dev`** (verified backup
-  first). Details in *Organization operational enhancements* below.
-- **Catalog operational enhancements (2026-10-30) on `feature/catalog-operational-enhancements`**, cut from backend `main`
-  `6c90f00` and frontend `main` `ecd86a4` (both equal to `origin/main`). Not merged, not pushed until the owner says so.
+- **`main` holds the Catalog and Organization operational enhancements (2026-10-31).** With the owner's approval
+  ("Finalize Catalog & Organization Enhancements"), after checking that `origin/main` was an ancestor of each feature branch
+  and that nothing had diverged (no newer Lovable commit), both repositories were fast-forwarded — no merge commits:
+  * backend `main` `6c90f00` → `1c2ccd5` (tip of `feature/organization-enhancements`, which contains the Catalog commits
+    `0bd7dea`…`ce2e62b`); this handoff is a documentation commit on top;
+  * frontend `main` `3189996` → `3efde14` (tip of `feature/organization-enhancements`; the Catalog screens were already on
+    `main`), pushed so Lovable syncs.
+  Both pushed; `origin/main` equals local `main`. Feature branches kept on the remotes for reference:
+  `feature/organization-enhancements` (both), `feature/catalog-operational-enhancements` (both; pushed now, ancestors of `main`).
+- **Post-merge smoke on `main` (2026-10-31):** build 0 warnings; Unit 304/304, Architecture 129/129, Integration 178/178
+  (Catalog, Organization, Inventory compatibility, `HostTests` incl. the OpenAPI contract with every Catalog and Organization
+  file/report/import path); frontend `tsc` clean, Vitest 197/197, `vite build` succeeds. `WarehouseERP_Dev`: 17 migrations
+  applied (last `Migration17_CompanyContactDetails`), none pending, `has-pending-model-changes` none; accounting **not
+  activated** (cutover 2027-01-01, no journal, no source posting). Log: `.artifacts/post-merge-smoke.log`.
+- **To use the new endpoints locally, restart the dev API**: the one running since 2026-10-30 21:54 was built before them.
+- **Organization operational enhancements (2026-10-31)**: details in *Organization operational enhancements* below
+  (`Migration17_CompanyContactDetails` applied to `WarehouseERP_Dev` after a verified backup).
+- **Catalog operational enhancements (2026-10-30)**: details in *Catalog operational enhancements* below.
   Details in *Catalog operational enhancements* below. No migration; `WarehouseERP_Dev` untouched; accounting still not
   activated.
 - **`main` holds Accounting V1 (2026-10-30).** With the owner's approval ("Accounting V1 Final Acceptance and Merge"),
@@ -506,7 +516,7 @@ Read this first; don't re-analyse the repository.
 - **Inventory integration requirement:** deactivating a warehouse or location that holds stock must be refused before
   stock operations go live. It's recorded in ADR 0013 and `docs/INVENTORY_DECISIONS.md`.
 
-## Organization operational enhancements (2026-10-31, `feature/organization-enhancements`)
+## Organization operational enhancements (2026-10-31, `feature/organization-enhancements`, merged into `main`)
 - **Brief:** "Organization Module Operational Enhancements" (owner, 2026-10-31): the Catalog pattern applied to Organization
   without rebuilding it or changing ADR 0013's rules. Decisions in ADR 0022; specifics in
   `docs/modules/Organization/REPORTS_AND_IMPORTS.md`.
@@ -552,7 +562,7 @@ Read this first; don't re-analyse the repository.
 - **Not done:** branch and warehouse imports, branch addresses, importing status changes, changing a warehouse's default
   location, moving a warehouse (ADR 0013/0022).
 
-## Catalog operational enhancements (2026-10-30, `feature/catalog-operational-enhancements`)
+## Catalog operational enhancements (2026-10-30, `feature/catalog-operational-enhancements`, merged into `main`)
 - **Brief:** "Operational Excellence, Document Generation, Reporting & Brand Identity" (owner, 2026-10-30): official
   files generated by the API, React selects/previews/downloads; one module at a time, Catalog first; the owner's Codlek
   brand sheet is the visual source of truth. Decisions recorded in ADR 0021; conventions in `docs/DOCUMENTS.md`; Catalog
@@ -641,7 +651,7 @@ Read this first; don't re-analyse the repository.
   - Radix `DirectionProvider` makes RTL correct.
   - Every module's Lovable prompt must tell Lovable to follow those conventions. Where the older
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
-- The frontend's `main` is at `ecd86a4` with the Accounting screens (and POS, Sales, Purchasing, address lookups before them). On this machine the frontend is cloned to
+- The frontend's `main` is at `3efde14` with the Organization and Catalog operational screens (and Accounting, POS, Sales, Purchasing, address lookups before them). On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
 - **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). **POS V1 is accepted and
   merged in both repositories (2026-10-30)** (see *POS status*). **Accounting V1's backend is complete on
