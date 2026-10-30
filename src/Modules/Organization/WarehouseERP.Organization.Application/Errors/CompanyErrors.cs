@@ -18,4 +18,7 @@ public static class CompanyErrors
     public static readonly Error CompanyWideAccessRequired = Error.Forbidden(
         "Organization.Company.CompanyWideAccessRequired",
         "Only a user with company-wide access can change the company or its branches, or create warehouses.");
+
+    public static readonly Error CityNotUsable = Error.BusinessRule(
+        "Organization.Company.CityNotUsable", "The city does not exist, or it, its governorate or its country is inactive.");
 }

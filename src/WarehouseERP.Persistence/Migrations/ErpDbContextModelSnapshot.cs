@@ -3958,15 +3958,31 @@ namespace WarehouseERP.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AddressLine")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<string>("BaseCurrencyCode")
                         .IsRequired()
                         .HasColumnType("char(3)");
+
+                    b.Property<Guid?>("CityId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasMaxLength(20)
                         .IsUnicode(false)
                         .HasColumnType("varchar(20)");
+
+                    b.Property<string>("CommercialRegistrationNumber")
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<string>("CommercialRegistry")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .ValueGeneratedOnAdd()
@@ -3975,6 +3991,10 @@ namespace WarehouseERP.Persistence.Migrations
 
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -3989,6 +4009,10 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Property<string>("NameEn")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
 
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
@@ -4024,6 +4048,8 @@ namespace WarehouseERP.Persistence.Migrations
                         .HasColumnName("ValidTo");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CityId");
 
                     b.HasIndex("Code")
                         .IsUnique();
@@ -9970,6 +9996,14 @@ namespace WarehouseERP.Persistence.Migrations
                         .HasForeignKey("GovernorateId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Organization.Domain.Company", b =>
+                {
+                    b.HasOne("WarehouseERP.Organization.Domain.City", null)
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("WarehouseERP.Organization.Domain.Governorate", b =>

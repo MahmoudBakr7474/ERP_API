@@ -32,6 +32,7 @@ public sealed class OrganizationHandlerTests
     private static readonly FakeUser CompanyWide = new(allWarehouses: true);
     private static readonly PassThroughTransactions Transactions = new();
     private static readonly FakeStockGuard NoStock = new(StockOccupancy.Free);
+    private static readonly FakeGeography NoCities = new();
 
     private static Company NewCompany() => Company.Create("CO", "الشركة", null, "egp", "Africa/Cairo", null);
 
@@ -44,17 +45,17 @@ public sealed class OrganizationHandlerTests
         var command = new SetUpCompanyCommand("CO", "الشركة", null, "egp", "Africa/Cairo", null);
         var companies = new FakeCompanyRepository();
 
-        var refused = await new SetUpCompanyHandler(companies, new FakeUser(false), NullLogger<SetUpCompanyHandler>.Instance)
+        var refused = await new SetUpCompanyHandler(companies, NoCities, new FakeUser(false), NullLogger<SetUpCompanyHandler>.Instance)
             .HandleAsync(command, default);
         Assert.Same(CompanyErrors.CompanyWideAccessRequired, refused.Error);
         Assert.Null(companies.Added);
 
-        var created = await new SetUpCompanyHandler(companies, CompanyWide, NullLogger<SetUpCompanyHandler>.Instance).HandleAsync(command, default);
+        var created = await new SetUpCompanyHandler(companies, NoCities, CompanyWide, NullLogger<SetUpCompanyHandler>.Instance).HandleAsync(command, default);
         Assert.True(created.IsSuccess);
         Assert.Equal("EGP", companies.Added!.BaseCurrencyCode);
 
         var existing = new FakeCompanyRepository { SaveResult = CompanyErrors.AlreadyConfigured };
-        var second = await new SetUpCompanyHandler(existing, CompanyWide, NullLogger<SetUpCompanyHandler>.Instance).HandleAsync(command, default);
+        var second = await new SetUpCompanyHandler(existing, NoCities, CompanyWide, NullLogger<SetUpCompanyHandler>.Instance).HandleAsync(command, default);
         Assert.Same(CompanyErrors.AlreadyConfigured, second.Error);
     }
 
@@ -63,18 +64,55 @@ public sealed class OrganizationHandlerTests
     {
         var command = new UpdateCompanyCommand("اسم جديد", null, "Africa/Cairo", "123", RowVersion);
 
-        var missing = await new UpdateCompanyHandler(new FakeCompanyRepository(), CompanyWide, NullLogger<UpdateCompanyHandler>.Instance)
+        var missing = await new UpdateCompanyHandler(new FakeCompanyRepository(), NoCities, CompanyWide, NullLogger<UpdateCompanyHandler>.Instance)
             .HandleAsync(command, default);
         Assert.Same(CompanyErrors.NotConfigured, missing.Error);
 
         var company = NewCompany();
         var companies = new FakeCompanyRepository { Stored = company, SaveResult = CommonErrors.ConcurrencyConflict };
-        var result = await new UpdateCompanyHandler(companies, CompanyWide, NullLogger<UpdateCompanyHandler>.Instance).HandleAsync(command, default);
+        var result = await new UpdateCompanyHandler(companies, NoCities, CompanyWide, NullLogger<UpdateCompanyHandler>.Instance).HandleAsync(command, default);
 
         Assert.Same(CommonErrors.ConcurrencyConflict, result.Error);
         Assert.Equal(("اسم جديد", "CO", "EGP"), (company.NameAr, company.Code, company.BaseCurrencyCode));
         Assert.Equal(Convert.FromBase64String(RowVersion), companies.ExpectedRowVersion);
     }
+
+    [Fact]
+    public async Task Company_contact_details_need_a_usable_new_city_but_keep_a_retired_current_one()
+    {
+        var usable = Guid.NewGuid();
+        var retired = Guid.NewGuid();
+        var geography = new FakeGeography(City(usable, active: true), City(retired, active: false));
+
+        var setUp = new SetUpCompanyCommand("CO", "الشركة", null, "egp", "Africa/Cairo", null, " 12345 ", "سجل القاهرة", "0223456789",
+            "info@example.com", " 5 شارع التحرير ", retired);
+        var refused = await new SetUpCompanyHandler(new FakeCompanyRepository(), geography, CompanyWide, NullLogger<SetUpCompanyHandler>.Instance)
+            .HandleAsync(setUp, default);
+        Assert.Same(CompanyErrors.CityNotUsable, refused.Error);
+
+        var companies = new FakeCompanyRepository();
+        var created = await new SetUpCompanyHandler(companies, geography, CompanyWide, NullLogger<SetUpCompanyHandler>.Instance)
+            .HandleAsync(setUp with { CityId = usable }, default);
+        Assert.True(created.IsSuccess);
+        var company = companies.Added!;
+        Assert.Equal(("12345", "5 شارع التحرير", usable), (company.CommercialRegistrationNumber, company.AddressLine, company.CityId));
+
+        // The city was retired since; an unrelated change keeps it, a move to another retired city is refused.
+        company.SetContactDetails(new CompanyContactDetails(null, null, null, null, "عنوان", retired));
+        var stored = new FakeCompanyRepository { Stored = company };
+        var keep = new UpdateCompanyCommand("اسم", null, "Africa/Cairo", null, RowVersion, Phone: "0100", CityId: retired);
+        Assert.True((await new UpdateCompanyHandler(stored, geography, CompanyWide, NullLogger<UpdateCompanyHandler>.Instance)
+            .HandleAsync(keep, default)).IsSuccess);
+        Assert.Equal(("0100", (string?)null), (company.Phone, company.AddressLine));
+
+        company.SetContactDetails(new CompanyContactDetails(null, null, null, null, null, usable));
+        var move = await new UpdateCompanyHandler(stored, geography, CompanyWide, NullLogger<UpdateCompanyHandler>.Instance)
+            .HandleAsync(keep, default);
+        Assert.Same(CompanyErrors.CityNotUsable, move.Error);
+    }
+
+    private static CityInfo City(Guid id, bool active) =>
+        new(id, "مدينة", null, active, Guid.NewGuid(), "محافظة", null, true, "EG", "مصر", "Egypt", true);
 
     [Fact]
     public async Task Create_branch_needs_company_wide_access_a_set_up_company_and_a_free_code()
@@ -273,6 +311,17 @@ public sealed class OrganizationHandlerTests
         public bool HasPermission(string permission) => true;
         public bool HasAllWarehouses => allWarehouses;
         public IReadOnlySet<Guid> WarehouseIds { get; } = warehouses.ToHashSet();
+    }
+
+    private sealed class FakeGeography(params CityInfo[] cities) : IGeographyDirectory
+    {
+        public Task<CountryInfo?> FindCountryAsync(string countryCode, CancellationToken ct) => Task.FromResult<CountryInfo?>(null);
+
+        public Task<IReadOnlyList<CountryInfo>> FindCountriesAsync(IReadOnlyCollection<string> countryCodes, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<CountryInfo>>([]);
+
+        public Task<IReadOnlyList<CityInfo>> FindCitiesAsync(IReadOnlyCollection<Guid> cityIds, CancellationToken ct) =>
+            Task.FromResult<IReadOnlyList<CityInfo>>(cities.Where(c => cityIds.Contains(c.Id)).ToList());
     }
 
     private sealed class FakeCompanyRepository : ICompanyRepository

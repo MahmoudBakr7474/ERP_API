@@ -14,6 +14,12 @@ public sealed class Company : MasterEntity
     public string BaseCurrencyCode { get; private set; } = null!;
     public string TimeZoneId { get; private set; } = null!;
     public string? TaxRegistrationNumber { get; private set; }
+    public string? CommercialRegistrationNumber { get; private set; }
+    public string? CommercialRegistry { get; private set; }
+    public string? Phone { get; private set; }
+    public string? Email { get; private set; }
+    public string? AddressLine { get; private set; }
+    public Guid? CityId { get; private set; }
     public IReadOnlyCollection<Branch> Branches => _branches;
 
     public static Company Create(
@@ -46,6 +52,20 @@ public sealed class Company : MasterEntity
         NameEn = Text.Optional(nameEn);
         TimeZoneId = timeZoneId.Trim();
         TaxRegistrationNumber = Text.Optional(taxRegistrationNumber);
+    }
+
+    /// <summary>
+    /// The identification and contact details official documents print (commercial registration, address, phone,
+    /// e-mail). All optional: what is not known stays empty and is never printed as if it were.
+    /// </summary>
+    public void SetContactDetails(CompanyContactDetails details)
+    {
+        CommercialRegistrationNumber = Text.Optional(details.CommercialRegistrationNumber);
+        CommercialRegistry = Text.Optional(details.CommercialRegistry);
+        Phone = Text.Optional(details.Phone);
+        Email = Text.Optional(details.Email);
+        AddressLine = Text.Optional(details.AddressLine);
+        CityId = details.CityId;
     }
 
     public Branch AddBranch(string code, string nameAr, string? nameEn)
