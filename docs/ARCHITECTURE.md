@@ -16,7 +16,8 @@ src/
     WarehouseERP.BuildingBlocks.Application/ handler contracts, validation + logging decorators, ICurrentUser, claim
                                             names, PermissionDefinition, paging
     WarehouseERP.BuildingBlocks.Infrastructure/ temporal mapping, auditing interceptor, DbFailures, handler
-                                            registration, Result -> ProblemDetails, permission policies
+                                            registration, Result -> ProblemDetails, permission policies, Documents/
+                                            (PDF/XLSX/CSV writers, upload reader, issuer port: docs/DOCUMENTS.md)
   Modules/<Module>/
     WarehouseERP.<Module>.Domain/           entities, value objects, enums, invariants, <Entity>DomainErrors
     WarehouseERP.<Module>.Application/      Features/<Area>/<UseCase>/, Contracts/<Area>/, Abstractions/Interfaces/<Group>/,
@@ -153,8 +154,11 @@ WarehouseERP.Identity.Application/
 ```
 
 Organization: `Features/{Companies,Branches,Warehouses,WarehouseLocations}`, `Errors/{Company,Branch,Warehouse,WarehouseLocation,RowVersion}Errors`.
-Catalog: `Features/{Units,Categories,Products,ProductUnits,ProductBarcodes}`, `Contracts/{Units,Categories,Products}`,
-`Abstractions/Interfaces/{Units,Categories,Products}`, `Errors/{Unit,Category,Product,ProductUnit,ProductBarcode,RowVersion}Errors`.
+Catalog: `Features/{Units,Categories,Products,ProductUnits,ProductBarcodes,Reports,Exports,Imports}` (the import planner
+and its plan in `Features/Imports`, the writer in its commit use case), `Contracts/{Units,Categories,Products,Reports,Imports}`,
+`Abstractions/Interfaces/{Units,Categories,Products,Reports,Imports}`,
+`Errors/{Unit,Category,Product,ProductUnit,ProductBarcode,RowVersion,Export,Import}Errors`; file layouts in
+`Presentation/Documents` and `Presentation/Imports` (ADR 0021).
 Inventory: `Features/{StockDocuments,Stock,Valuation,DocumentPolicies,Transfers,Counts,Reconciliation}` (the posting
 transaction is `Shared/StockDocumentPosting`, used by documents, transfers and counts),
 `Abstractions/Interfaces/{StockDocuments,Posting,Stock,Valuation,DocumentPolicies,Transfers,Counts,Reconciliation}`,

@@ -66,6 +66,13 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | PUT, POST | `/api/catalog/products/{id}` (names, `categoryId`, `rowVersion`), `/{id}/activate`, `/{id}/deactivate` | `catalog.products.update` |
 | POST | `/api/catalog/products/{id}/units` (`unitId`, `conversionFactor`), `/units/{productUnitId}/activate`, `/deactivate` | `catalog.products.update` |
 | POST | `/api/catalog/products/{id}/units/{productUnitId}/barcodes`, `/products/{id}/barcodes/{barcodeId}/activate`, `/deactivate` | `catalog.products.update` |
+| GET | `/api/catalog/products?…&sort=Sku\|NameAr\|NameEn\|CreatedAt&descending=` (list order; ties by SKU) | `catalog.products.read` |
+| GET | `/api/catalog/reports/summary`, `/reports/categories?isActive`, `/reports/data-quality?issue&search&isActive&page&pageSize`, `/reports/unit-conversions?search&categoryId&type&isActive&unitId&page&pageSize` | `catalog.products.read` |
+| GET | `/api/catalog/exports/{products,product-units,barcodes,categories,units,data-quality}?format=Xlsx\|Csv\|Pdf&lang=Ar\|En&…the report's filters` (full filtered result; 422 `Catalog.Export.TooManyRows` over the format's limit) | `catalog.products.read` |
+| GET | `/api/catalog/products/{id}/sheet?lang=Ar\|En` (product specification sheet, PDF) | `catalog.products.read` |
+| GET | `/api/catalog/imports/template?lang=Ar\|En` (XLSX) | `catalog.products.read` |
+| POST | `/api/catalog/imports/preview`, `/imports/error-report?lang` (multipart: `file`, `mode` = Create\|Update\|Skip, `sheet` for a CSV) — changes nothing | `catalog.products.read` + a Catalog write permission; each row needs its own (`docs/modules/Catalog/IMPORT_EXPORT.md`) |
+| POST | `/api/catalog/imports/commit` (same form + the preview's `previewToken`; all or nothing; 409 `Catalog.Import.ChangedSincePreview` when anything changed since the preview) | as preview |
 | POST, PUT | `/api/inventory/documents` (draft: `documentType`, `warehouseId`, lines), `/documents/{id}` (draft + `rowVersion`) | `inventory.<type>.manage` (`opening`, `receipts`, `issues`, `adjustments`) + warehouse in scope |
 | GET | `/api/inventory/documents?page&pageSize&warehouseId&documentType&status&search`, `/documents/{id}` (lines, history) | `inventory.documents.read` + warehouse in scope |
 | POST | `/api/inventory/documents/{id}/submit`, `/post` (`Idempotency-Key` header), `/cancel`, `/reverse` | `inventory.<type>.manage` + warehouse in scope |
@@ -177,9 +184,10 @@ test rewrites the file and then fails on purpose), review the diff, remove the v
 | `Identity:Lockout` | `MaxFailedAccessAttempts` 5 (3–20), `DefaultLockoutTimeSpan` 15 min (≥ 1 min) | yes |
 | `Identity:Bootstrap` | `UserName`, `Password`, `DisplayName`: first administrator, only while no user exists; never in appsettings | yes (both or neither) |
 | `ReverseProxy` | `Enabled` (false), `KnownProxies` (IP addresses), `KnownNetworks` (CIDR), `ForwardLimit` (1, 1–10): trust X-Forwarded-For/-Proto from these proxies only | yes (at least one proxy when enabled, parsable entries) |
+| `Documents` | `PdfLicense` (**required**: `Community`, `Professional` or `Enterprise` — the QuestPDF license the owning organisation holds, see `docs/DOCUMENTS.md`), `LogoPath` (optional SVG replacing the default document logo, relative to the content root), `MaxExportRows` (25 000), `MaxPdfRows` (5 000) | yes (license set, logo file exists, ranges) |
 | `Serilog` | `MinimumLevel`, overrides, properties | — |
 
-`appsettings.Development.json` points `Database:ConnectionString` at LocalDB (Windows authentication, no secret).
+`appsettings.Development.json` points `Database:ConnectionString` at LocalDB (Windows authentication, no secret) and sets `Documents:PdfLicense` to `Community` for development and evaluation; a production deployment must set it itself.
 
 ## Database
 
