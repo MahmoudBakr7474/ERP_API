@@ -197,10 +197,11 @@ public sealed class AccountingRulesTests
     public void The_accounting_start_date_is_the_first_day_of_a_month()
     {
         var settings = (AccountingSettings)Activator.CreateInstance(typeof(AccountingSettings), nonPublic: true)!;
-        Assert.Equal(AccountingSettingsDomainErrors.CutoverNotPeriodStart, settings.Change(1, new DateOnly(2027, 1, 15), true).Error);
-        Assert.Equal(AccountingSettingsDomainErrors.StartMonthInvalid, settings.Change(13, new DateOnly(2027, 1, 1), true).Error);
-        Assert.True(settings.Change(7, new DateOnly(2027, 7, 1), false).IsSuccess);
-        Assert.Equal((7, new DateOnly(2027, 7, 1), false), (settings.FiscalYearStartMonth, settings.CutoverDate, settings.ManualJournalsRequireApproval));
+        Assert.Equal(AccountingSettingsDomainErrors.CutoverNotPeriodStart, settings.Change(1, new DateOnly(2027, 1, 15), true, false).Error);
+        Assert.Equal(AccountingSettingsDomainErrors.StartMonthInvalid, settings.Change(13, new DateOnly(2027, 1, 1), true, false).Error);
+        Assert.True(settings.Change(7, new DateOnly(2027, 7, 1), false, true).IsSuccess);
+        Assert.Equal((7, new DateOnly(2027, 7, 1), false, true),
+            (settings.FiscalYearStartMonth, settings.CutoverDate, settings.ManualJournalsRequireApproval, settings.VouchersRequireApproval));
         Assert.Equal("GJ-2027-000042", JournalNumbers.Format(JournalType.Manual, 2027, 42));
         Assert.Equal("DJ-000123", JournalNumbers.DraftReference(123));
     }

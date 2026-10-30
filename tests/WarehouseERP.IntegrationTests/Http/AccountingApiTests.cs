@@ -94,7 +94,7 @@ public sealed class AccountingApiTests(DatabaseFixture fx) : IAsyncLifetime
         await (await DraftAsync(admin, March, Line(chart["120101"], branch, debit: 5m), Line(cash, branch, credit: 5m)))
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Accounting.Journal.AccountNotManual");
         await (await DraftAsync(admin, March, Line(chart["120201"], branch, debit: 5m), Line(cash, branch, credit: 5m)))
-            .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Accounting.Journal.PartyLinesNotSupported");
+            .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Accounting.Journal.PartyRequired");
         await (await DraftAsync(admin, March, Line(expense, Guid.NewGuid(), debit: 5m), Line(cash, branch, credit: 5m)))
             .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Accounting.Journal.BranchNotFound");
         await (await DraftAsync(admin, new DateOnly(2026, 12, 31), Line(expense, branch, debit: 5m), Line(cash, branch, credit: 5m)))
@@ -328,7 +328,7 @@ public sealed class AccountingApiTests(DatabaseFixture fx) : IAsyncLifetime
             {
                 description = "أرصدة", lines = new[] { Line(chart["120201"], branch, debit: 1m), Line(chart["35"], branch, credit: 1m) },
             }))
-            .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Accounting.Journal.PartyLinesNotSupported");
+            .AssertProblemAsync(HttpStatusCode.UnprocessableEntity, "Accounting.Journal.PartyRequired");
 
         var id = await admin.PostJsonAsync($"{Journals}/opening", new { description = "الأرصدة الافتتاحية", reference = "OB", lines }).CreatedIdAsync();
         var draft = await JournalAsync(admin, id);

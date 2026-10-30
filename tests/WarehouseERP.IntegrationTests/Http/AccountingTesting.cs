@@ -20,6 +20,11 @@ internal static class AccountingTesting
     public const string Periods = "/api/accounting/fiscal-periods";
     public const string Journals = "/api/accounting/journals";
     public const string Reports = "/api/accounting/reports";
+    public const string Vouchers = "/api/accounting/vouchers";
+    public const string OpenItems = "/api/accounting/open-items";
+    public const string Allocations = "/api/accounting/allocations";
+    public const string CashAccounts = "/api/accounting/cash-accounts";
+    public const string BankReconciliations = "/api/accounting/bank-reconciliations";
 
     public static readonly string AllPermissions = string.Join(',', AccountingPermissions.All);
 
@@ -150,6 +155,69 @@ internal static class AccountingTesting
     }
 
     public static string Day(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    /// <summary>A control-account line naming its customer or supplier (and when it falls due; its posting date otherwise).</summary>
+    public static object PartyLine(
+        Guid accountId, Guid branchId, PartyType partyType, Guid partyId, decimal debit = 0m, decimal credit = 0m, DateOnly? dueDate = null) =>
+        new { accountId, branchId, debit, credit, description = (string?)null, partyType, partyId, dueDate = dueDate is { } d ? Day(d) : null };
+
+    /// <summary>A cashbox or bank on a new ledger account of its own under 1204; its id and its ledger account's id.</summary>
+    public static async Task<(Guid Id, Guid AccountId)> CreateCashAccountAsync(
+        HttpClient admin, IReadOnlyDictionary<string, Guid> chart, Guid branchId, CashAccountKind kind, bool allowsOverdraft = false)
+    {
+        var account = await CreateAccountAsync(admin, chart, "1204", AccountType.Asset, StatementSection.CurrentAssets);
+        var bank = kind == CashAccountKind.Bank;
+        var id = await admin.PostJsonAsync(CashAccounts, new
+        {
+            code = DatabaseFixture.Code(bank ? "BK" : "CB"), name = bank ? "بنك الاختبار" : "خزينة الاختبار", kind, branchId, accountId = account,
+            bankName = bank ? "البنك الأهلي" : null, bankAccountNumber = bank ? "100200300" : null, allowsOverdraft,
+        }).CreatedIdAsync();
+        return (id, account);
+    }
+
+    public static object VoucherLine(Guid accountId, Guid branchId, decimal amount) => new { accountId, branchId, amount, description = (string?)null };
+
+    public static object Allocate(Guid openItemId, decimal amount) => new { openItemId, amount };
+
+    public static Task<HttpResponseMessage> VoucherDraftAsync(
+        HttpClient client, JournalType type, DateOnly date, decimal amount = 0m, Guid? cashAccountId = null, Guid? counterCashAccountId = null,
+        PartyType? partyType = null, Guid? partyId = null, PaymentMethod? method = null, decimal withholding = 0m, decimal tax = 0m,
+        string? reference = null, object[]? lines = null, object[]? allocations = null) =>
+        client.PostJsonAsync(Vouchers, new
+        {
+            type, postingDate = Day(date), description = "سند اختبار", reference, cashAccountId, counterCashAccountId, partyType, partyId,
+            paymentMethod = method, amount, withholdingAmount = withholding, taxAmount = tax, dueDate = (string?)null, branchId = (Guid?)null,
+            lines, allocations,
+        });
+
+    /// <summary>Drafts and posts a voucher; the journal's id.</summary>
+    public static async Task<Guid> PostVoucherAsync(
+        HttpClient admin, JournalType type, DateOnly date, decimal amount = 0m, Guid? cashAccountId = null, Guid? counterCashAccountId = null,
+        PartyType? partyType = null, Guid? partyId = null, PaymentMethod? method = null, decimal withholding = 0m, decimal tax = 0m,
+        string? reference = null, object[]? lines = null, object[]? allocations = null)
+    {
+        var id = await VoucherDraftAsync(admin, type, date, amount, cashAccountId, counterCashAccountId, partyType, partyId, method, withholding, tax,
+            reference, lines, allocations).CreatedIdAsync();
+        await PostNowAsync(admin, id);
+        return id;
+    }
+
+    public static async Task<JsonElement[]> OpenItemsAsync(HttpClient client, PartyType partyType, Guid partyId, bool openOnly = false) =>
+        (await (await client.GetAsync($"{OpenItems}?partyType={partyType}&partyId={partyId}&openOnly={openOnly}&pageSize=100")).ReadAsync<JsonElement>())
+            .GetProperty("items").EnumerateArray().ToArray();
+
+    /// <summary>The open item a journal opened (vouchers and hand journals here have one control-account line).</summary>
+    public static JsonElement ItemOf(IEnumerable<JsonElement> items, Guid journalId) =>
+        items.Single(i => i.GetProperty("journalId").GetGuid() == journalId);
+
+    public static Guid IdOf(JsonElement element) => element.GetProperty("id").GetGuid();
+
+    /// <summary>The journal's lines as (account, debit, credit, party), in line order.</summary>
+    public static List<(Guid Account, decimal Debit, decimal Credit, Guid? Party)> LinesOf(JsonElement journal) =>
+        journal.GetProperty("lines").EnumerateArray()
+            .Select(l => (l.GetProperty("accountId").GetGuid(), l.Decimal("debit"), l.Decimal("credit"),
+                l.GetProperty("partyId").ValueKind == JsonValueKind.Null ? (Guid?)null : l.GetProperty("partyId").GetGuid()))
+            .ToList();
 
     private static StringContent JsonContent(object body) =>
         new(JsonSerializer.Serialize(body, HttpTesting.Json), System.Text.Encoding.UTF8, "application/json");
