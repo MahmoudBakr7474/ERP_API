@@ -120,6 +120,58 @@
         }
       }
     },
+    "/api/catalog/products/{id}/sheet": {
+      "get": {
+        "tags": [
+          "CatalogExports"
+        ],
+        "operationId": "GetProductSheet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/inventory/reconciliation": {
       "get": {
         "tags": [
@@ -4661,6 +4713,21 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ProductSort"
+            }
+          },
+          {
+            "name": "descending",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -5357,6 +5424,971 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/reports/summary": {
+      "get": {
+        "tags": [
+          "CatalogReports"
+        ],
+        "operationId": "GetCatalogSummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/reports/categories": {
+      "get": {
+        "tags": [
+          "CatalogReports"
+        ],
+        "operationId": "ListCategoryProductCounts",
+        "parameters": [
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryProductCountResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/reports/data-quality": {
+      "get": {
+        "tags": [
+          "CatalogReports"
+        ],
+        "operationId": "ListCatalogDataQualityIssues",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "issue",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CatalogDataIssue"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataQualityReportResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/reports/unit-conversions": {
+      "get": {
+        "tags": [
+          "CatalogReports"
+        ],
+        "operationId": "ListUnitConversions",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ProductType"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "unitId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfUnitConversionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/exports/products": {
+      "get": {
+        "tags": [
+          "CatalogExports"
+        ],
+        "operationId": "ExportProducts",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ProductType"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ProductSort"
+            }
+          },
+          {
+            "name": "descending",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/exports/product-units": {
+      "get": {
+        "tags": [
+          "CatalogExports"
+        ],
+        "operationId": "ExportProductUnits",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ProductType"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "unitId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/exports/barcodes": {
+      "get": {
+        "tags": [
+          "CatalogExports"
+        ],
+        "operationId": "ExportBarcodes",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categoryId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ProductType"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "barcodeType",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/BarcodeType"
+            }
+          },
+          {
+            "name": "barcodeIsActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/exports/categories": {
+      "get": {
+        "tags": [
+          "CatalogExports"
+        ],
+        "operationId": "ExportCategories",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/exports/units": {
+      "get": {
+        "tags": [
+          "CatalogExports"
+        ],
+        "operationId": "ExportUnits",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/exports/data-quality": {
+      "get": {
+        "tags": [
+          "CatalogExports"
+        ],
+        "operationId": "ExportCatalogDataQualityIssues",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "issue",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CatalogDataIssue"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/imports/template": {
+      "get": {
+        "tags": [
+          "CatalogImports"
+        ],
+        "operationId": "GetCatalogImportTemplate",
+        "parameters": [
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/imports/preview": {
+      "post": {
+        "tags": [
+          "CatalogImports"
+        ],
+        "operationId": "PreviewCatalogImport",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "$ref": "#/components/schemas/CatalogImportMode"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "sheet": {
+                        "$ref": "#/components/schemas/CatalogImportSheet"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImportPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/imports/commit": {
+      "post": {
+        "tags": [
+          "CatalogImports"
+        ],
+        "operationId": "CommitCatalogImport",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "$ref": "#/components/schemas/CatalogImportMode"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "sheet": {
+                        "$ref": "#/components/schemas/CatalogImportSheet"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "previewToken": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImportResultResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/catalog/imports/error-report": {
+      "post": {
+        "tags": [
+          "CatalogImports"
+        ],
+        "operationId": "GetCatalogImportErrorReport",
+        "parameters": [
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "$ref": "#/components/schemas/CatalogImportMode"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "sheet": {
+                        "$ref": "#/components/schemas/CatalogImportSheet"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -25767,6 +26799,325 @@
           }
         }
       },
+      "CatalogDataIssue": {
+        "enum": [
+          "NoBarcode",
+          "NoCategory",
+          "InactiveCategory",
+          "InactiveBaseUnit",
+          "InactiveUnitInUse",
+          "FractionalFactorOnWholeUnit",
+          "MissingEnglishName"
+        ],
+        "description": "A gap or inconsistency in a product\u0027s master data, found by the catalog data-quality report."
+      },
+      "CatalogImportAction": {
+        "enum": [
+          "Create",
+          "Update",
+          "Unchanged",
+          "Skip",
+          "Error"
+        ],
+        "description": "What confirming an import will do with one row."
+      },
+      "CatalogImportCounts": {
+        "required": [
+          "rows",
+          "valid",
+          "invalid",
+          "duplicates",
+          "create",
+          "update",
+          "unchanged",
+          "skip"
+        ],
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "valid": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invalid": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duplicates": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "create": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "update": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unchanged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skip": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CatalogImportIssue": {
+        "required": [
+          "sheet",
+          "row",
+          "field",
+          "code",
+          "message",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "sheet": {
+            "$ref": "#/components/schemas/CatalogImportSheet"
+          },
+          "row": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "field": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CatalogImportMode": {
+        "enum": [
+          "Create",
+          "Update",
+          "Skip"
+        ],
+        "description": "What a catalog import does with a row whose code (unit or category code, SKU, product unit, barcode) already exists.\r\nNew rows are always created. An import never deletes, deactivates or reactivates anything."
+      },
+      "CatalogImportPreviewResponse": {
+        "required": [
+          "mode",
+          "previewToken",
+          "canCommit",
+          "totals",
+          "sheets",
+          "rows",
+          "issues",
+          "issueCount",
+          "issuesTruncated"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/CatalogImportMode"
+          },
+          "previewToken": {
+            "type": "string"
+          },
+          "canCommit": {
+            "type": "boolean"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/CatalogImportCounts"
+          },
+          "sheets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogImportSheetSummary"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogImportRowResult"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogImportIssue"
+            }
+          },
+          "issueCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "issuesTruncated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CatalogImportResultResponse": {
+        "required": [
+          "mode",
+          "totals",
+          "sheets"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/CatalogImportMode"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/CatalogImportCounts"
+          },
+          "sheets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogImportSheetSummary"
+            }
+          }
+        }
+      },
+      "CatalogImportRowResult": {
+        "required": [
+          "sheet",
+          "row",
+          "key",
+          "action"
+        ],
+        "type": "object",
+        "properties": {
+          "sheet": {
+            "$ref": "#/components/schemas/CatalogImportSheet"
+          },
+          "row": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/CatalogImportAction"
+          }
+        }
+      },
+      "CatalogImportSheet": {
+        "enum": [
+          "Units",
+          "Categories",
+          "Products",
+          "ProductUnits",
+          "Barcodes"
+        ],
+        "description": "The kinds of rows a catalog import holds, in the order they are applied."
+      },
+      "CatalogImportSheetSummary": {
+        "required": [
+          "sheet",
+          "counts"
+        ],
+        "type": "object",
+        "properties": {
+          "sheet": {
+            "$ref": "#/components/schemas/CatalogImportSheet"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CatalogImportCounts"
+          }
+        }
+      },
+      "CatalogSummaryResponse": {
+        "required": [
+          "products",
+          "activeProducts",
+          "inactiveProducts",
+          "stockItems",
+          "nonStockItems",
+          "services",
+          "categories",
+          "activeCategories",
+          "units",
+          "activeUnits",
+          "activeBarcodes",
+          "productsWithoutBarcode",
+          "productsWithoutCategory",
+          "productsWithUnitIssues"
+        ],
+        "type": "object",
+        "properties": {
+          "products": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeProducts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "inactiveProducts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "stockItems": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nonStockItems": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "services": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "categories": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeCategories": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "units": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeUnits": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeBarcodes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "productsWithoutBarcode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "productsWithoutCategory": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "productsWithUnitIssues": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "CategoryDetailsResponse": {
         "required": [
           "id",
@@ -25807,6 +27158,76 @@
           },
           "rowVersion": {
             "type": "string"
+          }
+        }
+      },
+      "CategoryProductCountResponse": {
+        "required": [
+          "id",
+          "code",
+          "nameAr",
+          "nameEn",
+          "parentId",
+          "parentCode",
+          "level",
+          "isActive",
+          "activeProducts",
+          "inactiveProducts"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nameAr": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "parentId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "parentCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "level": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "activeProducts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "inactiveProducts": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -28323,6 +29744,82 @@
           }
         }
       },
+      "DataQualityIssueCount": {
+        "required": [
+          "issue",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "issue": {
+            "$ref": "#/components/schemas/CatalogDataIssue"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DataQualityIssueResponse": {
+        "required": [
+          "productId",
+          "sku",
+          "nameAr",
+          "nameEn",
+          "productIsActive",
+          "issue",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "productIsActive": {
+            "type": "boolean"
+          },
+          "issue": {
+            "$ref": "#/components/schemas/CatalogDataIssue"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DataQualityReportResponse": {
+        "required": [
+          "issues",
+          "counts"
+        ],
+        "type": "object",
+        "properties": {
+          "issues": {
+            "$ref": "#/components/schemas/PagedResultOfDataQualityIssueResponse"
+          },
+          "counts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataQualityIssueCount"
+            }
+          }
+        }
+      },
       "DeliveryLineRequest": {
         "required": [
           "orderLineId",
@@ -28385,6 +29882,12 @@
           }
         }
       },
+      "DocumentLanguage": {
+        "enum": [
+          "Ar",
+          "En"
+        ]
+      },
       "DocumentPolicyResponse": {
         "required": [
           "documentType",
@@ -28429,6 +29932,13 @@
             "type": "string"
           }
         }
+      },
+      "ExportFormat": {
+        "enum": [
+          "Xlsx",
+          "Csv",
+          "Pdf"
+        ]
       },
       "FiscalPeriodClosedResponse": {
         "required": [
@@ -29076,6 +30586,10 @@
             "type": "string"
           }
         }
+      },
+      "IFormFile": {
+        "type": "string",
+        "format": "binary"
       },
       "ImportChartOfAccountsRequest": {
         "required": [
@@ -30638,6 +32152,39 @@
           }
         }
       },
+      "PagedResultOfDataQualityIssueResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DataQualityIssueResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "PagedResultOfGeneralLedgerLineResponse": {
         "required": [
           "items",
@@ -31740,6 +33287,39 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SupplierSummaryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfUnitConversionResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnitConversionResponse"
             }
           },
           "page": {
@@ -34650,6 +36230,15 @@
             "$ref": "#/components/schemas/BarcodeType"
           }
         }
+      },
+      "ProductSort": {
+        "enum": [
+          "Sku",
+          "NameAr",
+          "NameEn",
+          "CreatedAt",
+          null
+        ]
       },
       "ProductSummaryResponse": {
         "required": [
@@ -42634,6 +44223,90 @@
           }
         }
       },
+      "UnitConversionResponse": {
+        "required": [
+          "productId",
+          "sku",
+          "productNameAr",
+          "productNameEn",
+          "productIsActive",
+          "productUnitId",
+          "unitCode",
+          "unitNameAr",
+          "unitNameEn",
+          "conversionFactor",
+          "isBase",
+          "isActive",
+          "baseUnitCode",
+          "baseUnitNameAr",
+          "baseUnitNameEn",
+          "barcodeCount"
+        ],
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "productNameAr": {
+            "type": "string"
+          },
+          "productNameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "productIsActive": {
+            "type": "boolean"
+          },
+          "productUnitId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "unitCode": {
+            "type": "string"
+          },
+          "unitNameAr": {
+            "type": "string"
+          },
+          "unitNameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "conversionFactor": {
+            "type": "number",
+            "format": "double"
+          },
+          "isBase": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "baseUnitCode": {
+            "type": "string"
+          },
+          "baseUnitNameAr": {
+            "type": "string"
+          },
+          "baseUnitNameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "barcodeCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "UnitDetailsResponse": {
         "required": [
           "id",
@@ -44519,6 +46192,9 @@
       "name": "Security events"
     },
     {
+      "name": "CatalogExports"
+    },
+    {
       "name": "Reconciliation"
     },
     {
@@ -44559,6 +46235,12 @@
     },
     {
       "name": "ProductBarcodes"
+    },
+    {
+      "name": "CatalogReports"
+    },
+    {
+      "name": "CatalogImports"
     },
     {
       "name": "StockDocuments"
