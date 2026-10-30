@@ -10,5 +10,6 @@ public sealed class ListBranchesValidator : AbstractValidator<ListBranchesQuery>
     {
         this.AddPagingRules(pagination.Value);
         RuleFor(x => x.Search).MaximumLength(100);
+        RuleFor(x => x.Sort).IsInEnum().When(x => x.Sort.HasValue);
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
 using WarehouseERP.Organization.Application.Contracts.Warehouses;
+using WarehouseERP.Organization.Contracts;
 using WarehouseERP.Organization.Domain;
 
 namespace WarehouseERP.Organization.Infrastructure.Persistence;
@@ -29,7 +30,25 @@ internal sealed class WarehouseReadStore(DbContext db) : IWarehouseReadStore
     public async Task<PagedResult<WarehouseSummaryResponse>> ListAsync(
         WarehouseListFilter filter, int page, int pageSize, CancellationToken ct)
     {
-        var query = db.Set<Warehouse>().AsNoTracking();
+        var query = Filtered(db.Set<Warehouse>().AsNoTracking(), filter);
+        var total = await query.CountAsync(ct);
+        var items = await Sorted(query, filter.Sort, filter.Descending)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(ToSummary)
+            .ToListAsync(ct);
+        return new PagedResult<WarehouseSummaryResponse>(items, page, pageSize, total);
+    }
+
+    internal static readonly Expression<Func<Warehouse, WarehouseSummaryResponse>> ToSummary =
+        x => new WarehouseSummaryResponse(
+            x.Id, x.BranchId, x.Code, x.NameAr, x.NameEn, x.WarehouseType, x.AllowsSelling, x.IsActive,
+            x.Branch.Code, x.Branch.NameAr, x.Branch.NameEn, x.Branch.IsActive,
+            x.Locations.Count(), x.Locations.Count(l => l.IsActive),
+            x.Locations.Where(l => l.IsDefault).Select(l => l.Code).FirstOrDefault(),
+            x.Locations.Where(l => l.IsDefault).Select(l => (bool?)l.IsActive).FirstOrDefault());
+
+    internal static IQueryable<Warehouse> Filtered(IQueryable<Warehouse> query, WarehouseListFilter filter)
+    {
         if (filter.BranchId is { } branchId)
             query = query.Where(x => x.BranchId == branchId);
         if (filter.OnlyWarehouseIds is { } scope)
@@ -42,16 +61,24 @@ internal sealed class WarehouseReadStore(DbContext db) : IWarehouseReadStore
                                      || (x.NameEn != null && x.NameEn.Contains(search)));
         if (filter.IsActive is { } isActive)
             query = query.Where(x => x.IsActive == isActive);
-
-        var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderBy(x => x.Code).ThenBy(x => x.Id)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(x => new WarehouseSummaryResponse(
-                x.Id, x.BranchId, x.Code, x.NameAr, x.NameEn, x.WarehouseType, x.AllowsSelling, x.IsActive))
-            .ToListAsync(ct);
-        return new PagedResult<WarehouseSummaryResponse>(items, page, pageSize, total);
+        if (filter.Type is { } type)
+            query = query.Where(x => x.WarehouseType == type);
+        if (filter.AllowsSelling is { } sells)
+            query = query.Where(x => x.AllowsSelling == sells);
+        return query;
     }
+
+    // Warehouse codes repeat across branches: ties by branch code, then id, so pages never overlap.
+    internal static IOrderedQueryable<Warehouse> Sorted(IQueryable<Warehouse> query, OrganizationSort sort, bool descending) =>
+        (sort, descending) switch
+        {
+            (OrganizationSort.NameAr, false) => query.OrderBy(x => x.NameAr).ThenBy(x => x.Code).ThenBy(x => x.Branch.Code).ThenBy(x => x.Id),
+            (OrganizationSort.NameAr, true) => query.OrderByDescending(x => x.NameAr).ThenBy(x => x.Code).ThenBy(x => x.Branch.Code).ThenBy(x => x.Id),
+            (OrganizationSort.NameEn, false) => query.OrderBy(x => x.NameEn).ThenBy(x => x.Code).ThenBy(x => x.Branch.Code).ThenBy(x => x.Id),
+            (OrganizationSort.NameEn, true) => query.OrderByDescending(x => x.NameEn).ThenBy(x => x.Code).ThenBy(x => x.Branch.Code).ThenBy(x => x.Id),
+            (_, true) => query.OrderByDescending(x => x.Code).ThenBy(x => x.Branch.Code).ThenBy(x => x.Id),
+            _ => query.OrderBy(x => x.Code).ThenBy(x => x.Branch.Code).ThenBy(x => x.Id),
+        };
 
     public Task<bool> ExistsAsync(Guid warehouseId, CancellationToken ct) =>
         db.Set<Warehouse>().AnyAsync(x => x.Id == warehouseId, ct);

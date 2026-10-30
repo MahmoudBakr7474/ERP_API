@@ -81,8 +81,10 @@ internal static class BranchEndpoints
 
     private static async Task<IResult> ListAsync(
         IQueryHandler<ListBranchesQuery, PagedResult<BranchSummaryResponse>> handler, CancellationToken ct,
-        int page = 1, int? pageSize = null, string? search = null, bool? isActive = null) =>
-        (await handler.HandleAsync(new ListBranchesQuery(page, pageSize, search, isActive), ct)).ToHttpResult(TypedResults.Ok);
+        int page = 1, int? pageSize = null, string? search = null, bool? isActive = null, bool? hasWarehouses = null,
+        OrganizationSort? sort = null, bool descending = false) =>
+        (await handler.HandleAsync(new ListBranchesQuery(page, pageSize, search, isActive, hasWarehouses, sort, descending), ct))
+            .ToHttpResult(TypedResults.Ok);
 
     private static async Task<IResult> GetAsync(
         Guid id, IQueryHandler<GetBranchQuery, BranchDetailsResponse> handler, CancellationToken ct) =>

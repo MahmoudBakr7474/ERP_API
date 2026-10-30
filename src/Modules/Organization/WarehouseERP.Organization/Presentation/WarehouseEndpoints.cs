@@ -92,8 +92,11 @@ internal static class WarehouseEndpoints
 
     private static async Task<IResult> ListAsync(
         IQueryHandler<ListWarehousesQuery, PagedResult<WarehouseSummaryResponse>> handler, CancellationToken ct,
-        int page = 1, int? pageSize = null, Guid? branchId = null, string? search = null, bool? isActive = null) =>
-        (await handler.HandleAsync(new ListWarehousesQuery(page, pageSize, branchId, search, isActive), ct)).ToHttpResult(TypedResults.Ok);
+        int page = 1, int? pageSize = null, Guid? branchId = null, string? search = null, bool? isActive = null,
+        WarehouseType? type = null, bool? allowsSelling = null, OrganizationSort? sort = null, bool descending = false) =>
+        (await handler.HandleAsync(
+                new ListWarehousesQuery(page, pageSize, branchId, search, isActive, type, allowsSelling, sort, descending), ct))
+            .ToHttpResult(TypedResults.Ok);
 
     private static async Task<IResult> UpdateAsync(
         Guid id, UpdateWarehouseRequest request, ICommandHandler<UpdateWarehouseCommand, string> handler, CancellationToken ct) =>

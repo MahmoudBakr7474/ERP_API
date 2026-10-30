@@ -8,10 +8,14 @@ using WarehouseERP.BuildingBlocks.Infrastructure.Security;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Branches;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Companies;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Geography;
+using WarehouseERP.Organization.Application.Abstractions.Interfaces.Imports;
+using WarehouseERP.Organization.Application.Abstractions.Interfaces.Reports;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Warehouses;
 using WarehouseERP.Organization.Application.Contracts.Branches;
 using WarehouseERP.Organization.Application.Contracts.Companies;
 using WarehouseERP.Organization.Application.Contracts.Geography;
+using WarehouseERP.Organization.Application.Contracts.Imports;
+using WarehouseERP.Organization.Application.Contracts.Reports;
 using WarehouseERP.Organization.Application.Contracts.Warehouses;
 using WarehouseERP.Organization.Application.Features.Branches.CreateBranch;
 using WarehouseERP.Organization.Application.Features.Branches.GetBranch;
@@ -21,6 +25,11 @@ using WarehouseERP.Organization.Application.Features.Branches.UpdateBranch;
 using WarehouseERP.Organization.Application.Features.Companies.GetCompany;
 using WarehouseERP.Organization.Application.Features.Companies.SetUpCompany;
 using WarehouseERP.Organization.Application.Features.Companies.UpdateCompany;
+using WarehouseERP.Organization.Application.Features.Exports.ExportBranches;
+using WarehouseERP.Organization.Application.Features.Exports.ExportDataIssues;
+using WarehouseERP.Organization.Application.Features.Exports.ExportLocations;
+using WarehouseERP.Organization.Application.Features.Exports.ExportStructure;
+using WarehouseERP.Organization.Application.Features.Exports.ExportWarehouses;
 using WarehouseERP.Organization.Application.Features.Geography.CreateCity;
 using WarehouseERP.Organization.Application.Features.Geography.CreateCountry;
 using WarehouseERP.Organization.Application.Features.Geography.CreateGovernorate;
@@ -34,7 +43,13 @@ using WarehouseERP.Organization.Application.Features.Geography.UpdateCity;
 using WarehouseERP.Organization.Application.Features.Geography.UpdateCountry;
 using WarehouseERP.Organization.Application.Features.Geography.UpdateGovernorate;
 using WarehouseERP.Organization.Application.Features.WarehouseLocations.CreateWarehouseLocation;
+using WarehouseERP.Organization.Application.Features.Imports.CommitLocationImport;
+using WarehouseERP.Organization.Application.Features.Imports.PreviewLocationImport;
+using WarehouseERP.Organization.Application.Features.Reports.GetOrganizationStructure;
+using WarehouseERP.Organization.Application.Features.Reports.GetOrganizationSummary;
+using WarehouseERP.Organization.Application.Features.Reports.ListOrganizationDataIssues;
 using WarehouseERP.Organization.Application.Features.WarehouseLocations.GetWarehouseLocation;
+using WarehouseERP.Organization.Application.Features.WarehouseLocations.ListLocationDirectory;
 using WarehouseERP.Organization.Application.Features.WarehouseLocations.ListWarehouseLocations;
 using WarehouseERP.Organization.Application.Features.WarehouseLocations.SetWarehouseLocationActive;
 using WarehouseERP.Organization.Application.Features.WarehouseLocations.UpdateWarehouseLocation;
@@ -81,6 +96,18 @@ public static class OrganizationModule
         services.AddCommandHandler<UpdateWarehouseLocationCommand, string, UpdateWarehouseLocationHandler>();
         services.AddCommandHandler<SetWarehouseLocationActiveCommand, Done, SetWarehouseLocationActiveHandler>();
 
+        services.AddQueryHandler<ListLocationDirectoryQuery, PagedResult<LocationDirectoryResponse>, ListLocationDirectoryHandler>();
+        services.AddQueryHandler<GetOrganizationSummaryQuery, OrganizationSummaryResponse, GetOrganizationSummaryHandler>();
+        services.AddQueryHandler<GetOrganizationStructureQuery, IReadOnlyList<StructureBranchResponse>, GetOrganizationStructureHandler>();
+        services.AddQueryHandler<ListOrganizationDataIssuesQuery, OrganizationDataQualityResponse, ListOrganizationDataIssuesHandler>();
+        services.AddQueryHandler<ExportBranchesQuery, IReadOnlyList<BranchSummaryResponse>, ExportBranchesHandler>();
+        services.AddQueryHandler<ExportWarehousesQuery, IReadOnlyList<WarehouseSummaryResponse>, ExportWarehousesHandler>();
+        services.AddQueryHandler<ExportLocationsQuery, IReadOnlyList<LocationDirectoryResponse>, ExportLocationsHandler>();
+        services.AddQueryHandler<ExportStructureQuery, OrganizationStructureExport, ExportStructureHandler>();
+        services.AddQueryHandler<ExportDataIssuesQuery, IReadOnlyList<OrganizationDataIssueResponse>, ExportDataIssuesHandler>();
+        services.AddQueryHandler<PreviewLocationImportQuery, LocationImportPreviewResponse, PreviewLocationImportHandler>();
+        services.AddCommandHandler<CommitLocationImportCommand, LocationImportResultResponse, CommitLocationImportHandler>();
+
         services.AddQueryHandler<ListCountriesQuery, IReadOnlyList<CountryResponse>, ListCountriesHandler>();
         services.AddCommandHandler<CreateCountryCommand, Guid, CreateCountryHandler>();
         services.AddCommandHandler<UpdateCountryCommand, string, UpdateCountryHandler>();
@@ -100,6 +127,8 @@ public static class OrganizationModule
         services.AddScoped<IBranchReadStore, BranchReadStore>();
         services.AddScoped<IWarehouseRepository, WarehouseRepository>();
         services.AddScoped<IWarehouseReadStore, WarehouseReadStore>();
+        services.AddScoped<IOrganizationReportReadStore, OrganizationReportReadStore>();
+        services.AddScoped<ILocationImportStore, LocationImportStore>();
         services.AddScoped<WarehouseDirectory>();
         services.AddScoped<IWarehouseDirectory>(sp => sp.GetRequiredService<WarehouseDirectory>());
         services.AddScoped<IBranchDirectory>(sp => sp.GetRequiredService<WarehouseDirectory>());
@@ -121,5 +150,8 @@ public static class OrganizationModule
             .MapBranchEndpoints()
             .MapWarehouseEndpoints()
             .MapWarehouseLocationEndpoints()
-            .MapGeographyEndpoints();
+            .MapGeographyEndpoints()
+            .MapOrganizationReportEndpoints()
+            .MapOrganizationExportEndpoints()
+            .MapLocationImportEndpoints();
 }

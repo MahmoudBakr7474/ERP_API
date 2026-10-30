@@ -1,0 +1,3 @@
+namespace WarehouseERP.Organization.Application.Features.Reports.GetOrganizationSummary;
+
+public sealed record GetOrganizationSummaryQuery;
