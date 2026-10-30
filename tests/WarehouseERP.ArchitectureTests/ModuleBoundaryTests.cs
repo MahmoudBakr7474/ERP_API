@@ -18,7 +18,7 @@ public sealed class ModuleBoundaryTests
     public void Host_wires_the_known_modules()
     {
         Assert.Equal(
-            ["WarehouseERP.Catalog", "WarehouseERP.Identity", "WarehouseERP.Inventory", "WarehouseERP.Organization", "WarehouseERP.Pos", "WarehouseERP.Purchasing", "WarehouseERP.Sales"],
+            ["WarehouseERP.Accounting", "WarehouseERP.Catalog", "WarehouseERP.Identity", "WarehouseERP.Inventory", "WarehouseERP.Organization", "WarehouseERP.Pos", "WarehouseERP.Purchasing", "WarehouseERP.Sales"],
             Modules);
     }
 
