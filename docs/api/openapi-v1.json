@@ -120,6 +120,160 @@
         }
       }
     },
+    "/api/organization/locations": {
+      "get": {
+        "tags": [
+          "WarehouseLocations"
+        ],
+        "operationId": "ListLocationDirectory",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "branchId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "warehouseType",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/WarehouseType"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrganizationSort"
+            }
+          },
+          {
+            "name": "descending",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfLocationDirectoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/company/profile": {
+      "get": {
+        "tags": [
+          "OrganizationExports"
+        ],
+        "operationId": "GetCompanyProfile",
+        "parameters": [
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/catalog/products/{id}/sheet": {
       "get": {
         "tags": [
@@ -1839,6 +1993,28 @@
             "schema": {
               "type": "boolean"
             }
+          },
+          {
+            "name": "hasWarehouses",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrganizationSort"
+            }
+          },
+          {
+            "name": "descending",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -2293,6 +2469,35 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/WarehouseType"
+            }
+          },
+          {
+            "name": "allowsSelling",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrganizationSort"
+            }
+          },
+          {
+            "name": "descending",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],
@@ -3955,6 +4160,808 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/reports/summary": {
+      "get": {
+        "tags": [
+          "OrganizationReports"
+        ],
+        "operationId": "GetOrganizationSummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/reports/structure": {
+      "get": {
+        "tags": [
+          "OrganizationReports"
+        ],
+        "operationId": "GetOrganizationStructure",
+        "parameters": [
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StructureBranchResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/reports/data-quality": {
+      "get": {
+        "tags": [
+          "OrganizationReports"
+        ],
+        "operationId": "ListOrganizationDataIssues",
+        "parameters": [
+          {
+            "name": "issue",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrganizationDataIssue"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationDataQualityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/exports/branches": {
+      "get": {
+        "tags": [
+          "OrganizationExports"
+        ],
+        "operationId": "ExportBranches",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "hasWarehouses",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrganizationSort"
+            }
+          },
+          {
+            "name": "descending",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/exports/warehouses": {
+      "get": {
+        "tags": [
+          "OrganizationExports"
+        ],
+        "operationId": "ExportWarehouses",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "branchId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/WarehouseType"
+            }
+          },
+          {
+            "name": "allowsSelling",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrganizationSort"
+            }
+          },
+          {
+            "name": "descending",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/exports/locations": {
+      "get": {
+        "tags": [
+          "OrganizationExports"
+        ],
+        "operationId": "ExportLocations",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "branchId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "warehouseType",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/WarehouseType"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrganizationSort"
+            }
+          },
+          {
+            "name": "descending",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/exports/structure": {
+      "get": {
+        "tags": [
+          "OrganizationExports"
+        ],
+        "operationId": "ExportOrganizationStructure",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "isActive",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "includeLocations",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/exports/data-quality": {
+      "get": {
+        "tags": [
+          "OrganizationExports"
+        ],
+        "operationId": "ExportOrganizationDataIssues",
+        "parameters": [
+          {
+            "name": "format",
+            "in": "query",
+            "schema": {
+              "default": "Xlsx",
+              "$ref": "#/components/schemas/ExportFormat"
+            }
+          },
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          },
+          {
+            "name": "issue",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/OrganizationDataIssue"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/imports/locations/template": {
+      "get": {
+        "tags": [
+          "OrganizationImports"
+        ],
+        "operationId": "GetLocationImportTemplate",
+        "parameters": [
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/imports/locations/preview": {
+      "post": {
+        "tags": [
+          "OrganizationImports"
+        ],
+        "operationId": "PreviewLocationImport",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "$ref": "#/components/schemas/LocationImportMode"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationImportPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/imports/locations/commit": {
+      "post": {
+        "tags": [
+          "OrganizationImports"
+        ],
+        "operationId": "CommitLocationImport",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "$ref": "#/components/schemas/LocationImportMode"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "previewToken": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocationImportResultResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/organization/imports/locations/error-report": {
+      "post": {
+        "tags": [
+          "OrganizationImports"
+        ],
+        "operationId": "GetLocationImportErrorReport",
+        "parameters": [
+          {
+            "name": "lang",
+            "in": "query",
+            "schema": {
+              "default": "Ar",
+              "$ref": "#/components/schemas/DocumentLanguage"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "allOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "file": {
+                        "$ref": "#/components/schemas/IFormFile"
+                      }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "$ref": "#/components/schemas/LocationImportMode"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -26636,7 +27643,9 @@
           "code",
           "nameAr",
           "nameEn",
-          "isActive"
+          "isActive",
+          "warehouseCount",
+          "activeWarehouseCount"
         ],
         "type": "object",
         "properties": {
@@ -26658,6 +27667,14 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "warehouseCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeWarehouseCount": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -27542,6 +28559,60 @@
           }
         }
       },
+      "CompanyCityResponse": {
+        "required": [
+          "id",
+          "nameAr",
+          "nameEn",
+          "governorateId",
+          "governorateNameAr",
+          "governorateNameEn",
+          "countryCode",
+          "countryNameAr",
+          "countryNameEn"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "governorateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "governorateNameAr": {
+            "type": "string"
+          },
+          "governorateNameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "countryNameAr": {
+            "type": "string"
+          },
+          "countryNameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "CompanyResponse": {
         "required": [
           "id",
@@ -27551,7 +28622,13 @@
           "baseCurrencyCode",
           "timeZoneId",
           "taxRegistrationNumber",
-          "rowVersion"
+          "rowVersion",
+          "commercialRegistrationNumber",
+          "commercialRegistry",
+          "phone",
+          "email",
+          "addressLine",
+          "city"
         ],
         "type": "object",
         "properties": {
@@ -27585,6 +28662,46 @@
           },
           "rowVersion": {
             "type": "string"
+          },
+          "commercialRegistrationNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "commercialRegistry": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "addressLine": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "city": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CompanyCityResponse"
+              }
+            ]
           }
         }
       },
@@ -31615,6 +32732,277 @@
           }
         }
       },
+      "LocationDirectoryResponse": {
+        "required": [
+          "id",
+          "code",
+          "nameAr",
+          "nameEn",
+          "isDefault",
+          "isActive",
+          "warehouseId",
+          "warehouseCode",
+          "warehouseNameAr",
+          "warehouseNameEn",
+          "warehouseType",
+          "warehouseIsActive",
+          "branchId",
+          "branchCode",
+          "branchNameAr",
+          "branchNameEn",
+          "createdAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "warehouseNameAr": {
+            "type": "string"
+          },
+          "warehouseNameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "warehouseType": {
+            "$ref": "#/components/schemas/WarehouseType"
+          },
+          "warehouseIsActive": {
+            "type": "boolean"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchCode": {
+            "type": "string"
+          },
+          "branchNameAr": {
+            "type": "string"
+          },
+          "branchNameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LocationImportAction": {
+        "enum": [
+          "Create",
+          "Update",
+          "Unchanged",
+          "Skip",
+          "Error"
+        ],
+        "description": "What confirming a location import will do with one row."
+      },
+      "LocationImportCounts": {
+        "required": [
+          "rows",
+          "valid",
+          "invalid",
+          "duplicates",
+          "create",
+          "update",
+          "unchanged",
+          "skip"
+        ],
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "valid": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "invalid": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duplicates": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "create": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "update": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unchanged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "skip": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "LocationImportIssue": {
+        "required": [
+          "row",
+          "field",
+          "code",
+          "message",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "field": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "LocationImportMode": {
+        "enum": [
+          "Create",
+          "Update",
+          "Skip"
+        ],
+        "description": "What a location import does with a row whose location (branch, warehouse and location code) already exists. New\r\nrows are always created. An import never moves a location, never changes a code, never activates or deactivates."
+      },
+      "LocationImportPreviewResponse": {
+        "required": [
+          "mode",
+          "previewToken",
+          "canCommit",
+          "totals",
+          "rows",
+          "issues",
+          "issueCount",
+          "issuesTruncated"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/LocationImportMode"
+          },
+          "previewToken": {
+            "type": "string"
+          },
+          "canCommit": {
+            "type": "boolean"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/LocationImportCounts"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocationImportRowResult"
+            }
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocationImportIssue"
+            }
+          },
+          "issueCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "issuesTruncated": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LocationImportResultResponse": {
+        "required": [
+          "mode",
+          "totals"
+        ],
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/LocationImportMode"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/LocationImportCounts"
+          }
+        }
+      },
+      "LocationImportRowResult": {
+        "required": [
+          "row",
+          "key",
+          "action"
+        ],
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "key": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/LocationImportAction"
+          }
+        }
+      },
       "LoginRequest": {
         "required": [
           "userName",
@@ -32001,6 +33389,215 @@
           }
         }
       },
+      "OrganizationDataIssue": {
+        "enum": [
+          "CompanyMissingTaxNumber",
+          "CompanyMissingCommercialRegistration",
+          "CompanyMissingAddress",
+          "CompanyMissingContact",
+          "MissingEnglishName",
+          "BranchWithoutActiveWarehouse",
+          "ActiveWarehouseInInactiveBranch",
+          "NoDefaultLocation",
+          "InactiveDefaultLocation",
+          "NoDefaultTransitWarehouse"
+        ],
+        "description": "A configuration problem the master-data quality report finds. Only states the database and the domain rules still\r\nallow are reported; what they already make impossible (a selling transit warehouse, two default locations) is not."
+      },
+      "OrganizationDataIssueCount": {
+        "required": [
+          "issue",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "issue": {
+            "$ref": "#/components/schemas/OrganizationDataIssue"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "OrganizationDataIssueResponse": {
+        "required": [
+          "issue",
+          "entity",
+          "entityId",
+          "code",
+          "nameAr",
+          "nameEn",
+          "branchId",
+          "branchCode",
+          "warehouseId",
+          "warehouseCode",
+          "detail"
+        ],
+        "type": "object",
+        "properties": {
+          "issue": {
+            "$ref": "#/components/schemas/OrganizationDataIssue"
+          },
+          "entity": {
+            "$ref": "#/components/schemas/OrganizationEntity"
+          },
+          "entityId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "code": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nameAr": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "branchId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "branchCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "warehouseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "OrganizationDataQualityResponse": {
+        "required": [
+          "issues",
+          "counts"
+        ],
+        "type": "object",
+        "properties": {
+          "issues": {
+            "$ref": "#/components/schemas/PagedResultOfOrganizationDataIssueResponse"
+          },
+          "counts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganizationDataIssueCount"
+            }
+          }
+        }
+      },
+      "OrganizationEntity": {
+        "enum": [
+          "Company",
+          "Branch",
+          "Warehouse",
+          "Location"
+        ],
+        "description": "The kind of record a master-data quality issue is about."
+      },
+      "OrganizationSort": {
+        "enum": [
+          "Code",
+          "NameAr",
+          "NameEn",
+          null
+        ]
+      },
+      "OrganizationSummaryResponse": {
+        "required": [
+          "branches",
+          "activeBranches",
+          "warehouses",
+          "activeWarehouses",
+          "physicalWarehouses",
+          "transitWarehouses",
+          "sellingWarehouses",
+          "storageLocations",
+          "activeStorageLocations",
+          "openTransitLocations",
+          "dataIssues"
+        ],
+        "type": "object",
+        "properties": {
+          "branches": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeBranches": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "warehouses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeWarehouses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "physicalWarehouses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "transitWarehouses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sellingWarehouses": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "storageLocations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeStorageLocations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openTransitLocations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "dataIssues": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "OverReservationResponse": {
         "required": [
           "productId",
@@ -32350,6 +33947,39 @@
           }
         }
       },
+      "PagedResultOfLocationDirectoryResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocationDirectoryResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "PagedResultOfOpenItemResponse": {
         "required": [
           "items",
@@ -32363,6 +33993,39 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OpenItemResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfOrganizationDataIssueResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganizationDataIssueResponse"
             }
           },
           "page": {
@@ -40359,6 +42022,43 @@
               "null",
               "string"
             ]
+          },
+          "commercialRegistrationNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "commercialRegistry": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "addressLine": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cityId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -42619,6 +44319,100 @@
           }
         }
       },
+      "StructureBranchResponse": {
+        "required": [
+          "id",
+          "code",
+          "nameAr",
+          "nameEn",
+          "isActive",
+          "warehouses"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "warehouses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StructureWarehouseResponse"
+            }
+          }
+        }
+      },
+      "StructureWarehouseResponse": {
+        "required": [
+          "id",
+          "code",
+          "nameAr",
+          "nameEn",
+          "type",
+          "allowsSelling",
+          "isActive",
+          "locationCount",
+          "activeLocationCount",
+          "defaultLocationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "type": {
+            "$ref": "#/components/schemas/WarehouseType"
+          },
+          "allowsSelling": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "locationCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeLocationCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defaultLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "SubledgerAccountResponse": {
         "required": [
           "accountId",
@@ -44566,6 +46360,43 @@
           },
           "rowVersion": {
             "type": "string"
+          },
+          "commercialRegistrationNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "commercialRegistry": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "email": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "addressLine": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cityId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -46137,7 +47968,15 @@
           "nameEn",
           "type",
           "allowsSelling",
-          "isActive"
+          "isActive",
+          "branchCode",
+          "branchNameAr",
+          "branchNameEn",
+          "branchIsActive",
+          "locationCount",
+          "activeLocationCount",
+          "defaultLocationCode",
+          "defaultLocationIsActive"
         ],
         "type": "object",
         "properties": {
@@ -46169,6 +48008,41 @@
           },
           "isActive": {
             "type": "boolean"
+          },
+          "branchCode": {
+            "type": "string"
+          },
+          "branchNameAr": {
+            "type": "string"
+          },
+          "branchNameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "branchIsActive": {
+            "type": "boolean"
+          },
+          "locationCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "activeLocationCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "defaultLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultLocationIsActive": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -46190,6 +48064,12 @@
     },
     {
       "name": "Security events"
+    },
+    {
+      "name": "WarehouseLocations"
+    },
+    {
+      "name": "OrganizationExports"
     },
     {
       "name": "CatalogExports"
@@ -46216,10 +48096,13 @@
       "name": "Warehouses"
     },
     {
-      "name": "WarehouseLocations"
+      "name": "Geography"
     },
     {
-      "name": "Geography"
+      "name": "OrganizationReports"
+    },
+    {
+      "name": "OrganizationImports"
     },
     {
       "name": "Units"
