@@ -15,6 +15,14 @@ public static class JournalNumbers
         JournalType.OpeningBalance => "OB",
         JournalType.Reversal => "RJ",
         JournalType.YearEndClosing => "CJ",
+        JournalType.CustomerReceipt => "RV",
+        JournalType.SupplierPayment => "PV",
+        JournalType.CustomerRefund => "CF",
+        JournalType.SupplierRefund => "SF",
+        JournalType.CashReceipt => "CR",
+        JournalType.CashPayment => "CP",
+        JournalType.CashTransfer => "TR",
+        JournalType.ExpenseBill => "EB",
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown journal type."),
     };
 

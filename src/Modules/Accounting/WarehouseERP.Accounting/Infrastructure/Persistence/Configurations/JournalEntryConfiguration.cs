@@ -8,6 +8,7 @@ namespace WarehouseERP.Accounting.Infrastructure.Persistence.Configurations;
 // The database backs the domain's rules: every journal balances (debits = credits > 0); a posted one (3) has its number,
 // fiscal year, period, sequence and time, and nothing else has a number; only a reversal (3) names the journal it
 // reverses, and a journal has at most one reversal that isn't cancelled (4). Numbers are unique per type and fiscal year.
+// Only vouchers (5–12) carry a cash account, party, method and amount; a supplier's bill number is used once.
 internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<JournalEntry>
 {
     public void Configure(EntityTypeBuilder<JournalEntry> b)
@@ -21,6 +22,10 @@ internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<Journ
                 "([Status] = 3 AND [Number] IS NOT NULL AND [FiscalYearId] IS NOT NULL AND [FiscalPeriodId] IS NOT NULL "
                 + "AND [SequenceNumber] IS NOT NULL AND [PostedAtUtc] IS NOT NULL) "
                 + "OR ([Status] <> 3 AND [Number] IS NULL AND [PostedAtUtc] IS NULL)");
+            t.HasCheckConstraint("CK_JournalEntries_Party", "([PartyType] IS NULL AND [PartyId] IS NULL) OR ([PartyType] IS NOT NULL AND [PartyId] IS NOT NULL)");
+            t.HasCheckConstraint("CK_JournalEntries_Voucher",
+                "[JournalType] BETWEEN 5 AND 12 OR ([CashAccountId] IS NULL AND [CounterCashAccountId] IS NULL AND [PartyId] IS NULL "
+                + "AND [PaymentMethod] IS NULL AND [VoucherAmount] IS NULL)");
             t.HasCheckConstraint("CK_JournalEntries_Reversal",
                 "([JournalType] = 3 AND [ReversalOfJournalId] IS NOT NULL) OR ([JournalType] <> 3 AND [ReversalOfJournalId] IS NULL)");
         });
@@ -33,6 +38,11 @@ internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<Journ
         b.Property(x => x.Description).HasMaxLength(JournalEntry.MaxDescriptionLength);
         b.Property(x => x.Reference).HasMaxLength(JournalEntry.MaxReferenceLength);
         b.Property(x => x.CurrencyCode).HasMaxLength(3).IsUnicode(false).IsFixedLength();
+        b.Property(x => x.PartyType).HasConversion<byte?>().HasColumnType("tinyint");
+        b.Property(x => x.PaymentMethod).HasConversion<byte?>().HasColumnType("tinyint");
+        b.Property(x => x.VoucherAmount).HasPrecision(19, 4);
+        b.Property(x => x.WithholdingAmount).HasPrecision(19, 4);
+        b.Property(x => x.TaxAmount).HasPrecision(19, 4);
         b.Property(x => x.TotalDebit).HasPrecision(19, 4);
         b.Property(x => x.TotalCredit).HasPrecision(19, 4);
         b.Property(x => x.PostedAtUtc).IsUtcTimestamp();
@@ -42,6 +52,9 @@ internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<Journ
 
         b.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.JournalEntryId).OnDelete(DeleteBehavior.Cascade);
         b.HasMany(x => x.Events).WithOne().HasForeignKey(x => x.JournalEntryId).OnDelete(DeleteBehavior.Cascade);
+        b.HasMany(x => x.Allocations).WithOne().HasForeignKey(x => x.JournalEntryId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<CashAccount>().WithMany().HasForeignKey(x => x.CashAccountId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<CashAccount>().WithMany().HasForeignKey(x => x.CounterCashAccountId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<JournalEntry>().WithMany().HasForeignKey(x => x.ReversalOfJournalId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<FiscalYear>().WithMany().HasForeignKey(x => x.FiscalYearId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<FiscalPeriod>().WithMany().HasForeignKey(x => x.FiscalPeriodId).OnDelete(DeleteBehavior.Restrict);
@@ -53,6 +66,8 @@ internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<Journ
             .HasFilter("[ReversalOfJournalId] IS NOT NULL AND [Status] <> 4");
         b.HasIndex(x => new { x.Status, x.PostingDate }).IncludeProperties(x => x.JournalType);
         b.HasIndex(x => x.FiscalPeriodId);
+        b.HasIndex(x => new { x.PartyId, x.Reference }, "UX_JournalEntries_BillNumber").IsUnique()
+            .HasFilter("[JournalType] = 12 AND [Status] <> 4");
         b.HasIndex(x => x.CreatedAtUtc);
     }
 }

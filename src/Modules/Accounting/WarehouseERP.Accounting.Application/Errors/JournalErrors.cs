@@ -20,9 +20,6 @@ public static class JournalErrors
     public static Error AccountNotManual(int line) => Error.BusinessRule(
         "Accounting.Journal.AccountNotManual", $"Line {line}: the account takes only system postings and opening balances, not manual journals.");
 
-    public static Error PartyLinesNotSupported(int line) => Error.BusinessRule(
-        "Accounting.Journal.PartyLinesNotSupported", $"Line {line}: the account is a customer or supplier control account; its lines are entered with their party in receivables and payables.");
-
     public static Error BranchNotFound(int line) => Error.BusinessRule(
         "Accounting.Journal.BranchNotFound", $"Line {line}: the branch does not exist.");
 
@@ -50,6 +47,24 @@ public static class JournalErrors
 
     public static readonly Error ReversalBeforeOriginal = Error.BusinessRule(
         "Accounting.Journal.ReversalBeforeOriginal", "A reversal is dated on or after the journal it reverses.");
+
+    public static Error PartyRequired(int line) => Error.BusinessRule(
+        "Accounting.Journal.PartyRequired", $"Line {line}: the account is a customer or supplier control account; name the party of this line.");
+
+    public static Error PartyNotAllowed(int line) => Error.BusinessRule(
+        "Accounting.Journal.PartyNotAllowed", $"Line {line}: only a control account line names a party, and of the account's own kind.");
+
+    public static Error PartyNotFound(int line) => Error.BusinessRule(
+        "Accounting.Journal.PartyNotFound", $"Line {line}: the customer or supplier does not exist.");
+
+    public static readonly Error ItemsAllocated = Error.BusinessRule(
+        "Accounting.Journal.ItemsAllocated", "The journal's open items are allocated; remove those allocations before reversing it.");
+
+    public static Error CashAccountOverdrawn(string code) => Error.BusinessRule(
+        "Accounting.Journal.CashAccountOverdrawn", $"Posting would take {code} below zero; a cashbox never goes negative, a bank account only with an overdraft.");
+
+    public static readonly Error Busy = Error.Conflict(
+        "Accounting.Journal.Busy", "A customer, supplier, cashbox or bank account of this journal is being posted to; try again in a moment.");
 
     public static readonly Error PeriodBusy = Error.Conflict(
         "Accounting.Journal.PeriodBusy", "The period is being closed or reopened; try again in a moment.");

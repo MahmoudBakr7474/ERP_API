@@ -1,0 +1,3 @@
+namespace WarehouseERP.Accounting.Application.Features.BankReconciliations.GetBankReconciliation;
+
+public sealed record GetBankReconciliationQuery(Guid ReconciliationId);

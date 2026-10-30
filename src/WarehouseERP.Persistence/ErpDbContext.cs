@@ -61,10 +61,18 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
         ConfigureAccountingReferences(builder);
     }
 
-    // Every journal line names one of Organization's branches. Restrict: a branch with ledger lines is never deleted.
-    private static void ConfigureAccountingReferences(ModelBuilder builder) =>
+    // Every journal line, open item and cashbox or bank names one of Organization's branches. Restrict: a branch with ledger
+    // lines or treasury accounts is never deleted. Parties (Sales' customers, Purchasing's suppliers) are named by id only: a
+    // line names one of two tables, so the party's existence is checked by the posting, not by a foreign key.
+    private static void ConfigureAccountingReferences(ModelBuilder builder)
+    {
         builder.Entity<JournalLine>()
             .HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<OpenItem>()
+            .HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<CashAccount>()
+            .HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+    }
 
     // POS's rows point at Organization's structure, Catalog's products and units, Sales' customers, and the stock documents
     // and lines Inventory posted for its sales and returns (which name them back through SourceDocumentId). Restrict:

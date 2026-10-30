@@ -1,12 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Accounting use cases (vertical slices) and the ports they need. No EF Core, HTTP or Serilog: persistence goes through
        ports implemented in WarehouseERP.Accounting, other modules only through their Contracts (the company and branches
-       through Organization, display names through Identity). -->
+       through Organization, display names through Identity, customers through Sales and suppliers through Purchasing). -->
   <ItemGroup>
     <ProjectReference Include="../WarehouseERP.Accounting.Domain/WarehouseERP.Accounting.Domain.csproj" />
     <ProjectReference Include="../WarehouseERP.Accounting.Contracts/WarehouseERP.Accounting.Contracts.csproj" />
     <ProjectReference Include="../../Organization/WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
     <ProjectReference Include="../../Identity/WarehouseERP.Identity.Contracts/WarehouseERP.Identity.Contracts.csproj" />
+    <ProjectReference Include="../../Sales/WarehouseERP.Sales.Contracts/WarehouseERP.Sales.Contracts.csproj" />
+    <ProjectReference Include="../../Purchasing/WarehouseERP.Purchasing.Contracts/WarehouseERP.Purchasing.Contracts.csproj" />
     <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.BuildingBlocks.Application/WarehouseERP.BuildingBlocks.Application.csproj" />
   </ItemGroup>
 </Project>

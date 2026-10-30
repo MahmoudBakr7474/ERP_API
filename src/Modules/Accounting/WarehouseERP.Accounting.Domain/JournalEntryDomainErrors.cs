@@ -20,6 +20,12 @@ public static class JournalEntryDomainErrors
     public static Error LineIncomplete(int line) => Error.BusinessRule(
         "Accounting.Journal.LineIncomplete", $"Line {line} needs an account and a branch.");
 
+    public static Error LinePartyIncomplete(int line) => Error.BusinessRule(
+        "Accounting.Journal.LinePartyIncomplete", $"Line {line}: a party needs both its type and its id, and only a line with a party has a due date.");
+
+    public static readonly Error VoucherManaged = Error.BusinessRule(
+        "Accounting.Journal.VoucherManaged", "This journal is a voucher: change it through its voucher, which rebuilds its lines.");
+
     public static Error LineOneSide(int line) => Error.BusinessRule(
         "Accounting.Journal.LineOneSide", $"Line {line} has an amount above zero on exactly one side, debit or credit.");
 
@@ -49,7 +55,7 @@ public static class JournalEntryDomainErrors
         "Accounting.Journal.NotPosted", "Only a posted journal can be reversed.");
 
     public static readonly Error NotReversible = Error.BusinessRule(
-        "Accounting.Journal.NotReversible", "Only manual and opening-balance journals are reversed by hand; a closing journal is reversed by reopening its year, and a reversal is never reversed.");
+        "Accounting.Journal.NotReversible", "Only manual, opening-balance and voucher journals are reversed by hand; a closing journal is reversed by reopening its year, and a reversal is never reversed.");
 
     public static readonly Error ApprovalRequired = Error.BusinessRule(
         "Accounting.Journal.ApprovalRequired", "This journal needs an approver: submit it, then approve it.");

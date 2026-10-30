@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Journals;
 using WarehouseERP.Accounting.Application.Contracts.Journals;
+using WarehouseERP.Accounting.Application.Shared;
 using WarehouseERP.Accounting.Contracts;
 using WarehouseERP.Accounting.Domain;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
@@ -9,11 +10,11 @@ using WarehouseERP.Organization.Contracts;
 
 namespace WarehouseERP.Accounting.Infrastructure.ReadModels;
 
-internal sealed class JournalReadStore(DbContext db, IUserDirectory users, IBranchDirectory branches) : IJournalReadStore
+internal sealed class JournalReadStore(DbContext db, IUserDirectory users, IBranchDirectory branches, PartyDirectory parties) : IJournalReadStore
 {
     public async Task<JournalResponse?> GetAsync(Guid journalId, CancellationToken ct)
     {
-        var journal = await db.Set<JournalEntry>().AsNoTracking().Include(x => x.Lines).Include(x => x.Events).AsSplitQuery()
+        var journal = await db.Set<JournalEntry>().AsNoTracking().Include(x => x.Lines).Include(x => x.Events).Include(x => x.Allocations).AsSplitQuery()
             .SingleOrDefaultAsync(x => x.Id == journalId, ct);
         if (journal is null)
             return null;
@@ -41,13 +42,18 @@ internal sealed class JournalReadStore(DbContext db, IUserDirectory users, IBran
         IReadOnlyDictionary<Guid, string> names = userIds.Count == 0 ? new Dictionary<Guid, string>() : await users.GetDisplayNamesAsync(userIds, ct);
         string? Name(Guid? userId) => userId is { } id ? names.GetValueOrDefault(id) : null;
 
+        var named = await parties.FindAsync(journal.Lines.Where(l => l.HasParty).Select(l => (l.PartyType!.Value, l.PartyId!.Value))
+            .Concat(journal.PartyId is { } headerParty ? [(journal.PartyType!.Value, headerParty)] : []), ct);
+        PartyInfo? Party(Contracts.PartyType? type, Guid? id) => type is { } t && id is { } i ? named.GetValueOrDefault((t, i)) : null;
         var lines = journal.Lines.OrderBy(l => l.LineNumber).Select(l =>
         {
             var account = accounts.GetValueOrDefault(l.AccountId);
             var branch = branchInfo.GetValueOrDefault(l.BranchId);
+            var party = Party(l.PartyType, l.PartyId);
             return new JournalLineResponse(l.LineNumber, l.AccountId, account?.Code ?? "", account?.NameAr ?? "", account?.NameEn, l.BranchId,
-                branch?.Code, branch?.NameAr, l.Debit, l.Credit, l.Description);
+                branch?.Code, branch?.NameAr, l.Debit, l.Credit, l.Description, l.PartyType, l.PartyId, party?.Code, party?.NameAr, l.DueDate);
         }).ToList();
+        var voucher = await VoucherAsync(journal, Party(journal.PartyType, journal.PartyId), ct);
         var events = journal.Events.OrderBy(e => e.Id)
             .Select(e => new JournalEventResponse(e.Action, e.UserId, Name(e.UserId), e.AtUtc, e.Note)).ToList();
 
@@ -56,7 +62,23 @@ internal sealed class JournalReadStore(DbContext db, IUserDirectory users, IBran
             journal.RequiresApproval, journal.LinesFixed, journal.TotalDebit, journal.TotalCredit, journal.ReversalOfJournalId, reversalOfNumber,
             reversedBy?.Id, reversedBy?.Number, reversedBy?.Status, journal.CreatedByUserId, Name(journal.CreatedByUserId), journal.CreatedAtUtc,
             journal.ApprovedByUserId, Name(journal.ApprovedByUserId), journal.PostedByUserId, Name(journal.PostedByUserId), journal.PostedAtUtc,
-            lines, events, Convert.ToBase64String(journal.RowVersion));
+            voucher, lines, events, Convert.ToBase64String(journal.RowVersion));
+    }
+
+    private async Task<VoucherResponse?> VoucherAsync(JournalEntry journal, PartyInfo? party, CancellationToken ct)
+    {
+        if (!journal.IsVoucher)
+            return null;
+        var cashIds = new[] { journal.CashAccountId, journal.CounterCashAccountId }.Where(id => id is not null).Select(id => id!.Value).ToArray();
+        var cash = await db.Set<CashAccount>().AsNoTracking().Where(x => cashIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Code, ct);
+        var itemIds = journal.Allocations.Select(a => a.OpenItemId).ToArray();
+        var documents = await db.Set<OpenItem>().AsNoTracking().Where(x => itemIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.DocumentNumber, ct);
+        string? Code(Guid? id) => id is { } i ? cash.GetValueOrDefault(i) : null;
+        return new VoucherResponse(journal.CashAccountId, Code(journal.CashAccountId), journal.CounterCashAccountId, Code(journal.CounterCashAccountId),
+            journal.PartyType, journal.PartyId, party?.Code, party?.NameAr, journal.PaymentMethod, journal.VoucherAmount ?? 0m,
+            journal.WithholdingAmount, journal.TaxAmount, journal.DueDate,
+            journal.Allocations.Select(a => new VoucherAllocationResponse(a.OpenItemId, documents.GetValueOrDefault(a.OpenItemId), a.Amount)).ToList());
     }
 
     public async Task<PagedResult<JournalSummaryResponse>> ListAsync(JournalFilter filter, int page, int pageSize, CancellationToken ct)

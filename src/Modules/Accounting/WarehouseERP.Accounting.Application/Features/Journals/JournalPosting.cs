@@ -1,5 +1,9 @@
 using Microsoft.Extensions.Logging;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Accounts;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.CashAccounts;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Journals;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.OpenItems;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Posting;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Settings;
 using WarehouseERP.Accounting.Application.Contracts.Journals;
 using WarehouseERP.Accounting.Application.Errors;
@@ -12,13 +16,20 @@ using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Accounting.Application.Features.Journals;
 
-// Posting a journal, directly or by approval, as one transaction: the key is locked and looked up (a retry gets the first
-// answer), the journal is loaded at the version the client read, its date and lines are checked again, then the period of
-// its date is locked shared and found open and the journal takes its number. A reversal notes itself in the history of
-// the journal it reverses. The journal, its number and the idempotency record commit together or not at all.
+// Posting a journal (any hand-made type: manual, opening, reversal, voucher), directly or by approval, as one transaction:
+// 1. the key is locked and looked up (a retry gets the first answer); the journal is loaded at the version the client read;
+//    its date and lines are checked again;
+// 2. its parties' locks, then its cashboxes' and banks' locks, in id order; a cashbox (or a bank without overdraft) it
+//    would take below zero at the end of its date or of any later day refuses it;
+// 3. a reversal needs the reversed journal's open items unallocated; a voucher's planned allocations are loaded;
+// 4. the period of its date is locked shared and found open, and the journal takes its number;
+// 5. every control-account line opens its party's item; a reversal's items settle the reversed journal's items, a
+//    voucher's item settles the items it names.
+// The journal, its number, items, allocations and the idempotency record commit together or not at all.
 public sealed partial class JournalPosting(
     ITransactionRunner transactions, IdempotentRequests requests, IJournalRepository journals, IJournalReadStore readStore,
-    IAccountingSettingsRepository settings, JournalLineRules lineRules, LedgerPosting posting, ICurrentUser currentUser,
+    IAccountingSettingsRepository settings, JournalLineRules lineRules, LedgerPosting posting, IOpenItemRepository openItems,
+    ICashAccountRepository cashAccounts, IAccountRepository accounts, IAccountingLocks locks, ICurrentUser currentUser,
     TimeProvider clock, ILogger<JournalPosting> logger)
 {
     public Task<Result<JournalPostedResponse>> PostAsync(Guid journalId, byte[] rowVersion, Guid idempotencyKey, bool byApproval, CancellationToken ct) =>
@@ -53,18 +64,35 @@ public sealed partial class JournalPosting(
         var lines = await lineRules.CheckAsync(journal.Lines.OrderBy(l => l.LineNumber).Select(l => l.ToInput()).ToList(), journal.JournalType, ct);
         if (lines.IsFailure)
             return lines.Error;
+
+        var guarded = await LockAndGuardAsync(journal, ct);
+        if (guarded.IsFailure)
+            return guarded.Error;
+        if (journal.ReversalOfJournalId is { } reversedId && await openItems.HasActiveAllocationsAsync(reversedId, ct))
+            return JournalErrors.ItemsAllocated;
+        var targets = await openItems.GetForUpdateAsync(journal.Allocations.Select(a => a.OpenItemId).ToList(), ct);
+        for (var i = 0; i < journal.Allocations.Count; i++)
+            if (targets.All(t => t.Id != journal.Allocations[i].OpenItemId))
+                return VoucherErrors.AllocationItemNotFound(i + 1);
+
         var slot = await posting.ReserveAsync(journal.JournalType, journal.PostingDate, intoClosedPeriod: false, ct);
         if (slot.IsFailure)
             return slot.Error;
 
         var now = clock.GetUtcNow().UtcDateTime;
         journal.MarkPosted(slot.Value.Number, slot.Value.FiscalPeriodId, byApproval, userId, now);
-        if (journal.ReversalOfJournalId is { } reversedId)
+        var opened = new Dictionary<int, OpenItem>();
+        foreach (var line in journal.Lines.Where(l => l.HasParty))
         {
-            var reversed = await journals.GetForUpdateAsync(reversedId, expectedRowVersion: null, ct)
-                ?? throw new InvalidOperationException($"Reversal {journal.Id} names journal {reversedId}, which does not exist.");
-            reversed.RecordReversed(slot.Value.Number.Number, userId, now);
+            var item = OpenItem.Open(journal, line, now);
+            openItems.Add(item);
+            opened[line.LineNumber] = item;
         }
+        var settled = journal.ReversalOfJournalId is { } originalId
+            ? await SettleReversedAsync(journal, originalId, opened, userId, now, ct)
+            : SettlePlanned(journal, opened, targets, userId, now);
+        if (settled.IsFailure)
+            return settled.Error;
         requests.Complete(idempotencyKey, operation, fingerprint, journal.Id, userId, now);
         var saved = await journals.SaveChangesAsync(ct);
         if (saved.IsFailure)
@@ -72,6 +100,76 @@ public sealed partial class JournalPosting(
 
         JournalPosted(logger, journal.Id, slot.Value.Number.Number, journal.TotalDebit);
         return new JournalPostedResponse(journal.Id, slot.Value.Number.Number, journal.JournalType, journal.PostingDate, journal.TotalDebit, now);
+    }
+
+    // Parties first, then cash accounts, each in a fixed order, so two postings never wait on each other crosswise.
+    private async Task<Result> LockAndGuardAsync(JournalEntry journal, CancellationToken ct)
+    {
+        foreach (var (type, id) in journal.Lines.Where(l => l.HasParty).Select(l => (l.PartyType!.Value, l.PartyId!.Value)).Distinct()
+                     .OrderBy(p => p.Item1).ThenBy(p => p.Item2))
+            if (!await locks.TryLockPartyAsync(type, id, ct))
+                return JournalErrors.Busy;
+        var cash = (await cashAccounts.FindByLedgerAccountsAsync(journal.Lines.Select(l => l.AccountId).Distinct().ToList(), ct))
+            .OrderBy(c => c.Id).ToList();
+        foreach (var account in cash)
+        {
+            if (!await locks.TryLockCashAccountAsync(account.Id, ct))
+                return JournalErrors.Busy;
+            var change = journal.Lines.Where(l => l.AccountId == account.AccountId).Sum(l => l.Debit - l.Credit);
+            if (account.MustStayPositive && change < 0m
+                && await accounts.LowestBalanceFromAsync(account.AccountId, journal.PostingDate, ct) + change < 0m)
+                return JournalErrors.CashAccountOverdrawn(account.Code);
+        }
+        return Result.Success();
+    }
+
+    // A reversal's lines mirror the original's, line by line, so each new item settles the item the same line opened.
+    private async Task<Result> SettleReversedAsync(
+        JournalEntry reversal, Guid originalId, Dictionary<int, OpenItem> opened, Guid? userId, DateTime now, CancellationToken ct)
+    {
+        var original = await journals.GetForUpdateAsync(originalId, expectedRowVersion: null, ct)
+            ?? throw new InvalidOperationException($"Reversal {reversal.Id} names journal {originalId}, which does not exist.");
+        original.RecordReversed(reversal.Number!, userId, now);
+        var lineNumbers = original.Lines.ToDictionary(l => l.Id, l => l.LineNumber);
+        foreach (var item in await openItems.ListOfJournalForUpdateAsync(originalId, ct))
+        {
+            var mirror = opened[lineNumbers[item.JournalLineId]];
+            var allocation = item.IsDebit
+                ? Allocation.Create(item, mirror, item.Unsettled, reversal.PostingDate, reversal.Id, userId, now)
+                : Allocation.Create(mirror, item, item.Unsettled, reversal.PostingDate, reversal.Id, userId, now);
+            if (allocation.IsFailure)
+                return allocation.Error;
+            openItems.Add(allocation.Value);
+        }
+        return Result.Success();
+    }
+
+    // A receipt, payment or refund settles the open items its draft named, from its own item (its one party line). Other
+    // journals, an opening balance with many party lines among them, plan nothing.
+    private Result SettlePlanned(
+        JournalEntry journal, Dictionary<int, OpenItem> opened, IReadOnlyList<OpenItem> targets, Guid? userId, DateTime now)
+    {
+        if (journal.Allocations.Count == 0)
+            return Result.Success();
+        if (opened.Count != 1)
+            throw new InvalidOperationException($"Voucher {journal.Id} plans allocations but opened {opened.Count} items of its own.");
+        var own = opened.Values.Single();
+        for (var i = 0; i < journal.Allocations.Count; i++)
+        {
+            var planned = journal.Allocations[i];
+            var target = targets.Single(t => t.Id == planned.OpenItemId);
+            if (target.IsDebit == own.IsDebit)
+                return VoucherErrors.AllocationItemMismatch(i + 1);
+            var settlesOn = target.DocumentDate > journal.PostingDate ? target.DocumentDate : journal.PostingDate;
+            var allocation = own.IsDebit
+                ? Allocation.Create(own, target, planned.Amount, settlesOn, journal.Id, userId, now)
+                : Allocation.Create(target, own, planned.Amount, settlesOn, journal.Id, userId, now);
+            if (allocation.IsFailure)
+                return allocation.Error == AllocationDomainErrors.ExceedsOpen ? VoucherErrors.AllocationExceedsOpen(i + 1)
+                    : allocation.Error == AllocationDomainErrors.AmountInvalid ? allocation.Error : VoucherErrors.AllocationItemMismatch(i + 1);
+            openItems.Add(allocation.Value);
+        }
+        return Result.Success();
     }
 
     [LoggerMessage(EventId = 9040, Level = LogLevel.Information, Message = "Journal {JournalId} posted as {Number} for {Total}")]

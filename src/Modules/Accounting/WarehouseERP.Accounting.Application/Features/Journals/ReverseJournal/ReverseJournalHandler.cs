@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Journals;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.OpenItems;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Settings;
 using WarehouseERP.Accounting.Application.Errors;
 using WarehouseERP.Accounting.Application.Shared;
@@ -11,12 +12,13 @@ using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Accounting.Application.Features.Journals.ReverseJournal;
 
-// The controlled correction of a posted journal: a draft with the same lines turned the other way, on a date of its own in
-// an open period. The original stays exactly as posted. One active reversal per journal (a filtered unique index decides
+// The controlled correction of a posted journal (manual, opening or voucher): a draft with the same lines turned the other
+// way, on a date of its own in an open period. The original stays exactly as posted; its open items must be unallocated,
+// and the reversal's items settle them when it posts. One active reversal per journal (a filtered unique index decides
 // when two users reverse it at once); it copies the manual-journal approval policy.
 public sealed partial class ReverseJournalHandler(
-    IJournalRepository journals, IAccountingSettingsRepository settings, ICurrentUser currentUser, TimeProvider clock,
-    ILogger<ReverseJournalHandler> logger)
+    IJournalRepository journals, IAccountingSettingsRepository settings, IOpenItemRepository openItems, ICurrentUser currentUser,
+    TimeProvider clock, ILogger<ReverseJournalHandler> logger)
     : ICommandHandler<ReverseJournalCommand, Guid>
 {
     public async Task<Result<Guid>> HandleAsync(ReverseJournalCommand command, CancellationToken ct)
@@ -29,6 +31,8 @@ public sealed partial class ReverseJournalHandler(
             return JournalErrors.NotFound;
         if (await journals.HasActiveReversalAsync(original.Id, ct))
             return JournalErrors.AlreadyReversed;
+        if (await openItems.HasActiveAllocationsAsync(original.Id, ct))
+            return JournalErrors.ItemsAllocated;
         var policies = await settings.GetAsync(ct);
         if (command.PostingDate < policies.CutoverDate)
             return JournalErrors.BeforeCutover(policies.CutoverDate);

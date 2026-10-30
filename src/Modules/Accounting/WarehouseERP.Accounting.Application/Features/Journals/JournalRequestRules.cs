@@ -21,6 +21,8 @@ internal static class JournalRequestRules
             line.RuleFor(l => l.Debit).GreaterThanOrEqualTo(0m);
             line.RuleFor(l => l.Credit).GreaterThanOrEqualTo(0m);
             line.RuleFor(l => l.Description).MaximumLength(JournalLine.MaxDescriptionLength);
+            line.RuleFor(l => l.PartyType).IsInEnum();
+            line.RuleFor(l => l.PartyId).NotEqual(Guid.Empty).When(l => l.PartyId.HasValue);
         });
     }
 }

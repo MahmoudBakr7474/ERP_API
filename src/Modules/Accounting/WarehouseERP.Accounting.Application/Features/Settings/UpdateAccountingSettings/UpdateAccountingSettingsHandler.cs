@@ -30,7 +30,8 @@ public sealed partial class UpdateAccountingSettingsHandler(
             return SettingsErrors.StartMonthLocked;
         if (command.CutoverDate != current.CutoverDate && await journals.AnyPostedAsync(ct))
             return SettingsErrors.CutoverLocked;
-        var changed = current.Change(command.FiscalYearStartMonth, command.CutoverDate, command.ManualJournalsRequireApproval);
+        var changed = current.Change(command.FiscalYearStartMonth, command.CutoverDate, command.ManualJournalsRequireApproval,
+            command.VouchersRequireApproval);
         if (changed.IsFailure)
             return changed.Error;
         var saved = await settings.SaveChangesAsync(ct);

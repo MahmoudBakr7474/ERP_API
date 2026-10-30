@@ -17,6 +17,12 @@ internal sealed class AccountingLocks(DbContext db) : IAccountingLocks
     public Task<bool> TryLockRequestAsync(Guid idempotencyKey, CancellationToken ct) =>
         TakeAsync($"accounting/request/{idempotencyKey:N}", "Exclusive", ct);
 
+    public Task<bool> TryLockPartyAsync(Contracts.PartyType partyType, Guid partyId, CancellationToken ct) =>
+        TakeAsync($"accounting/party/{(byte)partyType}/{partyId:N}", "Exclusive", ct);
+
+    public Task<bool> TryLockCashAccountAsync(Guid cashAccountId, CancellationToken ct) =>
+        TakeAsync($"accounting/cash/{cashAccountId:N}", "Exclusive", ct);
+
     public Task<bool> TryLockYearAsync(Guid fiscalYearId, CancellationToken ct) =>
         TakeAsync($"accounting/year/{fiscalYearId:N}", "Exclusive", ct);
 

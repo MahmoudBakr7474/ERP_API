@@ -2,8 +2,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using WarehouseERP.Accounting.Application.Features.Reports.GetAccountStatement;
+using WarehouseERP.Accounting.Application.Features.Reports.GetAging;
 using WarehouseERP.Accounting.Application.Features.Reports.GetBalanceSheet;
 using WarehouseERP.Accounting.Application.Features.Reports.GetIncomeStatement;
+using WarehouseERP.Accounting.Application.Features.Reports.GetPartyStatement;
+using WarehouseERP.Accounting.Application.Features.Reports.GetSubledgerReconciliation;
 using WarehouseERP.Accounting.Application.Features.Reports.GetTrialBalance;
 using WarehouseERP.Accounting.Application.Features.Reports.ListGeneralLedger;
 using WarehouseERP.Accounting.Contracts;
@@ -59,6 +62,27 @@ internal static class FinancialReportEndpoints
                     .ToHttpResult(TypedResults.Ok))
             .WithName("GetIncomeStatement")
             .Produces<IncomeStatementResponse>()
+            .QueryProblems();
+
+        group.MapGet("/aging", async (IQueryHandler<GetAgingQuery, AgingResponse> handler, CancellationToken ct, PartyType partyType,
+                    DateOnly asOfDate, Guid? branchId = null) =>
+                (await handler.HandleAsync(new GetAgingQuery(partyType, asOfDate, branchId), ct)).ToHttpResult(TypedResults.Ok))
+            .WithName("GetAging")
+            .Produces<AgingResponse>()
+            .QueryProblems();
+
+        group.MapGet("/party-statement", async (IQueryHandler<GetPartyStatementQuery, PartyStatementResponse> handler, CancellationToken ct,
+                    PartyType partyType, Guid partyId, DateOnly fromDate, DateOnly toDate) =>
+                (await handler.HandleAsync(new GetPartyStatementQuery(partyType, partyId, fromDate, toDate), ct)).ToHttpResult(TypedResults.Ok))
+            .WithName("GetPartyStatement")
+            .Produces<PartyStatementResponse>()
+            .QueryProblems();
+
+        group.MapGet("/subledger-reconciliation", async (IQueryHandler<GetSubledgerReconciliationQuery, SubledgerReconciliationResponse> handler,
+                    CancellationToken ct, DateOnly asOfDate) =>
+                (await handler.HandleAsync(new GetSubledgerReconciliationQuery(asOfDate), ct)).ToHttpResult(TypedResults.Ok))
+            .WithName("GetSubledgerReconciliation")
+            .Produces<SubledgerReconciliationResponse>()
             .QueryProblems();
 
         return app;

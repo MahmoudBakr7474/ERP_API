@@ -24,6 +24,7 @@ public sealed class JournalEntry : IAuditable
 
     private readonly List<JournalLine> _lines = [];
     private readonly List<JournalEvent> _events = [];
+    private readonly List<VoucherAllocation> _allocations = [];
 
     private JournalEntry() { } // EF Core
 
@@ -58,6 +59,33 @@ public sealed class JournalEntry : IAuditable
     /// <summary>The journal this one reverses.</summary>
     public Guid? ReversalOfJournalId { get; private set; }
 
+    /// <summary>A voucher's cashbox or bank account (receipts, payments, refunds, cash vouchers, transfers).</summary>
+    public Guid? CashAccountId { get; private set; }
+
+    /// <summary>A transfer's destination cashbox or bank account.</summary>
+    public Guid? CounterCashAccountId { get; private set; }
+
+    /// <summary>A party document's customer or supplier (receipts, payments, refunds, expense bills).</summary>
+    public PartyType? PartyType { get; private set; }
+
+    public Guid? PartyId { get; private set; }
+    public PaymentMethod? PaymentMethod { get; private set; }
+
+    /// <summary>
+    /// A voucher's total: what settles the party (cash plus tax withheld) for receipts and payments, the money moved for
+    /// refunds, cash vouchers and transfers, the bill's total with VAT for an expense bill.
+    /// </summary>
+    public decimal? VoucherAmount { get; private set; }
+
+    /// <summary>Tax withheld on a receipt (by the customer) or a payment (by the company).</summary>
+    public decimal? WithholdingAmount { get; private set; }
+
+    /// <summary>Recoverable VAT on an expense bill.</summary>
+    public decimal? TaxAmount { get; private set; }
+
+    /// <summary>When an expense bill falls due.</summary>
+    public DateOnly? DueDate { get; private set; }
+
     public decimal TotalDebit { get; private set; }
     public decimal TotalCredit { get; private set; }
     public Guid? SubmittedByUserId { get; private set; }
@@ -72,6 +100,13 @@ public sealed class JournalEntry : IAuditable
 
     public IReadOnlyList<JournalLine> Lines => _lines;
     public IReadOnlyList<JournalEvent> Events => _events;
+
+    /// <summary>The open items a receipt, payment or refund settles when it posts.</summary>
+    public IReadOnlyList<VoucherAllocation> Allocations => _allocations;
+
+    public bool IsVoucher => IsVoucherType(JournalType);
+
+    public static bool IsVoucherType(JournalType type) => type is >= JournalType.CustomerReceipt and <= JournalType.ExpenseBill;
 
     public bool IsPosted => Status == JournalStatus.Posted;
 
@@ -107,7 +142,7 @@ public sealed class JournalEntry : IAuditable
         ArgumentNullException.ThrowIfNull(original);
         if (!original.IsPosted)
             return JournalEntryDomainErrors.NotPosted;
-        if (original.JournalType is not (JournalType.Manual or JournalType.OpeningBalance))
+        if (original.JournalType is not (JournalType.Manual or JournalType.OpeningBalance) && !original.IsVoucher)
             return JournalEntryDomainErrors.NotReversible;
         var journal = new JournalEntry
         {
@@ -151,12 +186,53 @@ public sealed class JournalEntry : IAuditable
         return journal;
     }
 
+    /// <summary>
+    /// A voucher draft: its lines are built from what the voucher says (cash account, party, amounts, tax, counter lines)
+    /// and stay fixed; the voucher is changed only as a whole through <see cref="ReplaceVoucher"/>.
+    /// </summary>
+    public static Result<JournalEntry> CreateVoucher(VoucherInput input, Guid? userId, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (!IsVoucherType(input.Type))
+            throw new ArgumentOutOfRangeException(nameof(input), input.Type, "Not a voucher type.");
+        var journal = new JournalEntry
+        {
+            JournalType = input.Type,
+            Status = JournalStatus.Draft,
+            CurrencyCode = input.CurrencyCode,
+            RequiresApproval = input.RequiresApproval,
+            LinesFixed = true,
+        };
+        var filled = journal.FillVoucher(input);
+        if (filled.IsFailure)
+            return filled.Error;
+        journal.Record(JournalAction.Created, userId, nowUtc, null);
+        return journal;
+    }
+
+    /// <summary>Replaces a voucher draft as a whole; its type stays.</summary>
+    public Result ReplaceVoucher(VoucherInput input, Guid? userId, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(input);
+        if (Status != JournalStatus.Draft)
+            return JournalEntryDomainErrors.NotDraft;
+        if (input.Type != JournalType)
+            throw new InvalidOperationException($"Journal {Id} is a {JournalType}, not a {input.Type}.");
+        var filled = FillVoucher(input);
+        if (filled.IsFailure)
+            return filled.Error;
+        Record(JournalAction.Updated, userId, nowUtc, null);
+        return Result.Success();
+    }
+
     /// <summary>Replaces a draft's date, texts and (unless they are fixed) lines; null lines keep the current ones.</summary>
     public Result ReplaceDraft(
         DateOnly postingDate, string description, string? reference, IReadOnlyList<JournalLineInput>? lines, Guid? userId, DateTime nowUtc)
     {
         if (Status != JournalStatus.Draft)
             return JournalEntryDomainErrors.NotDraft;
+        if (IsVoucher)
+            return JournalEntryDomainErrors.VoucherManaged;
         if (LinesFixed && lines is not null)
             return JournalEntryDomainErrors.LinesFixed;
         var filled = Fill(postingDate, description, reference, lines ?? _lines.OrderBy(l => l.LineNumber).Select(l => l.ToInput()).ToList());
@@ -247,7 +323,31 @@ public sealed class JournalEntry : IAuditable
 
     /// <summary>Its lines turned the other way, in their order.</summary>
     public IReadOnlyList<JournalLineInput> Mirrored() =>
-        _lines.OrderBy(l => l.LineNumber).Select(l => new JournalLineInput(l.AccountId, l.BranchId, l.Credit, l.Debit, l.Description)).ToList();
+        _lines.OrderBy(l => l.LineNumber)
+            .Select(l => new JournalLineInput(l.AccountId, l.BranchId, l.Credit, l.Debit, l.Description, l.PartyType, l.PartyId, l.DueDate))
+            .ToList();
+
+    private Result FillVoucher(VoucherInput input)
+    {
+        var lines = VoucherLines.Build(input);
+        if (lines.IsFailure)
+            return lines.Error;
+        var filled = Fill(input.PostingDate, input.Description, input.Reference, lines.Value);
+        if (filled.IsFailure)
+            return filled.Error;
+        CashAccountId = input.Cash?.CashAccountId;
+        CounterCashAccountId = input.CounterCash?.CashAccountId;
+        PartyType = input.Party?.Type;
+        PartyId = input.Party?.PartyId;
+        PaymentMethod = input.PaymentMethod;
+        VoucherAmount = VoucherLines.Total(input);
+        WithholdingAmount = input.WithholdingAmount == 0m ? null : input.WithholdingAmount;
+        TaxAmount = input.TaxAmount == 0m ? null : input.TaxAmount;
+        DueDate = input.Type == JournalType.ExpenseBill ? input.DueDate : null;
+        _allocations.Clear();
+        _allocations.AddRange(input.Allocations.Select(a => VoucherAllocation.Create(a.OpenItemId, a.Amount)));
+        return Result.Success();
+    }
 
     private void Post(DocumentNumber number, Guid fiscalPeriodId, Guid? userId, DateTime nowUtc)
     {
@@ -283,6 +383,9 @@ public sealed class JournalEntry : IAuditable
             var line = lines[i];
             if (line.AccountId == Guid.Empty || line.BranchId == Guid.Empty)
                 return JournalEntryDomainErrors.LineIncomplete(number);
+            if ((line.PartyType is null) != (line.PartyId is null) || line.PartyId == Guid.Empty
+                || (line.DueDate is not null && line.PartyId is null))
+                return JournalEntryDomainErrors.LinePartyIncomplete(number);
             if (line.Debit < 0 || line.Credit < 0 || (line.Debit > 0) == (line.Credit > 0))
                 return JournalEntryDomainErrors.LineOneSide(number);
             var amount = line.Debit + line.Credit;

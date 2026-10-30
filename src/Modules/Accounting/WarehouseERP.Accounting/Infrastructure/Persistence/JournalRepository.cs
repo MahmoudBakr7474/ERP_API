@@ -13,7 +13,8 @@ internal sealed class JournalRepository(DbContext db) : IJournalRepository
 
     public async Task<JournalEntry?> GetForUpdateAsync(Guid journalId, byte[]? expectedRowVersion, CancellationToken ct)
     {
-        var journal = await db.Set<JournalEntry>().Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == journalId, ct);
+        var journal = await db.Set<JournalEntry>().Include(x => x.Lines).Include(x => x.Allocations).AsSplitQuery()
+            .SingleOrDefaultAsync(x => x.Id == journalId, ct);
         if (journal is not null && expectedRowVersion is not null)
             db.Entry(journal).Property(x => x.RowVersion).OriginalValue = expectedRowVersion;
         return journal;

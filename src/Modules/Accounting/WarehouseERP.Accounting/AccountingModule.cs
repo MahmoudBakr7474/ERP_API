@@ -2,6 +2,32 @@ using FluentValidation;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Accounts;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.BankReconciliations;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.CashAccounts;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.OpenItems;
+using WarehouseERP.Accounting.Application.Contracts.BankReconciliations;
+using WarehouseERP.Accounting.Application.Contracts.CashAccounts;
+using WarehouseERP.Accounting.Application.Features.Allocations.AllocateOpenItems;
+using WarehouseERP.Accounting.Application.Features.Allocations.AutoAllocate;
+using WarehouseERP.Accounting.Application.Features.Allocations.RemoveAllocation;
+using WarehouseERP.Accounting.Application.Features.BankReconciliations.CancelBankReconciliation;
+using WarehouseERP.Accounting.Application.Features.BankReconciliations.CompleteBankReconciliation;
+using WarehouseERP.Accounting.Application.Features.BankReconciliations.GetBankReconciliation;
+using WarehouseERP.Accounting.Application.Features.BankReconciliations.ListBankReconciliations;
+using WarehouseERP.Accounting.Application.Features.BankReconciliations.StartBankReconciliation;
+using WarehouseERP.Accounting.Application.Features.BankReconciliations.TickBankReconciliationLines;
+using WarehouseERP.Accounting.Application.Features.CashAccounts.CreateCashAccount;
+using WarehouseERP.Accounting.Application.Features.CashAccounts.GetCashAccount;
+using WarehouseERP.Accounting.Application.Features.CashAccounts.ListCashAccounts;
+using WarehouseERP.Accounting.Application.Features.CashAccounts.SetCashAccountActive;
+using WarehouseERP.Accounting.Application.Features.CashAccounts.UpdateCashAccount;
+using WarehouseERP.Accounting.Application.Features.OpenItems.ListOpenItems;
+using WarehouseERP.Accounting.Application.Features.Reports.GetAging;
+using WarehouseERP.Accounting.Application.Features.Reports.GetPartyStatement;
+using WarehouseERP.Accounting.Application.Features.Reports.GetSubledgerReconciliation;
+using WarehouseERP.Accounting.Application.Features.Vouchers;
+using WarehouseERP.Accounting.Application.Features.Vouchers.CreateVoucher;
+using WarehouseERP.Accounting.Application.Features.Vouchers.UpdateVoucher;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.FiscalYears;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Journals;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Mappings;
@@ -61,9 +87,11 @@ using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Accounting;
 
-// The general ledger (docs/modules/Accounting and ADR 0020): the chart of accounts and its posting-role mappings, fiscal
-// years and periods, manual, opening-balance, reversal and year-end closing journals, and the reports computed from posted
-// lines. The company and branches come from Organization, display names from Identity. The host calls AddAccountingModule
+// The general ledger, subledgers and treasury (docs/modules/Accounting and ADR 0020): the chart of accounts and its
+// posting-role mappings, fiscal years and periods, manual, opening-balance, reversal, voucher and year-end closing
+// journals, customers' and suppliers' open items and allocations, cashboxes, banks and their reconciliation, and the reports
+// computed from posted lines. The company and branches come from Organization, display names from Identity, customers from
+// Sales and suppliers from Purchasing. The host calls AddAccountingModule
 // and MapAccountingEndpoints; ITransactionRunner comes from Persistence.
 public static class AccountingModule
 {
@@ -108,6 +136,30 @@ public static class AccountingModule
         services.AddQueryHandler<GetJournalQuery, JournalResponse, GetJournalHandler>();
         services.AddQueryHandler<ListJournalsQuery, PagedResult<JournalSummaryResponse>, ListJournalsHandler>();
 
+        services.AddCommandHandler<CreateVoucherCommand, Guid, CreateVoucherHandler>();
+        services.AddCommandHandler<UpdateVoucherCommand, string, UpdateVoucherHandler>();
+
+        services.AddQueryHandler<ListOpenItemsQuery, PagedResult<OpenItemResponse>, ListOpenItemsHandler>();
+        services.AddCommandHandler<AllocateOpenItemsCommand, Guid, AllocateOpenItemsHandler>();
+        services.AddCommandHandler<RemoveAllocationCommand, Done, RemoveAllocationHandler>();
+        services.AddCommandHandler<AutoAllocateCommand, AutoAllocatedResponse, AutoAllocateHandler>();
+
+        services.AddCommandHandler<CreateCashAccountCommand, Guid, CreateCashAccountHandler>();
+        services.AddCommandHandler<UpdateCashAccountCommand, string, UpdateCashAccountHandler>();
+        services.AddCommandHandler<SetCashAccountActiveCommand, Done, SetCashAccountActiveHandler>();
+        services.AddQueryHandler<GetCashAccountQuery, CashAccountResponse, GetCashAccountHandler>();
+        services.AddQueryHandler<ListCashAccountsQuery, IReadOnlyList<CashAccountResponse>, ListCashAccountsHandler>();
+
+        services.AddCommandHandler<StartBankReconciliationCommand, Guid, StartBankReconciliationHandler>();
+        services.AddQueryHandler<GetBankReconciliationQuery, BankReconciliationResponse, GetBankReconciliationHandler>();
+        services.AddQueryHandler<ListBankReconciliationsQuery, IReadOnlyList<BankReconciliationSummaryResponse>, ListBankReconciliationsHandler>();
+        services.AddCommandHandler<TickBankReconciliationLinesCommand, string, TickBankReconciliationLinesHandler>();
+        services.AddCommandHandler<CompleteBankReconciliationCommand, string, CompleteBankReconciliationHandler>();
+        services.AddCommandHandler<CancelBankReconciliationCommand, string, CancelBankReconciliationHandler>();
+
+        services.AddQueryHandler<GetAgingQuery, AgingResponse, GetAgingHandler>();
+        services.AddQueryHandler<GetPartyStatementQuery, PartyStatementResponse, GetPartyStatementHandler>();
+        services.AddQueryHandler<GetSubledgerReconciliationQuery, SubledgerReconciliationResponse, GetSubledgerReconciliationHandler>();
         services.AddQueryHandler<GetTrialBalanceQuery, TrialBalanceResponse, GetTrialBalanceHandler>();
         services.AddQueryHandler<GetAccountStatementQuery, AccountStatementResponse, GetAccountStatementHandler>();
         services.AddQueryHandler<ListGeneralLedgerQuery, PagedResult<GeneralLedgerLineResponse>, ListGeneralLedgerHandler>();
@@ -119,6 +171,15 @@ public static class AccountingModule
         services.AddScoped<LedgerPosting>();
         services.AddScoped<JournalLineRules>();
         services.AddScoped<JournalPosting>();
+        services.AddScoped<PartyDirectory>();
+        services.AddScoped<VoucherBuilder>();
+        services.AddScoped<IOpenItemRepository, OpenItemRepository>();
+        services.AddScoped<IOpenItemReadStore, OpenItemReadStore>();
+        services.AddScoped<ICashAccountRepository, CashAccountRepository>();
+        services.AddScoped<ICashAccountReadStore, CashAccountReadStore>();
+        services.AddScoped<IBankReconciliationRepository, BankReconciliationRepository>();
+        services.AddScoped<IBankReconciliationReadStore, BankReconciliationReadStore>();
+        services.AddScoped<ISubledgerReadStore, SubledgerReadStore>();
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<IAccountMappingRepository, AccountMappingRepository>();
         services.AddScoped<IAccountingSettingsRepository, AccountingSettingsRepository>();
@@ -142,5 +203,9 @@ public static class AccountingModule
             .MapAccountMappingEndpoints()
             .MapFiscalYearEndpoints()
             .MapJournalEndpoints()
+            .MapVoucherEndpoints()
+            .MapOpenItemEndpoints()
+            .MapCashAccountEndpoints()
+            .MapBankReconciliationEndpoints()
             .MapFinancialReportEndpoints();
 }

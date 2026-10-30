@@ -28,6 +28,12 @@ public interface IAccountRepository
     /// <summary>Posted debits minus posted credits.</summary>
     Task<decimal> PostedBalanceAsync(Guid accountId, CancellationToken ct);
 
+    /// <summary>
+    /// The lowest posted balance (debits minus credits) at the end of any day from <paramref name="fromDate"/> on: what a
+    /// change dated that day may take the account down by without leaving any later day below zero.
+    /// </summary>
+    Task<decimal> LowestBalanceFromAsync(Guid accountId, DateOnly fromDate, CancellationToken ct);
+
     Task<bool> IsMappedAsync(Guid accountId, CancellationToken ct);
 
     void Add(Account account);

@@ -34,13 +34,22 @@ public static class AccountingPermissions
     /// <summary>Read the trial balance, general ledger, account statements and financial statements.</summary>
     public const string ReportsRead = "accounting.reports.read";
 
-    /// <summary>Change the accounting settings: fiscal-year start, accounting start date, journal approval policy.</summary>
+    /// <summary>Change the accounting settings: fiscal-year start, accounting start date, approval policies.</summary>
     public const string SettingsManage = "accounting.settings.manage";
+
+    /// <summary>Draft and change customer receipts and refunds, and allocate customers' open items.</summary>
+    public const string ReceivablesManage = "accounting.receivables.manage";
+
+    /// <summary>Draft and change supplier payments, refunds and expense bills, and allocate suppliers' open items.</summary>
+    public const string PayablesManage = "accounting.payables.manage";
+
+    /// <summary>Manage cashboxes and bank accounts, cash receipts, payments and transfers, and bank reconciliations.</summary>
+    public const string TreasuryManage = "accounting.treasury.manage";
 
     /// <summary>Every Accounting permission.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
         AccountsRead, AccountsManage, PeriodsManage, PeriodsReopen, JournalsRead, JournalsManage, JournalsApprove,
-        OpeningBalancesManage, ReportsRead, SettingsManage,
+        OpeningBalancesManage, ReportsRead, SettingsManage, ReceivablesManage, PayablesManage, TreasuryManage,
     ];
 }

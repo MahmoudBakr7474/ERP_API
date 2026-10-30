@@ -30,12 +30,14 @@ internal sealed class AccountingSettingsConfiguration : IEntityTypeConfiguration
         b.Property(x => x.CreatedAtUtc).IsUtcTimestamp();
         b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
         b.Property(x => x.RowVersion).IsRowVersion();
+        b.Property(x => x.VouchersRequireApproval).HasDefaultValue(false);
         b.HasData(new
         {
             Id = AccountingSettings.SingletonId,
             FiscalYearStartMonth = 1,
             CutoverDate = new DateOnly(2027, 1, 1),
             ManualJournalsRequireApproval = true,
+            VouchersRequireApproval = false,
             CreatedAtUtc = Seeded,
         });
     }

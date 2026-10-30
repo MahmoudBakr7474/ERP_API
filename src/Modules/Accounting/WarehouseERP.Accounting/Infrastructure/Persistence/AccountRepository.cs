@@ -42,6 +42,27 @@ internal sealed class AccountRepository(DbContext db) : IAccountRepository
                where line.AccountId == accountId && journal.Status == JournalStatus.Posted
                select line.Debit - line.Credit).SumAsync(ct);
 
+    public async Task<decimal> LowestBalanceFromAsync(Guid accountId, DateOnly fromDate, CancellationToken ct)
+    {
+        var posted = from line in db.Set<JournalLine>()
+                     join journal in db.Set<JournalEntry>() on line.JournalEntryId equals journal.Id
+                     where line.AccountId == accountId && journal.Status == JournalStatus.Posted
+                     select new { journal.PostingDate, Change = line.Debit - line.Credit };
+        var balance = await posted.Where(x => x.PostingDate <= fromDate).SumAsync(x => x.Change, ct);
+        var laterDays = await posted.Where(x => x.PostingDate > fromDate)
+            .GroupBy(x => x.PostingDate)
+            .Select(g => new { Date = g.Key, Change = g.Sum(x => x.Change) })
+            .OrderBy(x => x.Date)
+            .ToListAsync(ct);
+        var lowest = balance;
+        foreach (var day in laterDays)
+        {
+            balance += day.Change;
+            lowest = Math.Min(lowest, balance);
+        }
+        return lowest;
+    }
+
     public Task<bool> IsMappedAsync(Guid accountId, CancellationToken ct) => db.Set<AccountMapping>().AnyAsync(x => x.AccountId == accountId, ct);
 
     public void Add(Account account) => db.Add(account);

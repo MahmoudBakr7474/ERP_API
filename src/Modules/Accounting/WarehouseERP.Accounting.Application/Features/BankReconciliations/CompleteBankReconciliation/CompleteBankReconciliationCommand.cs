@@ -1,0 +1,3 @@
+namespace WarehouseERP.Accounting.Application.Features.BankReconciliations.CompleteBankReconciliation;
+
+public sealed record CompleteBankReconciliationCommand(Guid ReconciliationId, string RowVersion);
