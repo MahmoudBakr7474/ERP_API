@@ -6,4 +6,4 @@ namespace WarehouseERP.Accounting.Application.Contracts.CashAccounts;
 public sealed record CashAccountResponse(
     Guid Id, string Code, string Name, CashAccountKind Kind, Guid BranchId, string? BranchCode, string? BranchNameAr, Guid AccountId,
     string AccountCode, string AccountNameAr, string? BankName, string? BankAccountNumber, bool AllowsOverdraft, bool IsActive,
-    decimal Balance, DateTime CreatedAtUtc, string RowVersion);
+    decimal Balance, DateTime CreatedAtUtc, string RowVersion, bool ReceivesPosCash);

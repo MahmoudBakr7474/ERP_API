@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Journals;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Settings;
+using WarehouseERP.Accounting.Application.Errors;
 using WarehouseERP.Accounting.Application.Shared;
 using WarehouseERP.Accounting.Contracts;
 using WarehouseERP.Accounting.Domain;
@@ -27,6 +28,8 @@ public sealed partial class CreateOpeningJournalHandler(
         if (company.IsFailure)
             return company.Error;
         var policies = await settings.GetAsync(ct);
+        if (policies.IsActivated)
+            return JournalErrors.OpeningAfterActivation;
         var lines = JournalLineRules.ToInputs(command.Lines);
         var checkedLines = await lineRules.CheckAsync(lines, JournalType.OpeningBalance, ct);
         if (checkedLines.IsFailure)

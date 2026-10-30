@@ -34,6 +34,8 @@ public sealed partial class ReverseJournalHandler(
         if (await openItems.HasActiveAllocationsAsync(original.Id, ct))
             return JournalErrors.ItemsAllocated;
         var policies = await settings.GetAsync(ct);
+        if (policies.IsActivated && original.JournalType == JournalType.OpeningBalance)
+            return JournalErrors.OpeningAfterActivation;
         if (command.PostingDate < policies.CutoverDate)
             return JournalErrors.BeforeCutover(policies.CutoverDate);
         if (command.PostingDate < original.PostingDate)

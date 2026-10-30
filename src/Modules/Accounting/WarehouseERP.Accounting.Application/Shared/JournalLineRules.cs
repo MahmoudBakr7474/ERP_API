@@ -51,7 +51,7 @@ public sealed class JournalLineRules(IAccountRepository accounts, AccountingRefe
             var branch = branches.GetValueOrDefault(line.BranchId);
             if (branch is null)
                 return JournalErrors.BranchNotFound(number);
-            if (!branch.IsActive)
+            if (!branch.IsActive && !JournalEntry.IsSourceType(type)) // a document posted before its branch closed still posts
                 return JournalErrors.BranchNotActive(number);
         }
         return Result.Success();

@@ -25,6 +25,18 @@ internal sealed class LedgerReadStore(DbContext db) : ILedgerReadStore
             .ToListAsync(ct);
     }
 
+    // Opening-balance journals and the reversals of opening-balance journals (the correction of an opening).
+    public async Task<IReadOnlyList<AccountTotals>> OpeningTotalsAsync(CancellationToken ct)
+    {
+        var openings = db.Set<JournalEntry>().Where(j => j.JournalType == JournalType.OpeningBalance).Select(j => (Guid?)j.Id);
+        return await Posted()
+            .Where(x => x.Journal.JournalType == JournalType.OpeningBalance
+                        || (x.Journal.JournalType == JournalType.Reversal && openings.Contains(x.Journal.ReversalOfJournalId)))
+            .GroupBy(x => x.Line.AccountId)
+            .Select(g => new AccountTotals(g.Key, g.Sum(x => x.Line.Debit), g.Sum(x => x.Line.Credit)))
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<AccountBranchTotals>> IncomeStatementTotalsByBranchAsync(DateOnly fromDate, DateOnly toDate, CancellationToken ct) =>
         await (from row in Posted()
                join account in db.Set<Account>() on row.Line.AccountId equals account.Id

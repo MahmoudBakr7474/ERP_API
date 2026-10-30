@@ -19,6 +19,9 @@ public static class CashAccountDomainErrors
     public static readonly Error BankDetailsOnCashbox = Error.BusinessRule(
         "Accounting.CashAccount.BankDetailsOnCashbox", "A cashbox has no bank name, account number or overdraft.");
 
+    public static readonly Error PosCashNotCashbox = Error.BusinessRule(
+        "Accounting.CashAccount.PosCashNotCashbox", "Only a cashbox receives the cash of closed POS shifts.");
+
     public static readonly Error BankDetailsTooLong = Error.BusinessRule(
         "Accounting.CashAccount.BankDetailsTooLong", $"The bank name is at most {CashAccount.MaxBankNameLength} characters and the account number {CashAccount.MaxAccountNumberLength}.");
 }

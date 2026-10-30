@@ -26,6 +26,9 @@ internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<Journ
             t.HasCheckConstraint("CK_JournalEntries_Voucher",
                 "[JournalType] BETWEEN 5 AND 12 OR ([CashAccountId] IS NULL AND [CounterCashAccountId] IS NULL AND [PartyId] IS NULL "
                 + "AND [PaymentMethod] IS NULL AND [VoucherAmount] IS NULL)");
+            t.HasCheckConstraint("CK_JournalEntries_Source",
+                "([JournalType] BETWEEN 13 AND 16 AND [SourceType] IS NOT NULL AND [SourceId] IS NOT NULL) "
+                + "OR ([JournalType] NOT BETWEEN 13 AND 16 AND [SourceType] IS NULL AND [SourceId] IS NULL)");
             t.HasCheckConstraint("CK_JournalEntries_Reversal",
                 "([JournalType] = 3 AND [ReversalOfJournalId] IS NOT NULL) OR ([JournalType] <> 3 AND [ReversalOfJournalId] IS NULL)");
         });
@@ -40,6 +43,7 @@ internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<Journ
         b.Property(x => x.CurrencyCode).HasMaxLength(3).IsUnicode(false).IsFixedLength();
         b.Property(x => x.PartyType).HasConversion<byte?>().HasColumnType("tinyint");
         b.Property(x => x.PaymentMethod).HasConversion<byte?>().HasColumnType("tinyint");
+        b.Property(x => x.SourceType).HasConversion<byte?>().HasColumnType("tinyint");
         b.Property(x => x.VoucherAmount).HasPrecision(19, 4);
         b.Property(x => x.WithholdingAmount).HasPrecision(19, 4);
         b.Property(x => x.TaxAmount).HasPrecision(19, 4);
@@ -69,5 +73,6 @@ internal sealed class JournalEntryConfiguration : IEntityTypeConfiguration<Journ
         b.HasIndex(x => new { x.PartyId, x.Reference }, "UX_JournalEntries_BillNumber").IsUnique()
             .HasFilter("[JournalType] = 12 AND [Status] <> 4");
         b.HasIndex(x => x.CreatedAtUtc);
+        b.HasIndex(x => new { x.SourceType, x.SourceId }, "UX_JournalEntries_Source").IsUnique().HasFilter("[SourceId] IS NOT NULL");
     }
 }

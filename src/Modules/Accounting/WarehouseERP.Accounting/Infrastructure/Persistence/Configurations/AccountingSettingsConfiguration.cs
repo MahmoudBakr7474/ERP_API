@@ -29,6 +29,8 @@ internal sealed class AccountingSettingsConfiguration : IEntityTypeConfiguration
         b.Property(x => x.Id).ValueGeneratedNever();
         b.Property(x => x.CreatedAtUtc).IsUtcTimestamp();
         b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.ActivatedAtUtc).IsUtcTimestamp();
+        b.Property(x => x.CutoverStartUtc).IsUtcTimestamp();
         b.Property(x => x.RowVersion).IsRowVersion();
         b.Property(x => x.VouchersRequireApproval).HasDefaultValue(false);
         b.HasData(new

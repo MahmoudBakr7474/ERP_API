@@ -21,4 +21,10 @@ public interface ICustomerReadStore
     /// not invoiced, invoiced, and credits pending; null when there is no such customer.
     /// </summary>
     Task<CustomerOrderPosition?> GetOrderPositionAsync(Guid customerId, CancellationToken ct);
+
+    /// <summary>
+    /// The customer's invoices posted and returns approved (with a credit) at or after the moment: what they bill, and their
+    /// credits as negative amounts.
+    /// </summary>
+    Task<IReadOnlyList<CustomerReceivableDocument>> ListReceivableDocumentsAsync(Guid customerId, DateTime fromUtc, CancellationToken ct);
 }

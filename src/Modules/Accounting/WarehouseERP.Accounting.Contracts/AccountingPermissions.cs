@@ -46,10 +46,16 @@ public static class AccountingPermissions
     /// <summary>Manage cashboxes and bank accounts, cash receipts, payments and transfers, and bank reconciliations.</summary>
     public const string TreasuryManage = "accounting.treasury.manage";
 
+    /// <summary>
+    /// Activate automatic accounting at the cutover, run the journaling of operational documents on demand and retry the
+    /// ones that failed.
+    /// </summary>
+    public const string IntegrationManage = "accounting.integration.manage";
+
     /// <summary>Every Accounting permission.</summary>
     public static IReadOnlyList<string> All { get; } =
     [
         AccountsRead, AccountsManage, PeriodsManage, PeriodsReopen, JournalsRead, JournalsManage, JournalsApprove,
-        OpeningBalancesManage, ReportsRead, SettingsManage, ReceivablesManage, PayablesManage, TreasuryManage,
+        OpeningBalancesManage, ReportsRead, SettingsManage, ReceivablesManage, PayablesManage, TreasuryManage, IntegrationManage,
     ];
 }

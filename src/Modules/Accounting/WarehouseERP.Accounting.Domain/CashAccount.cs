@@ -8,7 +8,8 @@ namespace WarehouseERP.Accounting.Domain;
 /// <summary>
 /// A cashbox or bank account of a branch, kept on its own posting account of the ledger (one treasury account per ledger
 /// account), so its balance is always that account's posted balance. A cashbox never goes below zero; a bank account only
-/// when it allows an overdraft. Code, kind, branch and ledger account are fixed. Master data, versioned in a temporal table.
+/// when it allows an overdraft. One cashbox per branch may receive its tills' cash when POS shifts close. Code, kind, branch
+/// and ledger account are fixed. Master data, versioned in a temporal table.
 /// </summary>
 public sealed partial class CashAccount : MasterEntity
 {
@@ -36,9 +37,12 @@ public sealed partial class CashAccount : MasterEntity
 
     public bool AllowsOverdraft { get; private set; }
 
+    /// <summary>The branch's cashbox that closed POS shifts hand their cash in to (one per branch).</summary>
+    public bool ReceivesPosCash { get; private set; }
+
     public static Result<CashAccount> Create(
         string code, string name, CashAccountKind kind, Guid branchId, Account account, string? bankName, string? bankAccountNumber,
-        bool allowsOverdraft)
+        bool allowsOverdraft, bool receivesPosCash)
     {
         var normalized = (code ?? "").Trim().ToUpperInvariant();
         if (!CodePattern().IsMatch(normalized))
@@ -48,11 +52,11 @@ public sealed partial class CashAccount : MasterEntity
         if (!account.IsPosting || !account.IsActive || account.Type != AccountType.Asset || account.PartyType is not null)
             return CashAccountDomainErrors.AccountInvalid;
         var cash = new CashAccount { Code = normalized, Kind = kind, BranchId = branchId, AccountId = account.Id };
-        var updated = cash.Update(name, bankName, bankAccountNumber, allowsOverdraft);
+        var updated = cash.Update(name, bankName, bankAccountNumber, allowsOverdraft, receivesPosCash);
         return updated.IsFailure ? updated.Error : cash;
     }
 
-    public Result Update(string name, string? bankName, string? bankAccountNumber, bool allowsOverdraft)
+    public Result Update(string name, string? bankName, string? bankAccountNumber, bool allowsOverdraft, bool receivesPosCash)
     {
         var trimmed = (name ?? "").Trim();
         if (trimmed.Length is 0 or > MaxNameLength)
@@ -63,10 +67,13 @@ public sealed partial class CashAccount : MasterEntity
             return CashAccountDomainErrors.BankDetailsOnCashbox;
         if (bank?.Length > MaxBankNameLength || number?.Length > MaxAccountNumberLength)
             return CashAccountDomainErrors.BankDetailsTooLong;
+        if (receivesPosCash && Kind != CashAccountKind.Cashbox)
+            return CashAccountDomainErrors.PosCashNotCashbox;
         Name = trimmed;
         BankName = bank;
         BankAccountNumber = number;
         AllowsOverdraft = allowsOverdraft;
+        ReceivesPosCash = receivesPosCash;
         return Result.Success();
     }
 

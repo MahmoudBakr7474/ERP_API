@@ -1,0 +1,3 @@
+namespace WarehouseERP.Accounting.Application.Features.SourcePostings.GetSourceSyncStatus;
+
+public sealed record GetSourceSyncStatusQuery;

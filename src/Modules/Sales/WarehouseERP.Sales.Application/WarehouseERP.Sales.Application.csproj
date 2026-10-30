@@ -8,6 +8,7 @@
     <ProjectReference Include="../../Organization/WarehouseERP.Organization.Contracts/WarehouseERP.Organization.Contracts.csproj" />
     <ProjectReference Include="../../Catalog/WarehouseERP.Catalog.Contracts/WarehouseERP.Catalog.Contracts.csproj" />
     <ProjectReference Include="../../Inventory/WarehouseERP.Inventory.Contracts/WarehouseERP.Inventory.Contracts.csproj" />
+    <ProjectReference Include="../../Accounting/WarehouseERP.Accounting.Contracts/WarehouseERP.Accounting.Contracts.csproj" />
     <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.BuildingBlocks.Application/WarehouseERP.BuildingBlocks.Application.csproj" />
   </ItemGroup>
 </Project>

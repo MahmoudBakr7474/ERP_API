@@ -47,7 +47,7 @@ internal sealed class CashAccountReadStore(DbContext db, IBranchDirectory branch
             var branch = branchInfo.GetValueOrDefault(c.BranchId);
             return new CashAccountResponse(c.Id, c.Code, c.Name, c.Kind, c.BranchId, branch?.Code, branch?.NameAr, c.AccountId, account?.Code ?? "",
                 account?.NameAr ?? "", c.BankName, c.BankAccountNumber, c.AllowsOverdraft, c.IsActive, balances.GetValueOrDefault(c.AccountId),
-                c.CreatedAtUtc, Convert.ToBase64String(c.RowVersion));
+                c.CreatedAtUtc, Convert.ToBase64String(c.RowVersion), c.ReceivesPosCash);
         }).ToList();
     }
 }

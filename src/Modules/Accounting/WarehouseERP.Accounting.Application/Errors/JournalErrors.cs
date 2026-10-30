@@ -63,6 +63,10 @@ public static class JournalErrors
     public static Error CashAccountOverdrawn(string code) => Error.BusinessRule(
         "Accounting.Journal.CashAccountOverdrawn", $"Posting would take {code} below zero; a cashbox never goes negative, a bank account only with an overdraft.");
 
+    public static readonly Error OpeningAfterActivation = Error.BusinessRule(
+        "Accounting.Journal.OpeningAfterActivation",
+        "Automatic accounting is active: the opening balances it was checked against no longer change; correct them by a manual journal.");
+
     public static readonly Error Busy = Error.Conflict(
         "Accounting.Journal.Busy", "A customer, supplier, cashbox or bank account of this journal is being posted to; try again in a moment.");
 

@@ -23,6 +23,11 @@ internal sealed class AccountingLocks(DbContext db) : IAccountingLocks
     public Task<bool> TryLockCashAccountAsync(Guid cashAccountId, CancellationToken ct) =>
         TakeAsync($"accounting/cash/{cashAccountId:N}", "Exclusive", ct);
 
+    public Task<bool> TryLockSourceAsync(Guid sourcePostingId, CancellationToken ct) =>
+        TakeAsync($"accounting/source/{sourcePostingId:N}", "Exclusive", ct);
+
+    public Task<bool> TryLockSourceScanAsync(CancellationToken ct) => TakeAsync("accounting/source-scan", "Exclusive", ct);
+
     public Task<bool> TryLockYearAsync(Guid fiscalYearId, CancellationToken ct) =>
         TakeAsync($"accounting/year/{fiscalYearId:N}", "Exclusive", ct);
 

@@ -35,8 +35,10 @@ public sealed partial class CreateCashAccountHandler(
             return CashAccountErrors.BranchNotFound;
         if (!branch.IsActive)
             return CashAccountErrors.BranchNotActive;
+        if (command.ReceivesPosCash && await cashAccounts.PosCashboxTakenAsync(branch.Id, null, ct))
+            return CashAccountErrors.PosCashboxTaken;
         var created = CashAccount.Create(command.Code, command.Name, command.Kind, branch.Id, account, command.BankName, command.BankAccountNumber,
-            command.AllowsOverdraft);
+            command.AllowsOverdraft, command.ReceivesPosCash);
         if (created.IsFailure)
             return created.Error;
         cashAccounts.Add(created.Value);

@@ -23,6 +23,10 @@ public static class JournalNumbers
         JournalType.CashPayment => "CP",
         JournalType.CashTransfer => "TR",
         JournalType.ExpenseBill => "EB",
+        JournalType.InventoryJournal => "IV",
+        JournalType.PurchasingJournal => "PU",
+        JournalType.SalesJournal => "SL",
+        JournalType.PosJournal => "PS",
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown journal type."),
     };
 

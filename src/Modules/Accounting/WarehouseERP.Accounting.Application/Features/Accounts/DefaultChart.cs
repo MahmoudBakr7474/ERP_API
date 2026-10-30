@@ -8,6 +8,8 @@ namespace WarehouseERP.Accounting.Application.Features.Accounts;
 // the company's accountant edits (or replaces by importing the approved chart) before accounting starts; nothing in the
 // code depends on these codes. Accounts only the system feeds (inventory, GRNI, unbilled receivables, till clearing, cost
 // of goods sold and inventory differences) refuse manual journals, so their balances always come from their sources.
+// Purchase price differences under review take them: the accountant moves reviewed differences to cost of sales or another
+// approved account by journal (V1 decision 8).
 internal static class DefaultChart
 {
     private const AccountType A = AccountType.Asset;
@@ -50,7 +52,7 @@ internal static class DefaultChart
         H("1205", "12", A, "أرصدة مدينة أخرى", "Other current assets"),
         P("120501", "1205", A, StatementSection.CurrentAssets, "مصروفات مدفوعة مقدماً", "Prepaid expenses"),
         P("120502", "1205", A, StatementSection.CurrentAssets, "دفعات مقدمة للموردين", "Advances to suppliers"),
-        P("120503", "1205", A, StatementSection.CurrentAssets, "فروق أسعار شراء تحت المراجعة", "Purchase price differences under review", manual: false),
+        P("120503", "1205", A, StatementSection.CurrentAssets, "فروق أسعار شراء تحت المراجعة", "Purchase price differences under review"),
 
         H("2", null, L, "الالتزامات", "Liabilities"),
         H("21", "2", L, "الالتزامات طويلة الأجل", "Non-current liabilities"),

@@ -29,6 +29,9 @@ internal sealed class JournalRepository(DbContext db) : IJournalRepository
         db.Set<JournalEntry>().CountAsync(x => (x.Status == JournalStatus.Draft || x.Status == JournalStatus.Submitted)
             && x.PostingDate >= from && x.PostingDate <= to, ct);
 
+    public Task<int> CountOpenOfTypeAsync(JournalType type, CancellationToken ct) =>
+        db.Set<JournalEntry>().CountAsync(x => x.JournalType == type && (x.Status == JournalStatus.Draft || x.Status == JournalStatus.Submitted), ct);
+
     public void Add(JournalEntry journal) => db.Add(journal);
 
     public Task<Result> SaveChangesAsync(CancellationToken ct) => AccountingSaves.SaveAsync(db, ct);

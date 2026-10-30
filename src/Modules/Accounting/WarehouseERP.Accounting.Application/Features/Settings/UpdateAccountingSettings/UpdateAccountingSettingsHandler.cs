@@ -11,8 +11,8 @@ using WarehouseERP.SharedKernel.Results;
 namespace WarehouseERP.Accounting.Application.Features.Settings.UpdateAccountingSettings;
 
 // Company-wide users with accounting.settings.manage (the endpoint), from the version the editor read. The fiscal-year start
-// month is fixed once a year exists and the start date once a journal has posted; the approval policy applies to journals
-// drafted from now on.
+// month is fixed once a year exists and the start date once a journal has posted or automatic accounting is active; the
+// approval policy applies to journals drafted from now on.
 public sealed partial class UpdateAccountingSettingsHandler(
     IAccountingSettingsRepository settings, IFiscalYearRepository years, IJournalRepository journals, ICurrentUser currentUser,
     ILogger<UpdateAccountingSettingsHandler> logger)
@@ -28,7 +28,7 @@ public sealed partial class UpdateAccountingSettingsHandler(
         var current = await settings.GetForUpdateAsync(expected, ct);
         if (command.FiscalYearStartMonth != current.FiscalYearStartMonth && await years.AnyAsync(ct))
             return SettingsErrors.StartMonthLocked;
-        if (command.CutoverDate != current.CutoverDate && await journals.AnyPostedAsync(ct))
+        if (command.CutoverDate != current.CutoverDate && (current.IsActivated || await journals.AnyPostedAsync(ct)))
             return SettingsErrors.CutoverLocked;
         var changed = current.Change(command.FiscalYearStartMonth, command.CutoverDate, command.ManualJournalsRequireApproval,
             command.VouchersRequireApproval);

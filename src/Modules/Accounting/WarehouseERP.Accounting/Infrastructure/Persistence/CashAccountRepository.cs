@@ -30,6 +30,13 @@ internal sealed class CashAccountRepository(DbContext db) : ICashAccountReposito
 
     public Task<bool> LedgerAccountUsedAsync(Guid accountId, CancellationToken ct) => db.Set<CashAccount>().AnyAsync(x => x.AccountId == accountId, ct);
 
+    public Task<CashAccount?> FindPosCashboxAsync(Guid branchId, CancellationToken ct) =>
+        db.Set<CashAccount>().AsNoTracking()
+            .SingleOrDefaultAsync(x => x.BranchId == branchId && x.ReceivesPosCash && x.IsActive && x.Kind == Contracts.CashAccountKind.Cashbox, ct);
+
+    public Task<bool> PosCashboxTakenAsync(Guid branchId, Guid? exceptCashAccountId, CancellationToken ct) =>
+        db.Set<CashAccount>().AnyAsync(x => x.BranchId == branchId && x.ReceivesPosCash && x.Id != exceptCashAccountId, ct);
+
     public void Add(CashAccount cashAccount) => db.Add(cashAccount);
 
     public Task<Result> SaveChangesAsync(CancellationToken ct) => AccountingSaves.SaveAsync(db, ct);

@@ -62,7 +62,7 @@ internal sealed class JournalReadStore(DbContext db, IUserDirectory users, IBran
             journal.RequiresApproval, journal.LinesFixed, journal.TotalDebit, journal.TotalCredit, journal.ReversalOfJournalId, reversalOfNumber,
             reversedBy?.Id, reversedBy?.Number, reversedBy?.Status, journal.CreatedByUserId, Name(journal.CreatedByUserId), journal.CreatedAtUtc,
             journal.ApprovedByUserId, Name(journal.ApprovedByUserId), journal.PostedByUserId, Name(journal.PostedByUserId), journal.PostedAtUtc,
-            voucher, lines, events, Convert.ToBase64String(journal.RowVersion));
+            voucher, lines, events, Convert.ToBase64String(journal.RowVersion), journal.SourceType, journal.SourceId);
     }
 
     private async Task<VoucherResponse?> VoucherAsync(JournalEntry journal, PartyInfo? party, CancellationToken ct)

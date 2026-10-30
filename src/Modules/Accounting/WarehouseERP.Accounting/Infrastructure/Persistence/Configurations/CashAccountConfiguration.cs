@@ -17,6 +17,7 @@ internal sealed class CashAccountConfiguration : IEntityTypeConfiguration<CashAc
             t.HasCheckConstraint("CK_CashAccounts_Kind", "[Kind] BETWEEN 1 AND 2");
             t.HasCheckConstraint("CK_CashAccounts_Cashbox",
                 "[Kind] = 2 OR ([BankName] IS NULL AND [BankAccountNumber] IS NULL AND [AllowsOverdraft] = 0)");
+            t.HasCheckConstraint("CK_CashAccounts_PosCash", "[ReceivesPosCash] = 0 OR [Kind] = 1");
         });
         b.Property(x => x.CreatedAtUtc).IsUtcTimestamp();
         b.Property(x => x.UpdatedAtUtc).IsUtcTimestamp();
@@ -28,6 +29,8 @@ internal sealed class CashAccountConfiguration : IEntityTypeConfiguration<CashAc
         b.HasOne<Account>().WithMany().HasForeignKey(x => x.AccountId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => x.Code, "UX_CashAccounts_Code").IsUnique();
         b.HasIndex(x => x.AccountId, "UX_CashAccounts_Account").IsUnique();
+        b.Property(x => x.ReceivesPosCash).HasDefaultValue(false);
         b.HasIndex(x => x.BranchId);
+        b.HasIndex(x => x.BranchId, "UX_CashAccounts_PosCash").IsUnique().HasFilter("[ReceivesPosCash] = 1");
     }
 }

@@ -8,7 +8,8 @@ using WarehouseERP.SharedKernel.Results;
 
 namespace WarehouseERP.Accounting.Application.Features.CashAccounts.UpdateCashAccount;
 
-// From the version the editor read. Withdrawing an overdraft applies to the next posting; nothing posted changes.
+// From the version the editor read. Withdrawing an overdraft applies to the next posting, and a branch's POS cashbox to the
+// next shift journaled; nothing posted changes.
 public sealed partial class UpdateCashAccountHandler(
     ICashAccountRepository cashAccounts, ICurrentUser currentUser, ILogger<UpdateCashAccountHandler> logger)
     : ICommandHandler<UpdateCashAccountCommand, string>
@@ -23,7 +24,9 @@ public sealed partial class UpdateCashAccountHandler(
         var cash = await cashAccounts.GetForUpdateAsync(command.CashAccountId, expected, ct);
         if (cash is null)
             return CashAccountErrors.NotFound;
-        var updated = cash.Update(command.Name, command.BankName, command.BankAccountNumber, command.AllowsOverdraft);
+        if (command.ReceivesPosCash && await cashAccounts.PosCashboxTakenAsync(cash.BranchId, cash.Id, ct))
+            return CashAccountErrors.PosCashboxTaken;
+        var updated = cash.Update(command.Name, command.BankName, command.BankAccountNumber, command.AllowsOverdraft, command.ReceivesPosCash);
         if (updated.IsFailure)
             return updated.Error;
         var saved = await cashAccounts.SaveChangesAsync(ct);

@@ -13,6 +13,9 @@ public static class CashAccountErrors
     public static readonly Error AccountNotFound = Error.BusinessRule(
         "Accounting.CashAccount.AccountNotFound", "The ledger account does not exist.");
 
+    public static readonly Error PosCashboxTaken = Error.Conflict(
+        "Accounting.CashAccount.PosCashboxTaken", "Another cashbox of the branch already receives the cash of closed POS shifts.");
+
     public static readonly Error AccountInUse = Error.Conflict(
         "Accounting.CashAccount.AccountInUse", "Another cashbox or bank account is kept on this ledger account.");
 

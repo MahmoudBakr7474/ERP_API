@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.FiscalYears;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Journals;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Posting;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.SourcePostings;
 using WarehouseERP.Accounting.Application.Errors;
 using WarehouseERP.Accounting.Application.Shared;
 using WarehouseERP.BuildingBlocks.Application.Messaging;
@@ -15,8 +16,8 @@ namespace WarehouseERP.Accounting.Application.Features.FiscalYears.CloseFiscalPe
 // before the close or refused after it. Drafts dated in the period are counted, not blocked: they wait for a reopen or a
 // new date.
 public sealed partial class CloseFiscalPeriodHandler(
-    ITransactionRunner transactions, IFiscalYearRepository years, IJournalRepository journals, IAccountingLocks locks,
-    ICurrentUser currentUser, TimeProvider clock, ILogger<CloseFiscalPeriodHandler> logger)
+    ITransactionRunner transactions, IFiscalYearRepository years, IJournalRepository journals, ISourcePostingReadStore sourcePostings,
+    IAccountingLocks locks, ICurrentUser currentUser, TimeProvider clock, ILogger<CloseFiscalPeriodHandler> logger)
     : ICommandHandler<CloseFiscalPeriodCommand, FiscalPeriodClosedResponse>
 {
     public async Task<Result<FiscalPeriodClosedResponse>> HandleAsync(CloseFiscalPeriodCommand command, CancellationToken ct)
@@ -43,11 +44,12 @@ public sealed partial class CloseFiscalPeriodHandler(
             return saved.Error;
         var period = year.Periods.Single(p => p.Id == periodId);
         var open = await journals.CountOpenAsync(period.StartDate, period.EndDate, ct);
-        PeriodClosed(logger, year.Name, period.Number, open);
-        return new FiscalPeriodClosedResponse(periodId, open);
+        var unposted = await sourcePostings.CountUnsettledAsync(period.StartDate, period.EndDate, ct);
+        PeriodClosed(logger, year.Name, period.Number, open, unposted);
+        return new FiscalPeriodClosedResponse(periodId, open, unposted);
     }
 
     [LoggerMessage(EventId = 9031, Level = LogLevel.Information,
-        Message = "Fiscal year {Name} period {Number} closed; {OpenJournals} unposted journals are dated in it")]
-    private static partial void PeriodClosed(ILogger logger, string name, int number, int openJournals);
+        Message = "Fiscal year {Name} period {Number} closed; {OpenJournals} unposted journals and {UnpostedDocuments} unjournaled documents are dated in it")]
+    private static partial void PeriodClosed(ILogger logger, string name, int number, int openJournals, int unpostedDocuments);
 }

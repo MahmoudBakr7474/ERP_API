@@ -20,6 +20,12 @@ public interface ICashAccountRepository
     /// <summary>True when another cash account is kept on this ledger account.</summary>
     Task<bool> LedgerAccountUsedAsync(Guid accountId, CancellationToken ct);
 
+    /// <summary>The branch's active cashbox that receives closed POS shifts' cash, untracked, or null.</summary>
+    Task<CashAccount?> FindPosCashboxAsync(Guid branchId, CancellationToken ct);
+
+    /// <summary>True when another cashbox of the branch already receives POS cash.</summary>
+    Task<bool> PosCashboxTakenAsync(Guid branchId, Guid? exceptCashAccountId, CancellationToken ct);
+
     void Add(CashAccount cashAccount);
 
     /// <summary>The save point; a code or ledger account taken at the same moment comes back as a conflict.</summary>

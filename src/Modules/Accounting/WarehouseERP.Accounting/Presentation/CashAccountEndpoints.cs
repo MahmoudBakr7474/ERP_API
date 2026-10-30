@@ -50,7 +50,8 @@ internal static class CashAccountEndpoints
         group.MapPut("/{id:guid}", (Guid id, UpdateCashAccountRequest request, ICommandHandler<UpdateCashAccountCommand, string> handler,
                     CancellationToken ct) =>
                 EndpointConventions.UpdatedAsync(handler.HandleAsync(new UpdateCashAccountCommand(
-                    id, request.Name, request.BankName, request.BankAccountNumber, request.AllowsOverdraft, request.RowVersion), ct)))
+                    id, request.Name, request.BankName, request.BankAccountNumber, request.AllowsOverdraft, request.RowVersion,
+                    request.ReceivesPosCash), ct)))
             .RequireAuthorization(AccountingPermissions.TreasuryManage)
             .WithName("UpdateCashAccount")
             .Produces<UpdatedResponse>()

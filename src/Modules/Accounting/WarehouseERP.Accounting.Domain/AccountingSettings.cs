@@ -11,6 +11,9 @@ namespace WarehouseERP.Accounting.Domain;
 /// nothing is journaled before it, and its opening balances are dated on it. Fixed once a journal has posted.</item>
 /// <item>Whether manual journals need an approver (seeded yes); a journal copies it when it is drafted.</item>
 /// <item>Whether vouchers (receipts, payments, refunds, cash vouchers, transfers, expense bills) need one (seeded no).</item>
+/// <item>When automatic accounting was activated (after the cutover's start, once its checks pass), by whom, and the cutover's
+/// start it was checked against (local midnight of the start date, kept so a later time-zone change moves nothing); never
+/// undone, and the start date stays fixed from then on.</item>
 /// </list>
 /// </summary>
 public sealed class AccountingSettings : IAuditable
@@ -24,11 +27,34 @@ public sealed class AccountingSettings : IAuditable
     public DateOnly CutoverDate { get; private set; }
     public bool ManualJournalsRequireApproval { get; private set; }
     public bool VouchersRequireApproval { get; private set; }
+    public DateTime? ActivatedAtUtc { get; private set; }
+    public Guid? ActivatedByUserId { get; private set; }
+
+    /// <summary>
+    /// The moment documents start to be journaled automatically: everything posted before it belongs to the opening balances.
+    /// </summary>
+    public DateTime? CutoverStartUtc { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public Guid? CreatedByUserId { get; private set; }
     public DateTime? UpdatedAtUtc { get; private set; }
     public Guid? UpdatedByUserId { get; private set; }
     public byte[] RowVersion { get; private set; } = [];
+
+    /// <summary>True once operational documents are journaled automatically.</summary>
+    public bool IsActivated => ActivatedAtUtc is not null;
+
+    /// <summary>Starts automatic accounting from the cutover's start, once it has passed; the caller checked the cutover first.</summary>
+    public Result Activate(Guid? userId, DateTime nowUtc, DateTime cutoverStartUtc)
+    {
+        if (IsActivated)
+            return AccountingSettingsDomainErrors.AlreadyActivated;
+        if (nowUtc < cutoverStartUtc)
+            return AccountingSettingsDomainErrors.CutoverNotStarted;
+        ActivatedAtUtc = nowUtc;
+        ActivatedByUserId = userId;
+        CutoverStartUtc = cutoverStartUtc;
+        return Result.Success();
+    }
 
     public Result Change(int fiscalYearStartMonth, DateOnly cutoverDate, bool manualJournalsRequireApproval, bool vouchersRequireApproval)
     {

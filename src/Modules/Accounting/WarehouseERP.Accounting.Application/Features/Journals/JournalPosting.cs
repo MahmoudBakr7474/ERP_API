@@ -20,7 +20,7 @@ namespace WarehouseERP.Accounting.Application.Features.Journals;
 // 1. the key is locked and looked up (a retry gets the first answer); the journal is loaded at the version the client read;
 //    its date and lines are checked again;
 // 2. its parties' locks, then its cashboxes' and banks' locks, in id order; a cashbox (or a bank without overdraft) it
-//    would take below zero at the end of its date or of any later day refuses it;
+//    would take below zero at the end of its date or of any later day refuses it (PostingGuard);
 // 3. a reversal needs the reversed journal's open items unallocated; a voucher's planned allocations are loaded;
 // 4. the period of its date is locked shared and found open, and the journal takes its number;
 // 5. every control-account line opens its party's item; a reversal's items settle the reversed journal's items, a
@@ -29,8 +29,7 @@ namespace WarehouseERP.Accounting.Application.Features.Journals;
 public sealed partial class JournalPosting(
     ITransactionRunner transactions, IdempotentRequests requests, IJournalRepository journals, IJournalReadStore readStore,
     IAccountingSettingsRepository settings, JournalLineRules lineRules, LedgerPosting posting, IOpenItemRepository openItems,
-    ICashAccountRepository cashAccounts, IAccountRepository accounts, IAccountingLocks locks, ICurrentUser currentUser,
-    TimeProvider clock, ILogger<JournalPosting> logger)
+    PostingGuard guard, ICurrentUser currentUser, TimeProvider clock, ILogger<JournalPosting> logger)
 {
     public Task<Result<JournalPostedResponse>> PostAsync(Guid journalId, byte[] rowVersion, Guid idempotencyKey, bool byApproval, CancellationToken ct) =>
         transactions.RunAsync(token => PostOnceAsync(journalId, rowVersion, idempotencyKey, byApproval, token), ct);
@@ -57,6 +56,8 @@ public sealed partial class JournalPosting(
         if (allowed.IsFailure)
             return allowed.Error;
         var policies = await settings.GetAsync(ct);
+        if (policies.IsActivated && (journal.JournalType == JournalType.OpeningBalance || await ReversesOpeningAsync(journal, ct)))
+            return JournalErrors.OpeningAfterActivation;
         if (journal.JournalType == JournalType.OpeningBalance && journal.PostingDate != policies.CutoverDate)
             return JournalErrors.OpeningDateMismatch(policies.CutoverDate);
         if (journal.PostingDate < policies.CutoverDate)
@@ -65,7 +66,7 @@ public sealed partial class JournalPosting(
         if (lines.IsFailure)
             return lines.Error;
 
-        var guarded = await LockAndGuardAsync(journal, ct);
+        var guarded = await guard.LockAndCheckAsync(journal, ct);
         if (guarded.IsFailure)
             return guarded.Error;
         if (journal.ReversalOfJournalId is { } reversedId && await openItems.HasActiveAllocationsAsync(reversedId, ct))
@@ -102,26 +103,9 @@ public sealed partial class JournalPosting(
         return new JournalPostedResponse(journal.Id, slot.Value.Number.Number, journal.JournalType, journal.PostingDate, journal.TotalDebit, now);
     }
 
-    // Parties first, then cash accounts, each in a fixed order, so two postings never wait on each other crosswise.
-    private async Task<Result> LockAndGuardAsync(JournalEntry journal, CancellationToken ct)
-    {
-        foreach (var (type, id) in journal.Lines.Where(l => l.HasParty).Select(l => (l.PartyType!.Value, l.PartyId!.Value)).Distinct()
-                     .OrderBy(p => p.Item1).ThenBy(p => p.Item2))
-            if (!await locks.TryLockPartyAsync(type, id, ct))
-                return JournalErrors.Busy;
-        var cash = (await cashAccounts.FindByLedgerAccountsAsync(journal.Lines.Select(l => l.AccountId).Distinct().ToList(), ct))
-            .OrderBy(c => c.Id).ToList();
-        foreach (var account in cash)
-        {
-            if (!await locks.TryLockCashAccountAsync(account.Id, ct))
-                return JournalErrors.Busy;
-            var change = journal.Lines.Where(l => l.AccountId == account.AccountId).Sum(l => l.Debit - l.Credit);
-            if (account.MustStayPositive && change < 0m
-                && await accounts.LowestBalanceFromAsync(account.AccountId, journal.PostingDate, ct) + change < 0m)
-                return JournalErrors.CashAccountOverdrawn(account.Code);
-        }
-        return Result.Success();
-    }
+    private async Task<bool> ReversesOpeningAsync(JournalEntry journal, CancellationToken ct) =>
+        journal.ReversalOfJournalId is { } originalId
+        && (await journals.FindAsync(originalId, ct))?.JournalType == JournalType.OpeningBalance;
 
     // A reversal's lines mirror the original's, line by line, so each new item settles the item the same line opened.
     private async Task<Result> SettleReversedAsync(

@@ -8,8 +8,8 @@ namespace WarehouseERP.Accounting.Domain;
 /// A journal: balanced debit and credit lines on one posting date, in the base currency. Drafted, optionally submitted
 /// and approved (whoever wrote it may approve it), then posted under its number into the open period of its date; a
 /// posted journal never changes. It is corrected by a reversal journal (lines turned the other way, on its own date) or
-/// by another journal. Year-end closing journals are written and posted by the system. Every step is a
-/// <see cref="JournalEvent"/>.
+/// by another journal. Year-end closing journals, and the journals of operational documents once accounting is active, are
+/// written and posted by the system. Every step is a <see cref="JournalEvent"/>.
 /// </summary>
 public sealed class JournalEntry : IAuditable
 {
@@ -86,6 +86,11 @@ public sealed class JournalEntry : IAuditable
     /// <summary>When an expense bill falls due.</summary>
     public DateOnly? DueDate { get; private set; }
 
+    /// <summary>The operational document an automatic journal records; null for every other journal.</summary>
+    public SourceDocumentType? SourceType { get; private set; }
+
+    public Guid? SourceId { get; private set; }
+
     public decimal TotalDebit { get; private set; }
     public decimal TotalCredit { get; private set; }
     public Guid? SubmittedByUserId { get; private set; }
@@ -107,6 +112,8 @@ public sealed class JournalEntry : IAuditable
     public bool IsVoucher => IsVoucherType(JournalType);
 
     public static bool IsVoucherType(JournalType type) => type is >= JournalType.CustomerReceipt and <= JournalType.ExpenseBill;
+
+    public static bool IsSourceType(JournalType type) => type is >= JournalType.InventoryJournal and <= JournalType.PosJournal;
 
     public bool IsPosted => Status == JournalStatus.Posted;
 
@@ -183,6 +190,33 @@ public sealed class JournalEntry : IAuditable
         if (filled.IsFailure)
             return filled.Error;
         journal.Record(JournalAction.Created, userId, nowUtc, null);
+        return journal;
+    }
+
+    /// <summary>
+    /// The journal of one posted operational document, written by the system and posted at once (the caller numbers it with
+    /// <see cref="MarkPostedFromSource"/> in the same transaction). A document has one journal ever: it is corrected at its
+    /// source or by another journal, never reversed or edited.
+    /// </summary>
+    public static Result<JournalEntry> CreateFromSource(
+        JournalType type, SourceDocumentType sourceType, Guid sourceId, DateOnly postingDate, string description, string reference,
+        string currencyCode, IReadOnlyList<JournalLineInput> lines, DateTime nowUtc)
+    {
+        if (!IsSourceType(type))
+            throw new ArgumentOutOfRangeException(nameof(type), type, "Not an automatic journal type.");
+        var journal = new JournalEntry
+        {
+            JournalType = type,
+            Status = JournalStatus.Draft,
+            CurrencyCode = currencyCode,
+            LinesFixed = true,
+            SourceType = sourceType,
+            SourceId = sourceId,
+        };
+        var filled = journal.Fill(postingDate, description, reference, lines, MaxGeneratedLines);
+        if (filled.IsFailure)
+            return filled.Error;
+        journal.Record(JournalAction.Created, null, nowUtc, reference);
         return journal;
     }
 
@@ -289,6 +323,14 @@ public sealed class JournalEntry : IAuditable
             throw new InvalidOperationException($"Journal {Id} is not a generated draft.");
         ApprovedByUserId = userId;
         Post(number, fiscalPeriodId, userId, nowUtc);
+    }
+
+    /// <summary>Posts an operational document's journal; the system posts it, so no user is recorded.</summary>
+    public void MarkPostedFromSource(DocumentNumber number, Guid fiscalPeriodId, DateTime nowUtc)
+    {
+        if (Status != JournalStatus.Draft || !IsSourceType(JournalType) || SourceId is null)
+            throw new InvalidOperationException($"Journal {Id} is not an operational document's draft.");
+        Post(number, fiscalPeriodId, null, nowUtc);
     }
 
     public Result Reject(string reason, Guid? userId, DateTime nowUtc)

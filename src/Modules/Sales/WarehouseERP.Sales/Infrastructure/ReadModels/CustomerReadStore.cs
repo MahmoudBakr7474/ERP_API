@@ -121,4 +121,18 @@ internal sealed class CustomerReadStore(DbContext db, IGeographyDirectory geogra
             .SumAsync(r => (decimal?)r.CreditTotalAmount, ct) ?? 0m;
         return new CustomerOrderPosition(openCount, decimal.Round(uninvoiced, 2), decimal.Round(deliveredNotInvoiced, 2), invoiced, credits);
     }
+
+    public async Task<IReadOnlyList<CustomerReceivableDocument>> ListReceivableDocumentsAsync(Guid customerId, DateTime fromUtc, CancellationToken ct)
+    {
+        var invoices = await db.Set<SalesInvoice>().AsNoTracking()
+            .Where(i => i.CustomerId == customerId && i.Status == SalesInvoiceStatus.Posted && i.PostedAtUtc >= fromUtc)
+            .Select(i => new CustomerReceivableDocument(i.Id, i.TotalAmount))
+            .ToListAsync(ct);
+        var credits = await db.Set<SalesReturn>().AsNoTracking()
+            .Where(r => r.CustomerId == customerId && r.Status == SalesReturnStatus.Approved && r.ApprovedAtUtc >= fromUtc
+                        && r.CreditTotalAmount > 0m)
+            .Select(r => new CustomerReceivableDocument(r.Id, -r.CreditTotalAmount))
+            .ToListAsync(ct);
+        return [.. invoices, .. credits];
+    }
 }

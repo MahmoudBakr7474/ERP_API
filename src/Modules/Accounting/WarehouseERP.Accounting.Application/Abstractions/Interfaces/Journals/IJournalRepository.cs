@@ -20,6 +20,9 @@ public interface IJournalRepository
     /// <summary>How many drafts and submitted journals are dated in these dates.</summary>
     Task<int> CountOpenAsync(DateOnly from, DateOnly to, CancellationToken ct);
 
+    /// <summary>How many drafts and submitted journals of a type there are.</summary>
+    Task<int> CountOpenOfTypeAsync(WarehouseERP.Accounting.Contracts.JournalType type, CancellationToken ct);
+
     void Add(JournalEntry journal);
 
     /// <summary>The save point; a second reversal of one journal comes back as a conflict.</summary>

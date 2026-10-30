@@ -19,6 +19,12 @@ public interface ILedgerReadStore
     /// <summary>Totals per account and branch of revenue and expense accounts over the dates (what a year-end close moves).</summary>
     Task<IReadOnlyList<AccountBranchTotals>> IncomeStatementTotalsByBranchAsync(DateOnly fromDate, DateOnly toDate, CancellationToken ct);
 
+    /// <summary>
+    /// Totals per account of the posted opening-balance journals and their posted reversals (what the ledger started with at
+    /// the cutover).
+    /// </summary>
+    Task<IReadOnlyList<AccountTotals>> OpeningTotalsAsync(CancellationToken ct);
+
     Task<int> CountLinesAsync(LedgerLineFilter filter, CancellationToken ct);
 
     /// <summary>The lines in date, number and line order, at most <paramref name="max"/>.</summary>

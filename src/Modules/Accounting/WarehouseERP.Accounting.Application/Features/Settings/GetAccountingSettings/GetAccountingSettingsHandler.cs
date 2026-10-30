@@ -20,7 +20,7 @@ public sealed class GetAccountingSettingsHandler(
             return company.Error;
         var current = await settings.GetAsync(ct);
         return new AccountingSettingsResponse(current.FiscalYearStartMonth, current.CutoverDate, current.ManualJournalsRequireApproval,
-            current.VouchersRequireApproval, company.Value.BaseCurrencyCode, await years.AnyAsync(ct), await journals.AnyPostedAsync(ct),
-            Convert.ToBase64String(current.RowVersion));
+            current.VouchersRequireApproval, company.Value.BaseCurrencyCode, await years.AnyAsync(ct),
+            current.IsActivated || await journals.AnyPostedAsync(ct), Convert.ToBase64String(current.RowVersion), current.ActivatedAtUtc);
     }
 }

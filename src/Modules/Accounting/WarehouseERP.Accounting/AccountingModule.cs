@@ -1,6 +1,20 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using WarehouseERP.Accounting.Application;
+using WarehouseERP.Accounting.Application.Abstractions.Interfaces.SourcePostings;
+using WarehouseERP.Accounting.Application.Contracts.Cutover;
+using WarehouseERP.Accounting.Application.Contracts.SourcePostings;
+using WarehouseERP.Accounting.Application.Features.Cutover;
+using WarehouseERP.Accounting.Application.Features.Cutover.ActivateAccounting;
+using WarehouseERP.Accounting.Application.Features.Cutover.GetCutoverReadiness;
+using WarehouseERP.Accounting.Application.Features.SourcePostings;
+using WarehouseERP.Accounting.Application.Features.SourcePostings.GetSourceReconciliation;
+using WarehouseERP.Accounting.Application.Features.SourcePostings.GetSourceSyncStatus;
+using WarehouseERP.Accounting.Application.Features.SourcePostings.ListSourcePostings;
+using WarehouseERP.Accounting.Application.Features.SourcePostings.RetrySourcePosting;
+using WarehouseERP.Accounting.Application.Features.SourcePostings.RunSourceSync;
+using WarehouseERP.Accounting.Infrastructure;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.Accounts;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.BankReconciliations;
 using WarehouseERP.Accounting.Application.Abstractions.Interfaces.CashAccounts;
@@ -90,9 +104,12 @@ namespace WarehouseERP.Accounting;
 // The general ledger, subledgers and treasury (docs/modules/Accounting and ADR 0020): the chart of accounts and its
 // posting-role mappings, fiscal years and periods, manual, opening-balance, reversal, voucher and year-end closing
 // journals, customers' and suppliers' open items and allocations, cashboxes, banks and their reconciliation, and the reports
-// computed from posted lines. The company and branches come from Organization, display names from Identity, customers from
-// Sales and suppliers from Purchasing. The host calls AddAccountingModule
-// and MapAccountingEndpoints; ITransactionRunner comes from Persistence.
+// computed from posted lines; and, once the cutover is activated, the journals of operational documents (Inventory's,
+// Purchasing's, Sales' and POS's read-only accounting sources), journaled by SourcePostingWorker and on demand, with their
+// exception queue and the source-to-ledger reconciliation. The company and branches come from Organization, display names
+// from Identity, customers from Sales and suppliers from Purchasing; Sales reads receivable balances through
+// ICustomerReceivables. The host calls AddAccountingModule and MapAccountingEndpoints; ITransactionRunner comes from
+// Persistence.
 public static class AccountingModule
 {
     public static IServiceCollection AddAccountingModule(this IServiceCollection services)
@@ -157,6 +174,14 @@ public static class AccountingModule
         services.AddCommandHandler<CompleteBankReconciliationCommand, string, CompleteBankReconciliationHandler>();
         services.AddCommandHandler<CancelBankReconciliationCommand, string, CancelBankReconciliationHandler>();
 
+        services.AddQueryHandler<GetCutoverReadinessQuery, CutoverReadinessResponse, GetCutoverReadinessHandler>();
+        services.AddCommandHandler<ActivateAccountingCommand, string, ActivateAccountingHandler>();
+        services.AddCommandHandler<RunSourceSyncCommand, SourceSyncResponse, RunSourceSyncHandler>();
+        services.AddCommandHandler<RetrySourcePostingCommand, SourcePostingResponse, RetrySourcePostingHandler>();
+        services.AddQueryHandler<ListSourcePostingsQuery, PagedResult<SourcePostingResponse>, ListSourcePostingsHandler>();
+        services.AddQueryHandler<GetSourceSyncStatusQuery, SourceSyncStatusResponse, GetSourceSyncStatusHandler>();
+        services.AddQueryHandler<GetSourceReconciliationQuery, SourceReconciliationResponse, GetSourceReconciliationHandler>();
+
         services.AddQueryHandler<GetAgingQuery, AgingResponse, GetAgingHandler>();
         services.AddQueryHandler<GetPartyStatementQuery, PartyStatementResponse, GetPartyStatementHandler>();
         services.AddQueryHandler<GetSubledgerReconciliationQuery, SubledgerReconciliationResponse, GetSubledgerReconciliationHandler>();
@@ -171,6 +196,16 @@ public static class AccountingModule
         services.AddScoped<LedgerPosting>();
         services.AddScoped<JournalLineRules>();
         services.AddScoped<JournalPosting>();
+        services.AddScoped<PostingGuard>();
+        services.AddScoped<CutoverChecks>();
+        services.AddScoped<CutoverBoundary>();
+        services.AddScoped<SourceDocuments>();
+        services.AddScoped<SourceEntryBuilder>();
+        services.AddScoped<SourcePoster>();
+        services.AddScoped<SourceSync>();
+        services.AddScoped<ISourcePostingRepository, SourcePostingRepository>();
+        services.AddScoped<ISourcePostingReadStore, SourcePostingReadStore>();
+        services.AddScoped<ICustomerReceivables, CustomerReceivables>();
         services.AddScoped<PartyDirectory>();
         services.AddScoped<VoucherBuilder>();
         services.AddScoped<IOpenItemRepository, OpenItemRepository>();
@@ -193,6 +228,13 @@ public static class AccountingModule
         services.AddScoped<IJournalReadStore, JournalReadStore>();
         services.AddScoped<ILedgerReadStore, LedgerReadStore>();
 
+        services.AddOptions<AccountingIntegrationOptions>()
+            .BindConfiguration(AccountingIntegrationOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.AddSingleton<SourcePostingWorker>();
+        services.AddHostedService(sp => sp.GetRequiredService<SourcePostingWorker>());
+
         services.AddPermissions("Accounting", AccountingPermissions.All);
         return services;
     }
@@ -207,5 +249,7 @@ public static class AccountingModule
             .MapOpenItemEndpoints()
             .MapCashAccountEndpoints()
             .MapBankReconciliationEndpoints()
+            .MapCutoverEndpoints()
+            .MapSourcePostingEndpoints()
             .MapFinancialReportEndpoints();
 }
