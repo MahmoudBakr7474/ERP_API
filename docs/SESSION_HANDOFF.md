@@ -1,16 +1,16 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-30 (Accounting Milestone A complete on `feature/accounting`; POS V1 merged into `main` in both
-repositories earlier the same day).
+Last verified: 2026-10-30 (Accounting Milestones A and B complete on `feature/accounting`; POS V1 merged into `main` in
+both repositories earlier the same day).
 Read this first; don't re-analyse the repository.
 
 ## Where things stand
 - **Accounting started (2026-10-30) on `feature/accounting`**, cut from backend `main` at `302f57a` (= `origin/main`).
   Decisions approved by the owner the same day: `docs/modules/Accounting/V1_DECISIONS.md`; how the code implements them:
-  `docs/adr/0020-accounting-module.md`. **Milestone A (general ledger) is implemented and verified; Milestones B
-  (receivables, payables, cash and banks), C (ERP integration, cutover, reconciliations) and D (acceptance, Lovable
-  prompt and frontend handoff) remain.** Not merged, not pushed; `Migration14_Accounting` is not applied to
-  `WarehouseERP_Dev`. Details in *Accounting status* below.
+  `docs/adr/0020-accounting-module.md`. **Milestones A (general ledger) and B (receivables, payables, cash and banks)
+  are implemented and verified; C (ERP integration, cutover, reconciliations) and D (acceptance, Lovable prompt and
+  frontend handoff) remain.** Not merged, not pushed; `Migration14_Accounting` and `Migration15_AccountingSubledgers` are
+  not applied to `WarehouseERP_Dev`. Details in *Accounting status* below.
 - **`main` holds POS V1 (2026-10-30).** With the owner's approval after the acceptance on the dev database, the
   backend `main` was fast-forwarded from `ea122c1` to the tip of `feature/pos` (this handoff) and the frontend's `main`
   from `e9da46f` (Lovable's POS screens) to `fd44db5` (`fix/pos-integration`). No merge commits; both branches stay on
@@ -77,7 +77,23 @@ Read this first; don't re-analyse the repository.
   database, 14 rolled back to 13 and re-applied, `has-pending-model-changes` none (`.artifacts/accounting-migration-check.ps1`
   and its log); OpenAPI snapshot regenerated (+30 paths, +53 schemas, +6 tags, additive). Integration tests and the
   migration check ran in the app's terminal (LocalDB caveat below).
-- **Next:** Milestone B. Real-host E2E, the dev-database migration (after a verified backup, with the owner's
+- **Milestone B (code on `feature/accounting`, ADR 0020 decisions 14–20):** party lines on control accounts (customers
+  through Sales' `ICustomerDirectory.FindManyAsync`, suppliers through Purchasing's new `ISupplierDirectory`), open items
+  and allocations (planned by a voucher, by hand, automatic, removable; party locks), vouchers (customer receipt RV,
+  supplier payment PV, refunds CF/SF, cash receipt CR and payment CP, transfer TR, expense bill EB with input VAT, the
+  supplier's terms and a unique bill number) with manual withholding, cashboxes and banks with the cash guard (posting date
+  and every later day), reversal of settled journals once their allocations are removed, manual bank reconciliation,
+  aging, party statements, the subledger reconciliation, the voucher-approval setting (off), three permissions
+  (`receivables.manage`, `payables.manage`, `treasury.manage`; 13 in all). `Migration15_AccountingSubledgers`: 6 tables
+  (cash accounts temporal), nullable voucher/party columns, no data change. +18 endpoints.
+- **Verified (2026-10-30, Milestone B):** build 0 warnings; Unit 273/273, Architecture 129/129, Integration 296/296 on
+  LocalDB (7 new subledger API tests); migrations 01–15 on a fresh database, 15 rolled back to 14 and re-applied,
+  `has-pending-model-changes` none (`.artifacts/accounting-b-migration-check.ps1` and its log); OpenAPI snapshot
+  regenerated (+18 paths, +29 schemas, +4 tags; additive — `UpdateAccountingSettingsRequest` gains the required
+  `vouchersRequireApproval`, an endpoint new on this unmerged branch).
+- **Moved to C:** customer return credits and supplier return claims (from Sales/Purchasing returns) and Sales'
+  credit-limit exposure from AR balances (once invoices open AR items).
+- **Next:** Milestone C. Real-host E2E, the dev-database migration (after a verified backup, with the owner's
   authorization), the Lovable prompt and frontend handoff come with Milestone D.
 
 ## POS status
@@ -439,10 +455,12 @@ Read this first; don't re-analyse the repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-30, Accounting Milestone A, `feature/accounting`, LocalDB, `-m:1`)
+## Latest verified tests (2026-10-30, Accounting Milestone B, `feature/accounting`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 267/267 | 129/129 | 289/289 |
+| 273/273 | 129/129 | 296/296 |
+
+Earlier the same day (Accounting Milestone A): 267 / 129 / 289.
 
 Earlier (2026-10-29, POS V1 acceptance, `feature/pos` at `2665824`): 259 / 114 / 275.
 

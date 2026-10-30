@@ -27,7 +27,8 @@ src/
   Modules/Pos/                      same layout: terminals, cashier shifts and cash, checkout, receipts, returns and
                                     refunds; prices from Sales, stock only through Inventory's IPosStockPosting (ADR 0019)
   Modules/Accounting/               same layout: chart of accounts and posting-role mappings, fiscal years and periods,
-                                    journals (manual, opening, reversal, year-end close) and financial reports (ADR 0020)
+                                    journals (manual, opening, reversal, year-end close), vouchers, customer and supplier
+                                    open items and allocations, cashboxes, banks and their reconciliation, reports (ADR 0020)
 tests/
   WarehouseERP.UnitTests/           no database
   WarehouseERP.IntegrationTests/    SQL Server (LocalDB) + the real HTTP host
@@ -111,13 +112,17 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET, POST | `/api/pos/sales?page&pageSize&terminalId&shiftId&warehouseId&customerId&cashierUserId&search&from&to`, `/sales/{id}` / `/{id}/reprint` (counted copy) | `pos.read` / `pos.receipts.reprint` |
 | GET, POST | `/api/pos/returns?…`, `/returns/{id}` / create (`Idempotency-Key`; refunds and posts a PosReturn), `/{id}/reprint` | `pos.read` / `pos.returns.manage`, `pos.receipts.reprint` |
 | GET, POST | `/api/pos/card-incidents?page&pageSize&terminalId&shiftId&status` / `/{id}/resolve` (note, `rowVersion`) | `pos.read` / `pos.shifts.manage` |
-| GET, PUT | `/api/accounting/settings` (fiscal-year start month, accounting start date, manual-journal approval; + `rowVersion`) | signed in / `accounting.settings.manage` + company-wide |
+| GET, PUT | `/api/accounting/settings` (fiscal-year start month, accounting start date, manual-journal and voucher approval; + `rowVersion`) | signed in / `accounting.settings.manage` + company-wide |
 | GET, POST, PUT, DELETE | `/api/accounting/accounts?page&pageSize&search&type&isActive&isPosting&parentId`, `/accounts/tree`, `/accounts/{id}` / create, update (+ `rowVersion`), delete (unused only), `/{id}/activate`, `/{id}/deactivate`, `/default-chart`, `/import` (empty chart only) | `accounting.accounts.read` / `accounting.accounts.manage` + company-wide |
 | GET, PUT, DELETE | `/api/accounting/account-mappings`, `/account-mappings/{role}` (`accountId`, `rowVersion`) | `accounting.accounts.read` / `accounting.accounts.manage` + company-wide |
 | GET, POST | `/api/accounting/fiscal-years`, `/fiscal-years/{id}` / create (`startYear`), `/{id}/close` (`rowVersion`), `/{id}/reopen` (reason); `/api/accounting/fiscal-periods/{id}/close`, `/{id}/reopen` (reason) | `accounting.accounts.read` / `accounting.periods.manage`, `accounting.periods.reopen` + company-wide |
 | GET, POST, PUT | `/api/accounting/journals?page&pageSize&status&type&fromDate&toDate&search`, `/journals/{id}` / draft, `/opening` (`accounting.opening.manage`), update, `/{id}/submit`, `/post` (`Idempotency-Key`), `/cancel`, `/reverse` | `accounting.journals.read` / `accounting.journals.manage` (opening: `accounting.opening.manage`) + company-wide |
 | POST | `/api/accounting/journals/{id}/approve` (`Idempotency-Key`; posts), `/reject` (reason) | `accounting.journals.approve` + company-wide, the writer included |
-| GET | `/api/accounting/reports/trial-balance?fromDate&toDate&branchId&level&includeZero`, `/account-statement?accountId&fromDate&toDate&branchId`, `/general-ledger?fromDate&toDate&accountId&branchId&journalType&page&pageSize`, `/balance-sheet?asOfDate`, `/income-statement?fromDate&toDate&branchId&compareFromDate&compareToDate` | `accounting.reports.read` + company-wide |
+| GET | `/api/accounting/reports/trial-balance?fromDate&toDate&branchId&level&includeZero`, `/account-statement?accountId&fromDate&toDate&branchId`, `/general-ledger?fromDate&toDate&accountId&branchId&journalType&page&pageSize`, `/balance-sheet?asOfDate`, `/income-statement?fromDate&toDate&branchId&compareFromDate&compareToDate`, `/aging?partyType&asOfDate&branchId`, `/party-statement?partyType&partyId&fromDate&toDate`, `/subledger-reconciliation?asOfDate` | `accounting.reports.read` + company-wide |
+| POST, PUT | `/api/accounting/vouchers` (draft: `type`, cash account, party, method, `amount`, `withholdingAmount`, `taxAmount`, counter `lines`, planned `allocations`), `/vouchers/{id}` (replace a draft; + `rowVersion`); posted, approved, cancelled and reversed through `/api/accounting/journals/{id}/...` | by type: `accounting.receivables.manage` (customer receipts, refunds), `accounting.payables.manage` (supplier payments, refunds, expense bills), `accounting.treasury.manage` (cash vouchers, transfers) + company-wide |
+| GET, POST | `/api/accounting/open-items?partyType&partyId&accountId&openOnly&page&pageSize`; `/api/accounting/allocations` (`debitItemId`, `creditItemId`, `amount`), `/allocations/{id}/remove`, `/allocations/auto` (`partyType`, `partyId`) | `accounting.reports.read` / `accounting.receivables.manage` or `accounting.payables.manage` by party + company-wide |
+| GET, POST, PUT | `/api/accounting/cash-accounts?kind&branchId&isActive&asOfDate`, `/cash-accounts/{id}` / create, update (+ `rowVersion`), `/{id}/activate`, `/{id}/deactivate` (zero balance only) | `accounting.accounts.read` / `accounting.treasury.manage` + company-wide |
+| GET, POST, PUT | `/api/accounting/bank-reconciliations?cashAccountId`, `/{id}` / start (`cashAccountId`, `statementDate`, `statementBalance`), `/{id}/lines` (ticked `journalLineIds`, `rowVersion`), `/{id}/complete`, `/{id}/cancel` | `accounting.treasury.manage` + company-wide |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
 | GET | `/api/identity/me`; POST `/api/identity/me/password`; GET `/api/identity/password-policy` | signed in |
@@ -207,7 +212,9 @@ addresses and prices temporal) and the settings row. Neither changes data (ADR 0
 terminals temporal) and the POS settings row. None changes data (ADR 0019 *Consequences*).
 `Migration14_Accounting` adds the `accounting` schema only (11 tables; accounts, posting-role mappings and settings
 temporal) and the settings row (calendar fiscal years, accounting start 2027-01-01, manual journals need approval); it
-changes no existing table or data (ADR 0020 *Consequences*).
+changes no existing table or data (ADR 0020 *Consequences*). `Migration15_AccountingSubledgers` adds cash accounts
+(temporal), open items, allocations, voucher allocations and bank reconciliations, nullable voucher and party columns on
+journals and lines, and the voucher-approval setting (off); it changes no existing data (ADR 0020 *Consequences*).
 
 ## Running the API
 
@@ -261,6 +268,7 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, the outbox/inbox (until a consumer exists, ADR 0015),
 management of tax codes, rates, product tax assignments and EGS/GS1 external item codes (Sales/e-invoicing phase,
 ADR 0014), batch/serial tracking (`docs/modules/Inventory/V1_DECISIONS.md`, ADR 0015 *Not done*),
-foreign-currency purchasing, invoice revaluation, supplier payments and accounting (ADR 0016 *Not done*), backorders,
-quarantine returns, customer price lists, credit notes, customer payments and Egyptian e-invoicing (ADR 0018 *Not done*),
+foreign-currency purchasing and invoice revaluation (ADR 0016 *Not done*), the ERP-to-ledger postings and cutover
+(Accounting Milestone C), post-dated cheques and bank statement import (ADR 0020 *Not done*), backorders,
+quarantine returns, customer price lists, credit notes and Egyptian e-invoicing (ADR 0018 *Not done*; customer receipts are Accounting vouchers),
 offline POS, integrated card gateways and wallets, held carts, promotions and the ETA e-Receipt (ADR 0019 *Not done*).

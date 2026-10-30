@@ -43,9 +43,11 @@ quotations, orders, deliveries, invoices and customer returns; it reserves and m
 `IStockReservations` and `ISalesStockPosting`, ADR 0018) and **POS** (terminals, cashier shifts and their cash, checkout,
 receipts, returns and refunds; it prices through Sales' `ISalesPricing`, names customers through `ICustomerDirectory` and
 moves only unreserved stock through Inventory's `IPosStockPosting`, ADR 0019) and **Accounting** (the chart of accounts and
-its posting-role mappings, fiscal years and periods, manual, opening-balance, reversal and year-end closing journals, and
-the trial balance, general ledger, account statements, balance sheet and income statement computed from posted lines; it
-reads the company and branches through Organization's contracts, ADR 0020).
+its posting-role mappings, fiscal years and periods, manual, opening-balance, reversal, voucher and year-end closing
+journals, customers' and suppliers' open items and allocations, cashboxes, banks and their reconciliation, and the trial
+balance, general ledger, account statements, balance sheet, income statement, aging, party statements and subledger
+reconciliation computed from posted lines; it reads the company and branches through Organization's contracts, customers
+through Sales' `ICustomerDirectory` and suppliers through Purchasing's `ISupplierDirectory`, ADR 0020).
 
 ## Dependency map
 
@@ -167,11 +169,14 @@ POS: `Features/{Settings,Terminals,Shifts,Items,Customers,Sales,Returns,CardInci
 item descriptions in `Features/Items`; references, till access, numbering, idempotency, request rules in `Shared/`),
 `Abstractions/Interfaces/{Settings,Terminals,Shifts,Sales,Returns,CardIncidents,Posting}`,
 `Errors/{Access,Terminal,Shift,Sale,Item,Return,CardIncident,Idempotency,RowVersion,Reference,Pricing,Stock}Errors`.
-Accounting: `Features/{Settings,Accounts,AccountMappings,FiscalYears,Journals,Reports}` (the chart builder and default chart
-in `Features/Accounts`, journal line rules and the posting transaction in `Features/Journals`, report helpers in
-`Features/Reports`; the calendar part of every posting is `Shared/LedgerPosting`, used by journals and the year-end close),
-`Abstractions/Interfaces/{Accounts,Mappings,Settings,FiscalYears,Journals,Posting,Reports}`,
-`Errors/{Access,Account,Mapping,Settings,FiscalYear,Journal,Idempotency,RowVersion,Reference,Report}Errors`.
+Accounting: `Features/{Settings,Accounts,AccountMappings,FiscalYears,Journals,Vouchers,OpenItems,Allocations,CashAccounts,
+BankReconciliations,Reports}` (the chart builder and default chart in `Features/Accounts`, the posting transaction with its
+party locks, cash guard and settlements in `Features/Journals`, the voucher builder in `Features/Vouchers`, report helpers
+in `Features/Reports`; the calendar part of every posting is `Shared/LedgerPosting`, used by journals and the year-end
+close; line rules, journal permissions and the party directory are in `Shared/` because journals and vouchers both use
+them), `Abstractions/Interfaces/{Accounts,Mappings,Settings,FiscalYears,Journals,OpenItems,CashAccounts,
+BankReconciliations,Posting,Reports}`, `Errors/{Access,Account,Mapping,Settings,FiscalYear,Journal,Voucher,Allocation,
+CashAccount,BankReconciliation,Idempotency,RowVersion,Reference,Report}Errors`.
 
 ### Where each type belongs
 

@@ -74,6 +74,14 @@ reconciliations; D — acceptance, frontend handoff, documentation. V1 is comple
 - Cashboxes, bank accounts, receipts, payments, internal transfers and a practical manual bank reconciliation.
 - Once AR balances and receipts exist, Sales' credit-limit exposure uses total relevant exposure without counting
   confirmed orders and posted invoices twice.
+- **Implemented in B (ADR 0020, decisions 14–20):** party lines on control accounts, open items and allocations
+  (planned by a voucher, by hand, automatic oldest-first, removable), customer and supplier opening balances with their
+  due dates, receipts, payments and refunds with manual withholding, cash receipts and payments, transfers, expense bills
+  with input VAT and the supplier's terms, cashboxes and banks with the cash guard (on the posting date and every later
+  day), manual bank reconciliation, aging, party statements and the subledger reconciliation. **Moved to C**, because
+  they need the source documents in the ledger first: customer return credits and supplier return claims (they come from
+  Sales and Purchasing returns) and Sales' credit-limit exposure from AR balances (invoices must open AR items first).
+  Cash and bank books are the cash account balances and the account statement of their ledger accounts.
 
 ## 8. ERP integration (C)
 - Accounting reads posted source events through minimal read-only contracts and posts them periodically and on demand;

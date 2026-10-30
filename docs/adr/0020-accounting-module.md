@@ -2,9 +2,9 @@
 
 Status: accepted (2026-10-30), on `feature/accounting`. The product owner approved the scope and decisions in
 [`docs/modules/Accounting/V1_DECISIONS.md`](../modules/Accounting/V1_DECISIONS.md), including the global approval rule
-in `CLAUDE.md` (*Document approvals*). This ADR records how each milestone implements them; **Milestone A (general
-ledger) is implemented**, B (receivables, payables, cash and banks), C (ERP integration and cutover) and D (acceptance)
-follow on the same branch and extend this ADR.
+in `CLAUDE.md` (*Document approvals*). This ADR records how each milestone implements them; **Milestones A (general
+ledger) and B (receivables, payables, cash and banks) are implemented**, C (ERP integration and cutover) and D
+(acceptance) follow on the same branch and extend this ADR.
 
 ## Context
 Every operational module keeps immutable posted documents with their amounts (Inventory's cost entries, supplier and
@@ -47,8 +47,8 @@ closes, and leave the cutover from the existing operational history explicit.
    `Reversal` (RJ), `YearEndClosing` (CJ). Every journal balances by its own lines (domain and
    `CK_JournalEntries_Balanced`), each line has an amount on exactly one side (`CK_JournalLines_OneSide`) in the
    currency's minor unit (more decimals are refused, never rounded), a posting account and a branch. Manual journals use
-   only accounts open to manual postings; opening balances may use system accounts; control accounts wait for their
-   party lines (Milestone B, `PartyLinesNotSupported`). Drafts copy the approval policy (opening balances always need
+   only accounts open to manual postings; opening balances may use system accounts; a control-account line names its
+   party (Milestone B, decision 14). Drafts copy the approval policy (opening balances always need
    approval); `submit` → `approve` posts, `post` posts a draft that needs none, `reject` (reason) and `cancel` before
    posting. The writer may approve their own journal: permission, company-wide access and state decide.
 9. **Posting** is one `ITransactionRunner` transaction (`Features/Journals/JournalPosting`): the `Idempotency-Key` lock and
@@ -78,6 +78,59 @@ closes, and leave the cutover from the existing operational history explicit.
     permission of its type (`journals.manage` or `opening.manage`), checked in the handler because the type is in the
     journal.
 
+## Decision — Milestone B
+14. **Party lines.** A line on a control account names a party of the account's kind (customer on an asset control
+    account, supplier on a liability one) that exists in Sales' `ICustomerDirectory` or Purchasing's new
+    `ISupplierDirectory` (read-only, `FindManyAsync`/`SearchActiveAsync`); any other line names none
+    (`Accounting.Journal.PartyRequired`, `PartyNotAllowed`, `PartyNotFound`). A party line may carry a due date (its posting
+    date otherwise). Parties are kept by type and id with no foreign key, because a line names one of two tables; the
+    posting checks them. Manual journals, opening balances (customer and supplier opening balances with their original due
+    dates) and reversals all accept party lines.
+15. **Open items.** Posting opens one `OpenItem` per party line (`UX_OpenItems_Line`): party, account, branch, document
+    and due dates, amount signed debit minus credit (receivables positive, payables negative), open amount
+    (`CK_OpenItems_Open`). An `Allocation` settles a debit item against a credit item of the same party and account,
+    within what both have open, dated the later of the two items; it is removed (never deleted) to undo it. By hand
+    (`POST /allocations`), automatically oldest-first per party and account (`/allocations/auto`), planned by a voucher
+    (below) or made by a reversal. Allocation needs `receivables.manage` or `payables.manage` for the party type and takes
+    the party's lock (`accounting/party/{type}/{id}`), so concurrent allocations and postings of one party queue.
+16. **Vouchers** are journals of types 5–12 (`CustomerReceipt` RV, `SupplierPayment` PV, `CustomerRefund` CF,
+    `SupplierRefund` SF, `CashReceipt` CR, `CashPayment` CP, `CashTransfer` TR, `ExpenseBill` EB) whose lines are built
+    from a header (`POST/PUT /api/accounting/vouchers`, `VoucherLines.Build`) and fixed (`LinesFixed`; the journal PUT
+    answers `VoucherManaged`). Each type has one shape, so it balances by construction:
+    - receipt: Dr cash (net), Dr withholding tax receivable (amount withheld, entered by hand), Cr customer (gross);
+    - payment: Dr supplier (gross), Cr cash (net), Cr withholding tax payable;
+    - refunds: the party against cash; cash receipts and payments: cash against counter lines (manual, non-control,
+      non-treasury posting accounts); transfer: destination against source, each in its own branch;
+    - expense bill: Dr expense lines, Dr input VAT, Cr supplier (total) due on the bill's due date or, by default, the
+      supplier's payment terms; the supplier's bill number is required and unique per supplier among bills that aren't
+      cancelled (`UX_JournalEntries_BillNumber`).
+    The withholding and VAT accounts come from the `WithholdingTaxReceivable`/`WithholdingTaxPayable`/`InputVat` roles,
+    the control accounts from `AccountsReceivable`/`AccountsPayable`; gross, withheld and net stay on the header
+    (`VoucherAmount`, `WithholdingAmount`, `TaxAmount`). A cashbox moves only cash, a bank only transfers, cards and
+    cheques; a cheque needs its number and is recorded only once cleared (no post-dated cheque portfolio in V1). A
+    receipt, payment or refund may plan allocations (`VoucherAllocations`), checked when drafted and settled from the
+    voucher's own item when it posts. Vouchers post, are approved (`VouchersRequireApproval`, default off), cancelled and
+    reversed like any journal; each type needs its manage permission (`JournalAccess.PermissionFor`).
+17. **Cashboxes and banks** (`CashAccounts`, temporal): code, name, kind, branch, one ledger posting asset account each
+    (`UX_CashAccounts_Account`), bank details and overdraft only for banks. The balance is computed from posted lines.
+    Deactivation needs a zero balance. **Cash guard:** posting locks every cash account it touches (after the parties) and
+    refuses (`Accounting.Journal.CashAccountOverdrawn`) when a cashbox, or a bank without overdraft, would end its
+    posting date or any later day below zero — for vouchers and hand journals alike, so a back-dated payment cannot
+    overdraw a past day.
+18. **Reversal of settled journals.** A journal whose items are allocated is reversed only once those allocations are
+    removed (`ItemsAllocated`, checked when the reversal is drafted and again, under the party locks, when it posts);
+    the reversal's items then settle the original's items line by line, so neither stays open.
+19. **Bank reconciliation** (`BankReconciliations` → `BankReconciliationLines`, `accounting.treasury.manage`): a draft per
+    bank at a time (`UX_BankReconciliations_Draft`), dated no earlier than the last completed statement, lists the bank account's
+    posted lines up to the statement date that no other reconciliation holds; ticking replaces the ticked set; it
+    completes only when statement balance = earlier cleared balance + ticked lines. A line is cleared by one
+    reconciliation only (`UX_BankReconciliationLines_Line`; cancelling a draft frees its lines).
+20. **Reports.** Aging per party type as of a date (by due date: not due, 1–30, 31–60, 61–90, over 90; the other side's
+    items as unallocated; allocations dated after the date ignored; optional branch), party statement (opening, lines,
+    running balance) and the subledger reconciliation (per control account: ledger balance, open items, what is still
+    open, party-less lines; reconciled when they agree). Open items are listed with their allocations
+    (`GET /open-items`).
+
 ## Consequences
 - `Migration14_Accounting` creates the `accounting` schema: 11 tables (`Accounts`, `AccountMappings` and
   `AccountingSettings` temporal with `history.*History`), check constraints and indexes, the settings seed, and the
@@ -92,13 +145,33 @@ closes, and leave the cutover from the existing operational history explicit.
   opening balances, access, settings locks, chart rules, mappings and their history, database guards) and a year-end
   test on its own database (default chart, import refusals, contiguous years, close per branch into retained earnings,
   reports after the close, reopen and close again).
+- `Migration15_AccountingSubledgers` adds `CashAccounts` (temporal), `OpenItems`, `Allocations`, `VoucherAllocations`,
+  `BankReconciliations` and `BankReconciliationLines`; nullable voucher columns on `JournalEntries` and party columns on
+  `JournalLines` with their check constraints (`CK_JournalEntries_Type` widened to 1–12, `CK_JournalEntries_Party`,
+  `CK_JournalEntries_Voucher`, `CK_JournalLines_Party`); `AccountingSettings.VouchersRequireApproval` (default false);
+  branch foreign keys of open items and cash accounts in `ErpDbContext`. Existing rows are untouched (every new column is
+  nullable or defaulted). Verified on a fresh LocalDB database: 01–15 applied, 15 rolled back to 14 and re-applied,
+  `has-pending-model-changes` none.
+- Sales and Purchasing gained one read-only contract method each (`ICustomerDirectory.FindManyAsync`, new
+  `ISupplierDirectory`); nothing else in them changed.
+- OpenAPI grows by 18 paths (tags `Vouchers`, `OpenItems`, `CashAccounts`, `BankReconciliations`, three reports under
+  `FinancialReports`) and 29 schemas; `JournalType` gains eight members and journal, line and settings models gain
+  properties. Nothing was removed or renamed.
+- Three permissions (`accounting.receivables.manage`, `accounting.payables.manage`, `accounting.treasury.manage`); 13 in
+  all.
+- Tests: unit tests of each voucher shape and its refusals, planned allocations, number prefixes and the reconciliation
+  arithmetic; SQL Server integration tests of receipts with tax withheld settling invoices, manual and automatic
+  allocation and removal, expense bills with VAT and supplier terms, duplicate bill numbers, payments with tax withheld,
+  the cash guard on the date and every later day, transfers between branches, cash account rules, reversal of a settled
+  receipt, party opening balances, aging, party statements, the subledger reconciliation, bank reconciliation end to end
+  and the permission of each voucher type.
 
 ## Not done yet (later milestones)
-- B: party lines, AR/AP open items and allocations, opening customer and supplier balances, receipts, payments,
-  withholding amounts, cashboxes, bank accounts, transfers, aging, bank reconciliation, Sales exposure from AR balances.
 - C: read-only source contracts, the source-posting step with its unique source identity, worker and exception queue,
   posting rules (deliveries with unbilled receivables, invoices, GRNI and price differences, POS per transaction, shift
-  settlement, card clearing), cutover activation and reconciliations.
+  settlement, card clearing), cutover activation and reconciliations; Sales' credit exposure from AR balances once
+  invoices open AR items.
+- Later than V1: post-dated cheque portfolio, statement import and automatic bank matching, multi-currency vouchers.
 
 ## Production prerequisites
 The accountant approves the chart and mappings, the closing treatment, and every **[Accountant]** item of the V1
