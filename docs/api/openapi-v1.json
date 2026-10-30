@@ -23150,6 +23150,544 @@
         }
       }
     },
+    "/api/accounting/cutover": {
+      "get": {
+        "tags": [
+          "Cutover"
+        ],
+        "operationId": "GetCutoverReadiness",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CutoverReadinessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounting/cutover/activate": {
+      "post": {
+        "tags": [
+          "Cutover"
+        ],
+        "operationId": "ActivateAccounting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActivateAccountingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounting/source-postings": {
+      "get": {
+        "tags": [
+          "SourcePostings"
+        ],
+        "operationId": "ListSourcePostings",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SourcePostingStatus"
+            }
+          },
+          {
+            "name": "sourceType",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SourceDocumentType"
+            }
+          },
+          {
+            "name": "fromDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "varianceOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResultOfSourcePostingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounting/source-postings/status": {
+      "get": {
+        "tags": [
+          "SourcePostings"
+        ],
+        "operationId": "GetSourceSyncStatus",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceSyncStatusResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounting/source-postings/reconciliation": {
+      "get": {
+        "tags": [
+          "SourcePostings"
+        ],
+        "operationId": "GetSourceReconciliation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceReconciliationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounting/source-postings/run": {
+      "post": {
+        "tags": [
+          "SourcePostings"
+        ],
+        "operationId": "RunSourceSync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunSourceSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceSyncResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/accounting/source-postings/{id}/retry": {
+      "post": {
+        "tags": [
+          "SourcePostings"
+        ],
+        "operationId": "RetrySourcePosting",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourcePostingResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/accounting/reports/trial-balance": {
       "get": {
         "tags": [
@@ -23956,7 +24494,8 @@
           "currencyCode",
           "startMonthLocked",
           "cutoverLocked",
-          "rowVersion"
+          "rowVersion",
+          "activatedAtUtc"
         ],
         "type": "object",
         "properties": {
@@ -23985,6 +24524,13 @@
           },
           "rowVersion": {
             "type": "string"
+          },
+          "activatedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
       },
@@ -24416,6 +24962,17 @@
           "Expense"
         ],
         "description": "The class of an account; it decides its normal balance and the statement it reports on."
+      },
+      "ActivateAccountingRequest": {
+        "required": [
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "rowVersion": {
+            "type": "string"
+          }
+        }
       },
       "AddProductBarcodeRequest": {
         "required": [
@@ -25097,7 +25654,8 @@
           "isActive",
           "balance",
           "createdAtUtc",
-          "rowVersion"
+          "rowVersion",
+          "receivesPosCash"
         ],
         "type": "object",
         "properties": {
@@ -25168,6 +25726,44 @@
           },
           "rowVersion": {
             "type": "string"
+          },
+          "receivesPosCash": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CashDifferenceResponse": {
+        "required": [
+          "shiftId",
+          "number",
+          "branchId",
+          "closedAtUtc",
+          "cashDifference",
+          "isForceClosed"
+        ],
+        "type": "object",
+        "properties": {
+          "shiftId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "closedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cashDifference": {
+            "type": "number",
+            "format": "double"
+          },
+          "isForceClosed": {
+            "type": "boolean"
           }
         }
       },
@@ -25451,6 +26047,32 @@
           },
           "rowVersion": {
             "type": "string"
+          }
+        }
+      },
+      "ClearingAccountResponse": {
+        "required": [
+          "role",
+          "ledgerBalance",
+          "sourceValue",
+          "difference"
+        ],
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/PostingRole"
+          },
+          "ledgerBalance": {
+            "type": "number",
+            "format": "double"
+          },
+          "sourceValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "difference": {
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -25739,6 +26361,10 @@
           },
           "allowsOverdraft": {
             "type": "boolean"
+          },
+          "receivesPosCash": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -27441,7 +28067,11 @@
           "uninvoicedOrderAmount",
           "deliveredNotInvoicedAmount",
           "invoicedAmount",
-          "pendingCreditAmount"
+          "pendingCreditAmount",
+          "receivableBalance",
+          "totalExposure",
+          "availableCredit",
+          "unjournaledAmount"
         ],
         "type": "object",
         "properties": {
@@ -27487,6 +28117,34 @@
           },
           "pendingCreditAmount": {
             "type": "number",
+            "format": "double"
+          },
+          "receivableBalance": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "totalExposure": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "availableCredit": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "unjournaledAmount": {
+            "type": [
+              "null",
+              "number"
+            ],
             "format": "double"
           }
         }
@@ -27574,6 +28232,96 @@
           "Business"
         ],
         "description": "Who the customer is; fixed once created."
+      },
+      "CutoverCheckResponse": {
+        "required": [
+          "code",
+          "passed",
+          "expected",
+          "actual",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "expected": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "actual": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "message": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CutoverReadinessResponse": {
+        "required": [
+          "cutoverDate",
+          "cutoverStartUtc",
+          "isActivated",
+          "activatedAtUtc",
+          "activatedByUserId",
+          "ready",
+          "checks",
+          "rowVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "cutoverDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "cutoverStartUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isActivated": {
+            "type": "boolean"
+          },
+          "activatedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "activatedByUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "ready": {
+            "type": "boolean"
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CutoverCheckResponse"
+            }
+          },
+          "rowVersion": {
+            "type": "string"
+          }
+        }
       },
       "DeliveryLineRequest": {
         "required": [
@@ -27685,7 +28433,8 @@
       "FiscalPeriodClosedResponse": {
         "required": [
           "periodId",
-          "openJournals"
+          "openJournals",
+          "unpostedDocuments"
         ],
         "type": "object",
         "properties": {
@@ -27694,6 +28443,10 @@
             "format": "uuid"
           },
           "openJournals": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unpostedDocuments": {
             "type": "integer",
             "format": "int32"
           }
@@ -28532,6 +29285,48 @@
           }
         }
       },
+      "InventoryReconciliationResponse": {
+        "required": [
+          "ledgerBalance",
+          "valuation",
+          "difference",
+          "openingDifference",
+          "roundingDifference",
+          "unpostedValue",
+          "unexplained"
+        ],
+        "type": "object",
+        "properties": {
+          "ledgerBalance": {
+            "type": "number",
+            "format": "double"
+          },
+          "valuation": {
+            "type": "number",
+            "format": "double"
+          },
+          "difference": {
+            "type": "number",
+            "format": "double"
+          },
+          "openingDifference": {
+            "type": "number",
+            "format": "double"
+          },
+          "roundingDifference": {
+            "type": "number",
+            "format": "double"
+          },
+          "unpostedValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "unexplained": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "InventoryValuationResponse": {
         "required": [
           "productId",
@@ -28919,7 +29714,9 @@
           "voucher",
           "lines",
           "events",
-          "rowVersion"
+          "rowVersion",
+          "sourceType",
+          "sourceId"
         ],
         "type": "object",
         "properties": {
@@ -29095,6 +29892,23 @@
           },
           "rowVersion": {
             "type": "string"
+          },
+          "sourceType": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SourceDocumentType"
+              }
+            ]
+          },
+          "sourceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -29198,7 +30012,11 @@
           "CashReceipt",
           "CashPayment",
           "CashTransfer",
-          "ExpenseBill"
+          "ExpenseBill",
+          "InventoryJournal",
+          "PurchasingJournal",
+          "SalesJournal",
+          "PosJournal"
         ],
         "description": "Where a journal comes from; each type has its own number series per fiscal year."
       },
@@ -29348,6 +30166,75 @@
               "type": "string",
               "format": "uuid"
             }
+          }
+        }
+      },
+      "MissingSourceResponse": {
+        "required": [
+          "sourceType",
+          "sourceId",
+          "number",
+          "occurredAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceType": {
+            "$ref": "#/components/schemas/SourceDocumentType"
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string"
+          },
+          "occurredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "OpenCardIncidentResponse": {
+        "required": [
+          "id",
+          "branchId",
+          "terminalId",
+          "shiftId",
+          "cardAmount",
+          "references",
+          "occurredAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "branchId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "shiftId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "cardAmount": {
+            "type": "number",
+            "format": "double"
+          },
+          "references": {
+            "type": "string"
+          },
+          "occurredAtUtc": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -30490,6 +31377,39 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/SecurityEventResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResultOfSourcePostingResponse": {
+        "required": [
+          "items",
+          "page",
+          "pageSize",
+          "totalCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourcePostingResponse"
             }
           },
           "page": {
@@ -35158,6 +36078,17 @@
           }
         }
       },
+      "RunSourceSyncRequest": {
+        "required": [
+          "fullScan"
+        ],
+        "type": "object",
+        "properties": {
+          "fullScan": {
+            "type": "boolean"
+          }
+        }
+      },
       "SalesActionRequest": {
         "required": [
           "rowVersion"
@@ -37922,6 +38853,370 @@
           },
           "isActive": {
             "type": "boolean"
+          }
+        }
+      },
+      "SourceCursorResponse": {
+        "required": [
+          "module",
+          "scannedToUtc",
+          "updatedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "module": {
+            "type": "string"
+          },
+          "scannedToUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SourceDocumentType": {
+        "enum": [
+          "InventoryDocument",
+          "GoodsReceipt",
+          "SupplierInvoice",
+          "SupplierReturn",
+          "SalesDelivery",
+          "SalesInvoice",
+          "SalesReturn",
+          "PosSale",
+          "PosReturn",
+          "PosShift",
+          null
+        ]
+      },
+      "SourcePostingResponse": {
+        "required": [
+          "id",
+          "sourceType",
+          "sourceId",
+          "sourceNumber",
+          "occurredAtUtc",
+          "postingDate",
+          "status",
+          "journalId",
+          "journalNumber",
+          "attempts",
+          "lastAttemptAtUtc",
+          "nextAttemptAtUtc",
+          "errorCode",
+          "errorMessage",
+          "stockValue",
+          "postedStockValue",
+          "varianceAmount",
+          "discoveredAtUtc",
+          "postedAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceType": {
+            "$ref": "#/components/schemas/SourceDocumentType"
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceNumber": {
+            "type": "string"
+          },
+          "occurredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "postingDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SourcePostingStatus"
+          },
+          "journalId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "journalNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastAttemptAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "nextAttemptAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "errorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "stockValue": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "postedStockValue": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "varianceAmount": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "discoveredAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "postedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "SourcePostingStatus": {
+        "enum": [
+          "Pending",
+          "Posted",
+          "Failed",
+          "NothingToPost"
+        ],
+        "description": "Where the journal of an operational document stands."
+      },
+      "SourceReconciliationResponse": {
+        "required": [
+          "isActivated",
+          "cutoverDate",
+          "asOfUtc",
+          "inventory",
+          "clearingAccounts",
+          "counts",
+          "missingCount",
+          "missing",
+          "unmatchedJournals",
+          "openCardIncidents",
+          "cashDifferences",
+          "isReconciled"
+        ],
+        "type": "object",
+        "properties": {
+          "isActivated": {
+            "type": "boolean"
+          },
+          "cutoverDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "asOfUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inventory": {
+            "$ref": "#/components/schemas/InventoryReconciliationResponse"
+          },
+          "clearingAccounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClearingAccountResponse"
+            }
+          },
+          "counts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceStatusCountResponse"
+            }
+          },
+          "missingCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MissingSourceResponse"
+            }
+          },
+          "unmatchedJournals": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "openCardIncidents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpenCardIncidentResponse"
+            }
+          },
+          "cashDifferences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CashDifferenceResponse"
+            }
+          },
+          "isReconciled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SourceStatusCountResponse": {
+        "required": [
+          "sourceType",
+          "status",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "sourceType": {
+            "$ref": "#/components/schemas/SourceDocumentType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SourcePostingStatus"
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SourceSyncResponse": {
+        "required": [
+          "discovered",
+          "posted",
+          "nothingToPost",
+          "failed",
+          "moreDue"
+        ],
+        "type": "object",
+        "properties": {
+          "discovered": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "posted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nothingToPost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "moreDue": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SourceSyncStatusResponse": {
+        "required": [
+          "isActivated",
+          "activatedAtUtc",
+          "cutoverDate",
+          "workerEnabled",
+          "workerIntervalSeconds",
+          "pending",
+          "failed",
+          "posted",
+          "nothingToPost",
+          "oldestUnsettledAtUtc",
+          "cursors"
+        ],
+        "type": "object",
+        "properties": {
+          "isActivated": {
+            "type": "boolean"
+          },
+          "activatedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "cutoverDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "workerEnabled": {
+            "type": "boolean"
+          },
+          "workerIntervalSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pending": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "failed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "posted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nothingToPost": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "oldestUnsettledAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "cursors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SourceCursorResponse"
+            }
           }
         }
       },
@@ -41531,6 +42826,10 @@
           },
           "rowVersion": {
             "type": "string"
+          },
+          "receivesPosCash": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -43377,6 +44676,12 @@
     },
     {
       "name": "BankReconciliations"
+    },
+    {
+      "name": "Cutover"
+    },
+    {
+      "name": "SourcePostings"
     },
     {
       "name": "FinancialReports"
