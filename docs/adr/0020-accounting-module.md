@@ -3,8 +3,8 @@
 Status: accepted (2026-10-30), on `feature/accounting`. The product owner approved the scope and decisions in
 [`docs/modules/Accounting/V1_DECISIONS.md`](../modules/Accounting/V1_DECISIONS.md), including the global approval rule
 in `CLAUDE.md` (*Document approvals*). This ADR records how each milestone implements them; **Milestones A (general
-ledger) and B (receivables, payables, cash and banks) are implemented**, C (ERP integration and cutover) and D
-(acceptance) follow on the same branch and extend this ADR.
+ledger), B (receivables, payables, cash and banks) and C (ERP integration and cutover) are implemented**; D (acceptance)
+follows on the same branch and extends this ADR.
 
 ## Context
 Every operational module keeps immutable posted documents with their amounts (Inventory's cost entries, supplier and
@@ -131,6 +131,104 @@ closes, and leave the cutover from the existing operational history explicit.
     open, party-less lines; reconciled when they agree). Open items are listed with their allocations
     (`GET /open-items`).
 
+## Decision — Milestone C
+21. **Read-only source contracts.** Each operational module reports its posted documents and the amounts it owns through
+    one new contract, implemented over its own tables without locks and changing none of its behaviour:
+    Inventory `IInventoryAccountingSource` (its own documents — opening stock, receipts and issues without a business
+    document, adjustments, their reversals, count adjustments —, any stock document's exact value from its cost entries,
+    the valuation before a moment), Purchasing `IPurchasingAccountingSource` (goods receipts, posted supplier invoices and
+    returns, goods received not invoiced before a moment), Sales `ISalesAccountingSource` (posted deliveries and invoices,
+    approved returns, goods delivered not invoiced before a moment) and POS `IPosAccountingSource` (sales, returns, closed
+    shifts' cash, the tills' cash before a moment, open card incidents, cash differences). Transfers move no value and are
+    not reported. Accounting never writes to them, so no operational workflow (checkout included) waits on Accounting.
+22. **Accounting identity and queue.** `SourcePostings` holds one row per operational document (`UX_SourcePostings_Source`
+    on type and id): pending, posted (with its journal), failed (error code and message, attempts, next try after 1, 2,
+    4 … minutes, at most an hour) or nothing to post. Its journal is one of four new system types — `InventoryJournal` IV,
+    `PurchasingJournal` PU, `SalesJournal` SL, `PosJournal` PS — naming the document (`SourceType`, `SourceId`,
+    `UX_JournalEntries_Source`, `CK_JournalEntries_Source`), written and posted by the system with fixed lines and no
+    user; it is never edited or reversed by hand (`NotReversible`): a document is corrected at its source or by another
+    journal. The documents themselves and their identities are the queue, so nothing is lost on a restart (no outbox is
+    needed: ADR 0015's rule — none until a consumer exists — still holds for other modules).
+23. **The run.** `SourceSync` runs every `Accounting:Integration:Interval` (one minute by default; `SourcePostingWorker`,
+    `WorkerEnabled`) and on demand (`POST /source-postings/run`, `fullScan` to look again from the cutover). Discovery is
+    one transaction under the scan lock: each module lists what it posted since its cursor less `ScanOverlap` (ten
+    minutes, for documents that commit a moment after their timestamp; `SourceCursors`), and documents posted from the
+    cutover's start without an identity get one. Then each due document posts in its own transaction (`SourcePoster`): its
+    identity's lock, the record read again, its rule, every role resolved to its mapped account (an unmapped role stops it),
+    the usual line checks (a branch closed since may still receive it), the party and cash locks with the cash guard
+    (`Shared/PostingGuard`, now also used by `JournalPosting`), the period of its date locked shared and found open, its
+    number; the journal, its parties' open items and the posted record commit together. A failure rolls that back and is
+    recorded in a second transaction under the same lock; an unexpected exception is recorded as
+    `Accounting.Source.Unexpected` and logged, so one document never blocks the others; a document another run holds
+    (`Busy`) is left to that run. `POST /source-postings/{id}/retry` tries one now (after the cause is fixed). Closing a
+    period reports the documents dated in it still waiting (`unpostedDocuments`), as it reports unposted drafts; a journal's
+    detail names its source document (`sourceType`, `sourceId`).
+24. **Dates.** A document's accounting date is the company's local date of the moment it posted in its module (delivery,
+    invoice, receipt and return posting, a return's approval, a sale, a shift's close; never before the start date); due
+    dates come from the documents. Documents stamped before the cutover's start (local midnight of the accounting start
+    date, kept in the settings at activation as `CutoverStartUtc`, so a later time-zone change moves nothing) never get an
+    identity: the opening balances hold them.
+25. **Posting rules** (`Features/SourcePostings/SourceEntries`, pure functions of what the modules report):
+    - Inventory's own documents: inventory against opening-balance equity (opening stock), unmatched receipts (receipts
+      without a supplier), internal use (issues), gains (found), losses (damage, loss, expiry), adjustments (correction,
+      other) or count differences; a reversal uses the reversed document's account the other way.
+    - Goods receipt: inventory against goods received not invoiced. Supplier invoice: GRNI cleared at the received value,
+      input VAT, the supplier's payable (its due date); the difference from the invoice's net is kept on
+      `PurchaseVarianceUnderReview` and recorded as the posting's `VarianceAmount`. Inventory does not revalue posted stock,
+      so splitting a difference between stock held and stock sold is the accountant's review: the default chart opens that
+      account to manual journals for the reclassification (V1 decision 8). Supplier return: stock out at Inventory's value,
+      GRNI cleared for goods returned before invoicing, a claim on the supplier (a debit open item with its VAT) for
+      invoiced goods, the rest under review.
+    - Sales delivery: revenue against unbilled receivables when goods are delivered, and their cost. Sales invoice: the
+      receivable (due date) and output VAT, unbilled receivables cleared without recognizing revenue again (only a rounding
+      difference between the invoice's net and the delivered value reaches revenue). Customer return: a sales return with
+      its VAT credited to the customer (a credit open item) for invoiced goods, unbilled receivables cleared for goods
+      returned before invoicing, and the goods back at their cost.
+    - POS sale and return: retail revenue or returns and VAT against the till's cash clearing and card clearing, and the
+      goods' cost. A closed shift hands its takings (its sales' cash less its refunds' cash) in to the branch's POS
+      cashbox (`CashAccount.ReceivesPosCash`, one active cashbox per branch, `UX_CashAccounts_PosCash`), with the counted
+      difference on cash over and short; without such a cashbox the shift fails visibly (`PosCashboxMissing`) until one is
+      marked. Card clearing waits for the acquirer: the treasury records the settlement with a cash receipt (clearing as
+      counter line) and the fees by journal.
+    - VAT follows the invoice (the only document with tax amounts) **[Accountant: tax point]**.
+26. **Clearing values and rounding.** Goods received not invoiced and unbilled receivables are valued per order line: its
+    uninvoiced quantity (received or delivered, less invoiced, less returned before invoicing) at the order's net unit
+    price (Purchasing) or priced like an invoice line (Sales, `LineAmounts`), rounded once for the whole quantity
+    (`UninvoicedReceipts`, `UnbilledDeliveries`). A document's amount is the change it made, from the quantity every earlier
+    document of those lines left (posting order: timestamp, then id) to what it left, so a line's clearing value returns
+    exactly to zero whatever the splits. Stock values are Inventory's cost entries rounded once per document (per direction
+    for an Inventory document moving both ways) to the currency's minor unit; a goods receipt puts its GRNI value on both
+    sides. Each posting keeps the exact stock value and the posted one, so the difference with Inventory is explained to the
+    last decimal. A module document and its stock document are stamped a moment apart in one transaction; where they fall on
+    two sides of the cutover's start, the valuation at the cutover counts that stock on its document's side
+    (`Shared/CutoverBoundary`, from Inventory's `GetPostingsAsync`).
+27. **Cutover activation** (`GET /cutover`, `POST /cutover/activate`, `accounting.integration.manage`, company-wide): the
+    cutover's start has passed by the scan overlap (`CutoverStarted`: the openings are compared with what the modules hold
+    at that moment, so activation can't come earlier); the cutover's period exists and is open; every role the rules use is
+    mapped; no opening-balance journal is a draft or
+    submitted; customers' and suppliers' items reconcile with their control accounts at the cutover; and the opening
+    balances of inventory, GRNI, unbilled receivables and the tills' cash clearing equal what the modules hold at the
+    cutover's start (Inventory's valuation rounded to the minor unit; open shifts' takings). Activation from the settings'
+    version the user read, only when every check passes, is recorded (`ActivatedAtUtc`, `ActivatedByUserId`,
+    `CutoverStartUtc`), never undone, and fixes the accounting start date and the openings: no opening-balance journal is
+    drafted, posted or reversed after it (`Accounting.Journal.OpeningAfterActivation`; a correction is a manual journal).
+    The openings the checks read include posted reversals of opening journals made before activation. Opening balances and
+    automatic journals therefore never count a document twice.
+28. **Reconciliation** (`GET /source-postings/reconciliation`, `accounting.reports.read`): the inventory account against
+    Inventory's valuation, the difference split into the opening's rounding, the journals' rounding and the value not
+    journaled yet; anything else (an opening that differs from the valuation by more than its rounding, a journal that
+    doesn't match its document) is `Unexplained`; GRNI, unbilled receivables and the tills' cash against their modules;
+    counts by type and status; documents posted since the cutover without an identity (a full scan); journals and
+    identities that don't point at each other; open card incidents and shifts' cash differences. The queue, its status
+    and cursors are `GET /source-postings` (filters, `varianceOnly`) and `/source-postings/status` (`accounting.journals.read`).
+29. **Return credits, claims and credit exposure.** A customer return's credit and a supplier return's claim are open items
+    of their party, allocated like any other (by hand, automatically, by vouchers). Once accounting is active, Sales'
+    customer exposure adds `ReceivableBalance` (Accounting's `ICustomerReceivables`: posted control-account lines of the
+    customer, opening balances included), `UnjournaledAmount` (Sales' invoices less credits posted since the cutover whose
+    journal hasn't posted yet: Accounting names the ones already journaled), `TotalExposure` (the three, plus confirmed
+    orders not invoiced: an invoiced order is counted once, in the receivable or waiting for its journal) and
+    `AvailableCredit`; it stays informational (`IsPartial` false).
+
 ## Consequences
 - `Migration14_Accounting` creates the `accounting` schema: 11 tables (`Accounts`, `AccountMappings` and
   `AccountingSettings` temporal with `history.*History`), check constraints and indexes, the settings seed, and the
@@ -166,11 +264,35 @@ closes, and leave the cutover from the existing operational history explicit.
   receipt, party opening balances, aging, party statements, the subledger reconciliation, bank reconciliation end to end
   and the permission of each voucher type.
 
+- `Migration16_AccountingIntegration` adds `SourcePostings` and `SourceCursors`; nullable `SourceType`/`SourceId` on
+  `JournalEntries` with `CK_JournalEntries_Source` and `UX_JournalEntries_Source` (`CK_JournalEntries_Type` widened to
+  1–16); `CashAccounts.ReceivesPosCash` (default false) with `CK_CashAccounts_PosCash` and `UX_CashAccounts_PosCash`;
+  `AccountingSettings.ActivatedAtUtc`/`ActivatedByUserId`/`CutoverStartUtc` (null). Existing rows are untouched. Verified
+  on a fresh LocalDB database: 01–16 applied, 16 rolled back to 15 and re-applied, `has-pending-model-changes` none.
+- Inventory, Purchasing, Sales and POS each gained one read-only contract (21); Sales' exposure reads
+  `ICustomerReceivables` (Sales.Application references Accounting.Contracts); no operational behaviour changed.
+- An independent review of the milestone's diff (four reviewers, each finding checked by a second one) found, before
+  commit, activation possible before the cutover's start, the start recomputed from the current time zone, openings
+  still changeable after activation (and reversed openings ignored by the checks), a failure recorded over a run holding
+  the document, exposure missing invoices not journaled yet, and stock stamped across the cutover's start; all are fixed
+  as described above.
+- OpenAPI grows by 7 paths (tags `Cutover`, `SourcePostings`) and 18 schemas; `JournalType` gains four members, and the
+  settings, cash account, journal, period-close and customer exposure models gain properties (`receivesPosCash` optional
+  in requests). Nothing was removed or renamed.
+- One permission, `accounting.integration.manage`; 14 in all. Options `Accounting:Integration` (worker on, one minute,
+  ten-minute overlap, 500 per run), validated on start.
+- Tests: unit tests of every posting rule (balance, roles, signs, parties, rounding), the per-order-line clearing values,
+  the retry schedule, automatic journals and activation; a SQL Server test on its own database through the real HTTP host:
+  documents before the cutover kept out, a cutover not started yet refused, readiness failing and then passing with the
+  opening balances, activation once, the start date and the openings locked, ten documents of every kind journaled
+  exactly once (each journal's lines checked), Sales' exposure the same before and after journaling, a shift
+  failing without a POS cashbox and posting on retry, credits and claims as open items, Sales' exposure from the
+  receivable, idempotent runs (worker and full scan), the reconciliation with nothing unexplained, and the permissions.
+
 ## Not done yet (later milestones)
-- C: read-only source contracts, the source-posting step with its unique source identity, worker and exception queue,
-  posting rules (deliveries with unbilled receivables, invoices, GRNI and price differences, POS per transaction, shift
-  settlement, card clearing), cutover activation and reconciliations; Sales' credit exposure from AR balances once
-  invoices open AR items.
+- D: acceptance on the real host, the dev-database migration (after a backup, with authorization), the frontend handoff.
+- Accountant decisions that change rules: VAT at delivery where that is the tax point; a valuation adjustment of price
+  differences once Inventory can revalue (until then they stay under review); a dedicated card-settlement voucher.
 - Later than V1: post-dated cheque portfolio, statement import and automatic bank matching, multi-currency vouchers.
 
 ## Production prerequisites

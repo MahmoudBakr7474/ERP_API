@@ -28,7 +28,8 @@ src/
                                     refunds; prices from Sales, stock only through Inventory's IPosStockPosting (ADR 0019)
   Modules/Accounting/               same layout: chart of accounts and posting-role mappings, fiscal years and periods,
                                     journals (manual, opening, reversal, year-end close), vouchers, customer and supplier
-                                    open items and allocations, cashboxes, banks and their reconciliation, reports (ADR 0020)
+                                    open items and allocations, cashboxes, banks and their reconciliation, reports, and
+                                    after the cutover the journals of operational documents with their queue (ADR 0020)
 tests/
   WarehouseERP.UnitTests/           no database
   WarehouseERP.IntegrationTests/    SQL Server (LocalDB) + the real HTTP host
@@ -112,7 +113,9 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET, POST | `/api/pos/sales?page&pageSize&terminalId&shiftId&warehouseId&customerId&cashierUserId&search&from&to`, `/sales/{id}` / `/{id}/reprint` (counted copy) | `pos.read` / `pos.receipts.reprint` |
 | GET, POST | `/api/pos/returns?…`, `/returns/{id}` / create (`Idempotency-Key`; refunds and posts a PosReturn), `/{id}/reprint` | `pos.read` / `pos.returns.manage`, `pos.receipts.reprint` |
 | GET, POST | `/api/pos/card-incidents?page&pageSize&terminalId&shiftId&status` / `/{id}/resolve` (note, `rowVersion`) | `pos.read` / `pos.shifts.manage` |
-| GET, PUT | `/api/accounting/settings` (fiscal-year start month, accounting start date, manual-journal and voucher approval; + `rowVersion`) | signed in / `accounting.settings.manage` + company-wide |
+| GET, PUT | `/api/accounting/settings` (fiscal-year start month, accounting start date, manual-journal and voucher approval; + `rowVersion`; the start date is fixed once a journal posted or accounting is active) | signed in / `accounting.settings.manage` + company-wide |
+| GET, POST | `/api/accounting/cutover` (readiness: each check with what the modules hold and what the opening balances hold), `/cutover/activate` (`rowVersion`; only when every check passes, once) | `accounting.reports.read` / `accounting.integration.manage` + company-wide |
+| GET, POST | `/api/accounting/source-postings?status&sourceType&fromDate&toDate&varianceOnly&page&pageSize` (the journaling queue: pending, posted, failed with reason and next try), `/status`, `/reconciliation` (`accounting.reports.read`), `/run` (`fullScan`), `/{id}/retry` | `accounting.journals.read` / `accounting.integration.manage` + company-wide |
 | GET, POST, PUT, DELETE | `/api/accounting/accounts?page&pageSize&search&type&isActive&isPosting&parentId`, `/accounts/tree`, `/accounts/{id}` / create, update (+ `rowVersion`), delete (unused only), `/{id}/activate`, `/{id}/deactivate`, `/default-chart`, `/import` (empty chart only) | `accounting.accounts.read` / `accounting.accounts.manage` + company-wide |
 | GET, PUT, DELETE | `/api/accounting/account-mappings`, `/account-mappings/{role}` (`accountId`, `rowVersion`) | `accounting.accounts.read` / `accounting.accounts.manage` + company-wide |
 | GET, POST | `/api/accounting/fiscal-years`, `/fiscal-years/{id}` / create (`startYear`), `/{id}/close` (`rowVersion`), `/{id}/reopen` (reason); `/api/accounting/fiscal-periods/{id}/close`, `/{id}/reopen` (reason) | `accounting.accounts.read` / `accounting.periods.manage`, `accounting.periods.reopen` + company-wide |
@@ -121,7 +124,7 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET | `/api/accounting/reports/trial-balance?fromDate&toDate&branchId&level&includeZero`, `/account-statement?accountId&fromDate&toDate&branchId`, `/general-ledger?fromDate&toDate&accountId&branchId&journalType&page&pageSize`, `/balance-sheet?asOfDate`, `/income-statement?fromDate&toDate&branchId&compareFromDate&compareToDate`, `/aging?partyType&asOfDate&branchId`, `/party-statement?partyType&partyId&fromDate&toDate`, `/subledger-reconciliation?asOfDate` | `accounting.reports.read` + company-wide |
 | POST, PUT | `/api/accounting/vouchers` (draft: `type`, cash account, party, method, `amount`, `withholdingAmount`, `taxAmount`, counter `lines`, planned `allocations`), `/vouchers/{id}` (replace a draft; + `rowVersion`); posted, approved, cancelled and reversed through `/api/accounting/journals/{id}/...` | by type: `accounting.receivables.manage` (customer receipts, refunds), `accounting.payables.manage` (supplier payments, refunds, expense bills), `accounting.treasury.manage` (cash vouchers, transfers) + company-wide |
 | GET, POST | `/api/accounting/open-items?partyType&partyId&accountId&openOnly&page&pageSize`; `/api/accounting/allocations` (`debitItemId`, `creditItemId`, `amount`), `/allocations/{id}/remove`, `/allocations/auto` (`partyType`, `partyId`) | `accounting.reports.read` / `accounting.receivables.manage` or `accounting.payables.manage` by party + company-wide |
-| GET, POST, PUT | `/api/accounting/cash-accounts?kind&branchId&isActive&asOfDate`, `/cash-accounts/{id}` / create, update (+ `rowVersion`), `/{id}/activate`, `/{id}/deactivate` (zero balance only) | `accounting.accounts.read` / `accounting.treasury.manage` + company-wide |
+| GET, POST, PUT | `/api/accounting/cash-accounts?kind&branchId&isActive&asOfDate`, `/cash-accounts/{id}` / create, update (+ `rowVersion`; `receivesPosCash`: the branch's one cashbox closed POS shifts hand their cash in to), `/{id}/activate`, `/{id}/deactivate` (zero balance only) | `accounting.accounts.read` / `accounting.treasury.manage` + company-wide |
 | GET, POST, PUT | `/api/accounting/bank-reconciliations?cashAccountId`, `/{id}` / start (`cashAccountId`, `statementDate`, `statementBalance`), `/{id}/lines` (ticked `journalLineIds`, `rowVersion`), `/{id}/complete`, `/{id}/cancel` | `accounting.treasury.manage` + company-wide |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
@@ -215,6 +218,11 @@ temporal) and the settings row (calendar fiscal years, accounting start 2027-01-
 changes no existing table or data (ADR 0020 *Consequences*). `Migration15_AccountingSubledgers` adds cash accounts
 (temporal), open items, allocations, voucher allocations and bank reconciliations, nullable voucher and party columns on
 journals and lines, and the voucher-approval setting (off); it changes no existing data (ADR 0020 *Consequences*).
+`Migration16_AccountingIntegration` adds the operational documents' accounting identities (`SourcePostings`) and scan
+cursors, nullable source columns on journals, the POS-cashbox flag of cash accounts and the activation columns of the
+settings (null: not active); it changes no existing data. Automatic journaling starts only when the cutover is activated
+(`POST /api/accounting/cutover/activate`); the worker is configured under `Accounting:Integration` (`WorkerEnabled`,
+`Interval`, `ScanOverlap`, `BatchSize`).
 
 ## Running the API
 
@@ -268,7 +276,7 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 See `docs/adr/` for reasons: Data Protection key encryption at rest, MFA/SSO, POS device registration and offline grants (ADR 0009), OpenTelemetry exporters, the outbox/inbox (until a consumer exists, ADR 0015),
 management of tax codes, rates, product tax assignments and EGS/GS1 external item codes (Sales/e-invoicing phase,
 ADR 0014), batch/serial tracking (`docs/modules/Inventory/V1_DECISIONS.md`, ADR 0015 *Not done*),
-foreign-currency purchasing and invoice revaluation (ADR 0016 *Not done*), the ERP-to-ledger postings and cutover
-(Accounting Milestone C), post-dated cheques and bank statement import (ADR 0020 *Not done*), backorders,
+foreign-currency purchasing and invoice revaluation (ADR 0016 *Not done*), post-dated cheques, bank statement import,
+VAT at delivery and the revaluation of supplier price differences (ADR 0020 *Not done*), backorders,
 quarantine returns, customer price lists, credit notes and Egyptian e-invoicing (ADR 0018 *Not done*; customer receipts are Accounting vouchers),
 offline POS, integrated card gateways and wallets, held carts, promotions and the ETA e-Receipt (ADR 0019 *Not done*).

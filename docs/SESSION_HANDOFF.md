@@ -1,16 +1,16 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-30 (Accounting Milestones A and B complete on `feature/accounting`; POS V1 merged into `main` in
-both repositories earlier the same day).
+Last verified: 2026-10-30 (Accounting Milestones A, B and C complete on `feature/accounting`; POS V1 merged into `main`
+in both repositories earlier the same day).
 Read this first; don't re-analyse the repository.
 
 ## Where things stand
 - **Accounting started (2026-10-30) on `feature/accounting`**, cut from backend `main` at `302f57a` (= `origin/main`).
   Decisions approved by the owner the same day: `docs/modules/Accounting/V1_DECISIONS.md`; how the code implements them:
-  `docs/adr/0020-accounting-module.md`. **Milestones A (general ledger) and B (receivables, payables, cash and banks)
-  are implemented and verified; C (ERP integration, cutover, reconciliations) and D (acceptance, Lovable prompt and
-  frontend handoff) remain.** Not merged, not pushed; `Migration14_Accounting` and `Migration15_AccountingSubledgers` are
-  not applied to `WarehouseERP_Dev`. Details in *Accounting status* below.
+  `docs/adr/0020-accounting-module.md`. **Milestones A (general ledger), B (receivables, payables, cash and banks) and C
+  (ERP integration, cutover, reconciliations) are implemented and verified; D (acceptance, Lovable prompt and frontend
+  handoff) remains.** Not merged, not pushed; `Migration14_Accounting`, `Migration15_AccountingSubledgers` and
+  `Migration16_AccountingIntegration` are not applied to `WarehouseERP_Dev`. Details in *Accounting status* below.
 - **`main` holds POS V1 (2026-10-30).** With the owner's approval after the acceptance on the dev database, the
   backend `main` was fast-forwarded from `ea122c1` to the tip of `feature/pos` (this handoff) and the frontend's `main`
   from `e9da46f` (Lovable's POS screens) to `fd44db5` (`fix/pos-integration`). No merge commits; both branches stay on
@@ -91,10 +91,32 @@ Read this first; don't re-analyse the repository.
   `has-pending-model-changes` none (`.artifacts/accounting-b-migration-check.ps1` and its log); OpenAPI snapshot
   regenerated (+18 paths, +29 schemas, +4 tags; additive — `UpdateAccountingSettingsRequest` gains the required
   `vouchersRequireApproval`, an endpoint new on this unmerged branch).
-- **Moved to C:** customer return credits and supplier return claims (from Sales/Purchasing returns) and Sales'
-  credit-limit exposure from AR balances (once invoices open AR items).
-- **Next:** Milestone C. Real-host E2E, the dev-database migration (after a verified backup, with the owner's
-  authorization), the Lovable prompt and frontend handoff come with Milestone D.
+- **Milestone C (code on `feature/accounting`, ADR 0020 decisions 21–29):** read-only accounting sources in Inventory,
+  Purchasing, Sales and POS (`I*AccountingSource`; no operational behaviour changed); one accounting identity per
+  document (`SourcePostings`, unique by type and id) and one system journal per document (IV, PU, SL, PS; never reversed
+  by hand); `SourceSync` run by `SourcePostingWorker` (`Accounting:Integration`, every minute) and on demand, discovery
+  with overlapping cursors, each document in its own transaction, failures retried with backoff and by hand; posting rules
+  (`SourceEntries`): Inventory's own documents, GRN → GRNI, supplier invoice (price differences under review), supplier
+  return (claim), delivery → revenue against unbilled receivables, invoice (reclassifies; VAT), customer return (credit),
+  POS sale/return per transaction, shift close into the branch's POS cashbox (`receivesPosCash`) with cash over/short;
+  GRNI and unbilled valued per order line so they clear to zero; cutover readiness (period, roles, opening journals,
+  subledgers, inventory/GRNI/unbilled/till openings vs the modules, and the cutover's start passed) and authorized
+  activation (the start kept, the openings frozen); the source-to-ledger reconciliation; Sales' exposure adds the
+  receivable and the invoices not journaled yet (`ICustomerReceivables`). An independent review of the diff (four
+  reviewers, every finding checked by a second) found 7 real defects before commit; all fixed (ADR 0020 *Consequences*).
+  Note: a reviewer ran the integration tests from the sandbox and left LocalDB stopped; `sqllocaldb start MSSQLLocalDB`
+  in the app terminal restored it once its sandboxed server exited. One permission
+  (`accounting.integration.manage`; 14 in all). `Migration16_AccountingIntegration`: 2 tables, nullable/defaulted
+  columns, no data change. +7 endpoints.
+- **Verified (2026-10-30, Milestone C):** build 0 warnings; Unit 281/281, Architecture 129/129, Integration 297/297 on
+  LocalDB (one new end-to-end test on its own database); migrations 01–16 on a fresh database, 16 rolled back to 15 and
+  re-applied, `has-pending-model-changes` none (`.artifacts/accounting-c-migration-check.ps1` and its log); OpenAPI
+  snapshot regenerated (+7 paths, +18 schemas, +2 tags; additive).
+- **Accountant items left by C:** VAT at delivery where that is the tax point, the split of supplier price differences
+  between stock held and sold (they stay under review; the accountant reclassifies by journal), card settlements recorded
+  by treasury vouchers. All in `V1_DECISIONS.md` section 8.
+- **Next:** Milestone D: real-host E2E, the dev-database migration (after a verified backup, with the owner's
+  authorization), the Lovable prompt and frontend handoff.
 
 ## POS status
 - **Decisions:** approved by the owner on 2026-10-29 ("POS V1 Final Owner Approval", with corrections: product-level tax
@@ -455,12 +477,12 @@ Read this first; don't re-analyse the repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-30, Accounting Milestone B, `feature/accounting`, LocalDB, `-m:1`)
+## Latest verified tests (2026-10-30, Accounting Milestone C, `feature/accounting`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 273/273 | 129/129 | 296/296 |
+| 281/281 | 129/129 | 297/297 |
 
-Earlier the same day (Accounting Milestone A): 267 / 129 / 289.
+Earlier the same day: Accounting Milestone B 273 / 129 / 296; Milestone A 267 / 129 / 289.
 
 Earlier (2026-10-29, POS V1 acceptance, `feature/pos` at `2665824`): 259 / 114 / 275.
 

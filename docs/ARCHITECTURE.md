@@ -46,8 +46,11 @@ moves only unreserved stock through Inventory's `IPosStockPosting`, ADR 0019) an
 its posting-role mappings, fiscal years and periods, manual, opening-balance, reversal, voucher and year-end closing
 journals, customers' and suppliers' open items and allocations, cashboxes, banks and their reconciliation, and the trial
 balance, general ledger, account statements, balance sheet, income statement, aging, party statements and subledger
-reconciliation computed from posted lines; it reads the company and branches through Organization's contracts, customers
-through Sales' `ICustomerDirectory` and suppliers through Purchasing's `ISupplierDirectory`, ADR 0020).
+reconciliation computed from posted lines; once the cutover is activated it journals Inventory's, Purchasing's, Sales'
+and POS's posted documents, read through their `I*AccountingSource` contracts, with an exception queue and a
+source-to-ledger reconciliation; it reads the company and branches through Organization's contracts, customers through
+Sales' `ICustomerDirectory` and suppliers through Purchasing's `ISupplierDirectory`, and Sales reads receivable balances
+through Accounting's `ICustomerReceivables`, ADR 0020).
 
 ## Dependency map
 
@@ -170,13 +173,16 @@ item descriptions in `Features/Items`; references, till access, numbering, idemp
 `Abstractions/Interfaces/{Settings,Terminals,Shifts,Sales,Returns,CardIncidents,Posting}`,
 `Errors/{Access,Terminal,Shift,Sale,Item,Return,CardIncident,Idempotency,RowVersion,Reference,Pricing,Stock}Errors`.
 Accounting: `Features/{Settings,Accounts,AccountMappings,FiscalYears,Journals,Vouchers,OpenItems,Allocations,CashAccounts,
-BankReconciliations,Reports}` (the chart builder and default chart in `Features/Accounts`, the posting transaction with its
-party locks, cash guard and settlements in `Features/Journals`, the voucher builder in `Features/Vouchers`, report helpers
-in `Features/Reports`; the calendar part of every posting is `Shared/LedgerPosting`, used by journals and the year-end
-close; line rules, journal permissions and the party directory are in `Shared/` because journals and vouchers both use
-them), `Abstractions/Interfaces/{Accounts,Mappings,Settings,FiscalYears,Journals,OpenItems,CashAccounts,
-BankReconciliations,Posting,Reports}`, `Errors/{Access,Account,Mapping,Settings,FiscalYear,Journal,Voucher,Allocation,
-CashAccount,BankReconciliation,Idempotency,RowVersion,Reference,Report}Errors`.
+BankReconciliations,Reports,Cutover,SourcePostings}` (the chart builder and default chart in `Features/Accounts`, the
+posting transaction with its settlements in `Features/Journals`, the voucher builder in `Features/Vouchers`, report helpers
+in `Features/Reports`, the cutover checks in `Features/Cutover`, the operational documents' posting rules
+(`SourceEntries`), poster and run in `Features/SourcePostings`; the calendar part of every posting is
+`Shared/LedgerPosting` and its party locks and cash guard `Shared/PostingGuard`, used by journals, the year-end close and
+the operational documents; line rules, journal permissions and the party directory are in `Shared/` because journals and
+vouchers both use them), `Abstractions/Interfaces/{Accounts,Mappings,Settings,FiscalYears,Journals,OpenItems,CashAccounts,
+BankReconciliations,Posting,Reports,SourcePostings}`,
+`Errors/{Access,Account,Mapping,Settings,FiscalYear,Journal,Voucher,Allocation,CashAccount,BankReconciliation,Idempotency,
+RowVersion,Reference,Report,SourcePosting,Cutover}Errors`.
 
 ### Where each type belongs
 

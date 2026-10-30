@@ -102,10 +102,27 @@ reconciliations; D — acceptance, frontend handoff, documentation. V1 is comple
 - **POS (owner correction):** one recognition event per sale and refund, per-transaction posting preferred, traceable to
   sale, refund, payment method and shift; shift close settles cash only; card payments sit in clearing until externally
   settled; unresolved card incidents and cash differences stay visible as reconciliation exceptions. **[Accountant]**
+- **Implemented in C (ADR 0020, decisions 21–29):** read-only accounting sources in Inventory, Purchasing, Sales and POS;
+  one accounting identity per document (unique in the database) and one system journal per document (IV, PU, SL, PS);
+  the worker and the on-demand run, the exception queue with automatic and manual retries; posting rules for Inventory's
+  own documents, goods receipts, supplier invoices (price differences under review) and returns (claims), deliveries
+  (revenue against unbilled receivables), invoices (reclassified to receivables, VAT at the invoice), customer returns
+  (credits), POS sales and returns per transaction, shift settlement into the branch's POS cashbox with the counted
+  difference, card clearing; the cutover checks and the authorized activation (section 6); the source-to-ledger
+  reconciliation with missing and unmatched documents, POS card incidents and cash differences; customer return credits
+  and supplier return claims as open items, and Sales' credit exposure from the receivable balance (section 7).
+- **V1 choices within these decisions [Accountant]:** an operational document's accounting date is the company's local
+  date it posted on; GRNI and unbilled receivables are valued per order line at the order's price, so they clear to zero;
+  stock values are Inventory's cost entries rounded once per document (the reconciliation explains the rounding); price
+  differences stay under review until the accountant reclassifies them by journal (Inventory does not revalue stock);
+  the treasury records card settlements with a cash receipt (card clearing as counter line) and fees by journal;
+  activation is possible only once the cutover's start has passed (the openings are compared with what the modules held
+  at that moment), and from then on the opening balances no longer change (corrections are manual journals).
 
 ## 9. Reports
 Trial balance, general ledger, account statements, balance sheet (company level) and income statement (company or
-branch, with comparison) in A; aging, statements, cash and bank books, VAT summary and reconciliations in B and C.
+branch, with comparison) in A; aging, statements, cash and bank books and the subledger reconciliation in B; the
+source-to-ledger reconciliation in C. A VAT summary is the account statements of the input and output VAT accounts in V1.
 Branch figures add up to the company's; the balance sheet is company-level because transfers move no value between
 branches.
 
