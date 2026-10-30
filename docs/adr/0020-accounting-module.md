@@ -3,8 +3,9 @@
 Status: accepted (2026-10-30), on `feature/accounting`. The product owner approved the scope and decisions in
 [`docs/modules/Accounting/V1_DECISIONS.md`](../modules/Accounting/V1_DECISIONS.md), including the global approval rule
 in `CLAUDE.md` (*Document approvals*). This ADR records how each milestone implements them; **Milestones A (general
-ledger), B (receivables, payables, cash and banks) and C (ERP integration and cutover) are implemented**; D (acceptance)
-follows on the same branch and extends this ADR.
+ledger), B (receivables, payables, cash and banks) and C (ERP integration and cutover) are implemented, and D
+(development acceptance and frontend handoff) is done** (section *Milestone D*). The accountant's and the statutory
+sign-off are separate and still open (*Production prerequisites*).
 
 ## Context
 Every operational module keeps immutable posted documents with their amounts (Inventory's cost entries, supplier and
@@ -289,8 +290,22 @@ closes, and leave the cutover from the existing operational history explicit.
   failing without a POS cashbox and posting on retry, credits and claims as open items, Sales' exposure from the
   receivable, idempotent runs (worker and full scan), the reconciliation with nothing unexplained, and the permissions.
 
-## Not done yet (later milestones)
-- D: acceptance on the real host, the dev-database migration (after a backup, with authorization), the frontend handoff.
+## Milestone D — development acceptance (2026-10-30)
+- `feature/accounting` pushed to `origin` (not merged into `main`).
+- `WarehouseERP_Dev`: state verified (01–13 applied, 14–16 pending); copy-only checksummed backup
+  `db-backups\WarehouseERP_Dev_before_Migration14_20261030_131814.bak`, `RESTORE VERIFYONLY` valid, test-restored and
+  compared (141 tables, identical row counts, copy dropped); exactly 14–16 applied (`database update
+  Migration16_AccountingIntegration`): 23 new tables, no existing table's row count changed, accounting not activated
+  (start date 2027-01-01, no account, journal or source posting). Scripts and logs: `.artifacts/dev-db-backup-accounting.*`,
+  `dev-db-migrate-accounting.*`.
+- The dev API runs the branch build (`https://localhost:49571`): readiness 200, unauthenticated 401, live OpenAPI equal to
+  the committed contract (servers excluded).
+- Real-host end-to-end on a throwaway database with an explicitly controlled test cutover (2026-10-01; the dev database
+  was not activated and none of its documents were journaled): 57/57 checks over every Accounting workflow, the worker
+  included (`.artifacts/e2e-accounting-host.ps1`, `e2e-accounting.mjs`); no server error; databases dropped.
+- `docs/modules/Accounting/LOVABLE_PROMPT.md` and `FRONTEND_HANDOFF.md` written from the contract and the run.
+
+## Not done yet
 - Accountant decisions that change rules: VAT at delivery where that is the tax point; a valuation adjustment of price
   differences once Inventory can revalue (until then they stay under review); a dedicated card-settlement voucher.
 - Later than V1: post-dated cheque portfolio, statement import and automatic bank matching, multi-currency vouchers.

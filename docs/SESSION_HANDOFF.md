@@ -1,16 +1,18 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-30 (Accounting Milestones A, B and C complete on `feature/accounting`; POS V1 merged into `main`
-in both repositories earlier the same day).
+Last verified: 2026-10-30 (Accounting V1 backend complete on `feature/accounting`, Milestone D development acceptance
+done, branch pushed, not merged; Migrations 14–16 applied to `WarehouseERP_Dev` without activating accounting; POS V1
+merged into `main` in both repositories earlier the same day).
 Read this first; don't re-analyse the repository.
 
 ## Where things stand
 - **Accounting started (2026-10-30) on `feature/accounting`**, cut from backend `main` at `302f57a` (= `origin/main`).
   Decisions approved by the owner the same day: `docs/modules/Accounting/V1_DECISIONS.md`; how the code implements them:
-  `docs/adr/0020-accounting-module.md`. **Milestones A (general ledger), B (receivables, payables, cash and banks) and C
-  (ERP integration, cutover, reconciliations) are implemented and verified; D (acceptance, Lovable prompt and frontend
-  handoff) remains.** Not merged, not pushed; `Migration14_Accounting`, `Migration15_AccountingSubledgers` and
-  `Migration16_AccountingIntegration` are not applied to `WarehouseERP_Dev`. Details in *Accounting status* below.
+  `docs/adr/0020-accounting-module.md`. **Milestones A (general ledger), B (receivables, payables, cash and banks), C
+  (ERP integration, cutover, reconciliations) and D (development acceptance, Lovable prompt, frontend handoff) are done.**
+  `feature/accounting` is pushed to `origin` and **not merged** (merging needs the owner's approval). Migrations 14–16 are
+  applied to `WarehouseERP_Dev` (verified backup first); accounting is **not activated** there. Frontend screens: not built
+  yet (`docs/modules/Accounting/LOVABLE_PROMPT.md`). Details in *Accounting status* below.
 - **`main` holds POS V1 (2026-10-30).** With the owner's approval after the acceptance on the dev database, the
   backend `main` was fast-forwarded from `ea122c1` to the tip of `feature/pos` (this handoff) and the frontend's `main`
   from `e9da46f` (Lovable's POS screens) to `fd44db5` (`fix/pos-integration`). No merge commits; both branches stay on
@@ -115,8 +117,43 @@ Read this first; don't re-analyse the repository.
 - **Accountant items left by C:** VAT at delivery where that is the tax point, the split of supplier price differences
   between stock held and sold (they stay under review; the accountant reclassifies by journal), card settlements recorded
   by treasury vouchers. All in `V1_DECISIONS.md` section 8.
-- **Next:** Milestone D: real-host E2E, the dev-database migration (after a verified backup, with the owner's
-  authorization), the Lovable prompt and frontend handoff.
+- **Milestone D (2026-10-30, owner-authorised):**
+  * `feature/accounting` pushed to `origin` (new remote branch, upstream set); `main` untouched in both repositories.
+  * `WarehouseERP_Dev`: state verified (01–13 applied, 14–16 pending); copy-only checksummed backup
+    `D:\work\WarehouseERP\db-backups\WarehouseERP_Dev_before_Migration14_20261030_131814.bak`, `RESTORE VERIFYONLY`
+    valid, test restore matched all 141 tables' row counts (copy dropped); then exactly 14–16 applied (`database update
+    Migration16_AccountingIntegration`): 23 new tables, no existing table's row count changed, settings seeded (start
+    2027-01-01, manual journals need approval, vouchers don't), **not activated**, no account, journal or source posting.
+    Operational data intact (40 stock documents, 4 supplier invoices, 1 sales invoice, 6 POS sales). Scripts and logs:
+    `.artifacts/dev-db-backup-accounting.*`, `dev-db-migrate-accounting.*`.
+  * Dev API restarted on the `feature/accounting` build in the app's terminal tab "ERP dev API" (`dotnet run --project
+    src/WarehouseERP.Api --no-launch-profile --no-build -e ASPNETCORE_ENVIRONMENT=Development -- --urls
+    https://localhost:49571 --contentRoot D:\work\WarehouseERP\ERP_API\src\WarehouseERP.Api`; a relative `--contentRoot`
+    fails because it resolves against `bin`): readiness 200, unauthenticated 401, live OpenAPI equal to the committed one
+    (servers excluded; 261 paths, 55 Accounting). The worker runs but does nothing until activation.
+  * Real-host E2E (`.artifacts/e2e-accounting-host.ps1` + `e2e-accounting.mjs`, throwaway database, test cutover
+    2026-10-01 set explicitly, worker every 15 s): **57/57** — chart and periods, opening balances, manual journals,
+    approval by the writer, idempotency, reversal, partial receipts and payments with tax withheld, cash and bank, the cash
+    guard, Inventory/Purchasing/Sales/POS journals, the exception queue and retry, a closed period and reopening, the
+    worker, the source-to-ledger reconciliation, trial balance, balance sheet, income statement, aging, subledger
+    reconciliation, permissions (clerk, branch-scoped user). First run 56/57: one wrong test expectation (a voucher the cash
+    guard refused stays a draft, so closing the period counts two drafts), corrected and re-run on a fresh database. No
+    server error; both databases dropped (`drop-db.ps1` now also accepts `WarehouseERP_E2E_Acc_*`). Samples:
+    `.artifacts/e2e-accounting-samples.json`.
+  * Frontend documents: `docs/modules/Accounting/LOVABLE_PROMPT.md`, `FRONTEND_HANDOFF.md` (endpoint table, real
+    responses, error codes, dev-database steps without activation).
+- **Verified (2026-10-30, Milestone D final regression on `25fcad5` + docs):** build 0 warnings; Unit 281/281,
+  Architecture 129/129, Integration 297/297 on LocalDB; migrations 01–16 on a fresh database, 16 rolled back to 15 and
+  re-applied, `has-pending-model-changes` none (`.artifacts/final-regression-accounting.*`).
+- **Acceptance status:** development acceptance is done (the backend behaves as specified, end to end, on the real host).
+  **Not done and not ours to sign:** the accountant's review of the chart, mappings, closing treatment and every
+  **[Accountant]** item (revenue at delivery under EAS 48, VAT tax point, price-difference treatment under EAS 2,
+  withholding, POS and card treatment), and any statutory or production sign-off. Accounting must not be activated on a
+  production database before that.
+- **Next:** build the Accounting screens in Lovable from `LOVABLE_PROMPT.md` (frontend repo, own branch), integrate them
+  against the dev API, then the owner's acceptance; merging `feature/accounting` (and the frontend branch) into `main` only
+  with the owner's explicit approval. Activating accounting on `WarehouseERP_Dev` is the owner's decision (it would journal
+  every dev document posted from the chosen start date).
 
 ## POS status
 - **Decisions:** approved by the owner on 2026-10-29 ("POS V1 Final Owner Approval", with corrections: product-level tax
@@ -457,8 +494,8 @@ Read this first; don't re-analyse the repository.
 - The frontend's `main` is at `fd44db5` with the POS screens (and Sales, Purchasing, address lookups before them). On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
 - **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). **POS V1 is accepted and
-  merged in both repositories (2026-10-30)** (see *POS status*). **Accounting is in progress on `feature/accounting`**
-  (see *Accounting status*); the frontend has no Accounting screens yet.
+  merged in both repositories (2026-10-30)** (see *POS status*). **Accounting V1's backend is complete on
+  `feature/accounting`** (pushed, not merged; see *Accounting status*); the frontend has no Accounting screens yet.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -477,12 +514,12 @@ Read this first; don't re-analyse the repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-30, Accounting Milestone C, `feature/accounting`, LocalDB, `-m:1`)
-| UnitTests | ArchitectureTests | IntegrationTests |
-|---|---|---|
-| 281/281 | 129/129 | 297/297 |
+## Latest verified tests (2026-10-30, Accounting Milestone D final regression, `feature/accounting`, LocalDB, `-m:1`)
+| UnitTests | ArchitectureTests | IntegrationTests | Real-host E2E (Accounting) |
+|---|---|---|---|
+| 281/281 | 129/129 | 297/297 | 57/57 |
 
-Earlier the same day: Accounting Milestone B 273 / 129 / 296; Milestone A 267 / 129 / 289.
+Earlier the same day: Accounting Milestone C 281 / 129 / 297; Milestone B 273 / 129 / 296; Milestone A 267 / 129 / 289.
 
 Earlier (2026-10-29, POS V1 acceptance, `feature/pos` at `2665824`): 259 / 114 / 275.
 

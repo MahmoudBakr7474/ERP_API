@@ -20,8 +20,11 @@ company's accountant must sign off before production. A balanced journal is not 
   security scope.
 
 ## 2. Milestones
-A — general ledger (this milestone); B — receivables, payables, cash and banks; C — ERP integration, cutover and
-reconciliations; D — acceptance, frontend handoff, documentation. V1 is complete only when all four are verified.
+A — general ledger; B — receivables, payables, cash and banks; C — ERP integration, cutover and reconciliations; D —
+acceptance, frontend handoff, documentation. V1 is complete only when all four are verified. **Status (2026-10-30):** A, B
+and C implemented and verified; D's development acceptance done (real-host end-to-end on a throwaway database, dev
+database migrated without activation, frontend handoff written). Still open: the frontend screens, the owner's acceptance
+of them, and the accountant's sign-off of every **[Accountant]** item before statutory use.
 
 ## 3. Chart of accounts and mappings (A)
 - Hierarchical numeric codes extending the parent's code; header accounts group, posting accounts take lines and report
