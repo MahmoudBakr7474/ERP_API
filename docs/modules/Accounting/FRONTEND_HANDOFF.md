@@ -1,6 +1,6 @@
 # Accounting — frontend handoff
 
-Verified 2026-10-30 on `feature/accounting` (pushed to `origin`, not merged) against the real API. An end-to-end run
+Verified 2026-10-30 on `feature/accounting` (merged into `main` the same day) against the real API. An end-to-end run
 (`.artifacts/e2e-accounting-host.ps1` + `e2e-accounting.mjs`) used a throwaway LocalDB database with all sixteen
 migrations, the real host over HTTPS, real cookie sessions and anti-forgery, the accounting worker every 15 s, a
 bootstrap administrator and two users created through Identity: `acc-clerk` (company-wide; read, manual journals,
@@ -29,7 +29,7 @@ The Lovable prompt is [`LOVABLE_PROMPT.md`](LOVABLE_PROMPT.md). Business rules: 
   step.
 
 ## Frontend integration notes (2026-10-30)
-Lovable's screens (frontend `main` `66ddf07`) were integrated on `fix/accounting-integration` (`6badbec`, not merged) and
+Lovable's screens (frontend `main` `66ddf07`) were integrated on `fix/accounting-integration` (`ecd86a4`, now the frontend `main`) and
 browser-tested against the real API (dev database read-only; every workflow on a throwaway database). What a screen must
 respect, learned from the fixes:
 - A voucher journal's `voucher` has no `type`, `lines`, `branchId` or net amount: the type is the journal's `journalType`;
@@ -224,3 +224,23 @@ Plus `Common.ConcurrencyConflict`, `Common.Forbidden`, `Validation.Failed`.
   journal) — all three are accountant decisions (V1 decisions, section 8).
 - From an operational document to its journal there is no direct endpoint: search the journals by the document's number
   (the journal's `reference`).
+
+## UI backlog (non-blocking, recorded at the final check, 2026-10-30)
+Seen in the browser; none blocks a workflow, the server refuses or corrects each case.
+- Fiscal years: period "Reopen" buttons still show while the year is closed (the server answers
+  `Accounting.FiscalYear.Closed`, translated); the year-close confirmation names the year but does not explain that the
+  closing journal moves the year's revenue and expenses to retained earnings.
+- Reversal drafts: the fixed lines' branch pickers still look editable (changes are ignored; the update sends
+  `lines: null`).
+- Multi-line editors (journal and voucher lines, party pickers) reuse the same element ids on every line, so a label points
+  to the first line's field (accessibility).
+- The party picker lists customers and suppliers through Sales and Purchasing, so an accounting-only user without
+  `sales.customers.read` / supplier read gets a 403 inside the picker.
+- Printing a report prints the page as shown (sidebar and header included; filters and buttons hidden); wide tables such
+  as the trial balance can be clipped on A4 — a dedicated report print layout would help.
+- The general ledger shows amounts without the currency code (its paged response has none); other reports show it.
+- Readiness check details and errors whose server message carries a line number show the server's English detail under
+  the Arabic message; the readiness check titles and every error code are translated.
+- On phones, tables scroll inside their card (no page overflow; dialogs keep Save visible) — usable but dense.
+- POS (seen while scoping the print rule): `@page { size: 80mm auto }` is invalid CSS, so browsers ignore the receipt
+  size and keep only the zero margin; receipts rely on the printer's paper setting, as before.

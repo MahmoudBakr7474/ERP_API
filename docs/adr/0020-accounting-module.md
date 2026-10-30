@@ -291,7 +291,8 @@ closes, and leave the cutover from the existing operational history explicit.
   receivable, idempotent runs (worker and full scan), the reconciliation with nothing unexplained, and the permissions.
 
 ## Milestone D — development acceptance (2026-10-30)
-- `feature/accounting` pushed to `origin` (not merged into `main`).
+- `feature/accounting` pushed to `origin`; after the owner's acceptance it was fast-forwarded into `main` with the
+  frontend screens (2026-10-30; technical development acceptance only, see *Production prerequisites*).
 - `WarehouseERP_Dev`: state verified (01–13 applied, 14–16 pending); copy-only checksummed backup
   `db-backups\WarehouseERP_Dev_before_Migration14_20261030_131814.bak`, `RESTORE VERIFYONLY` valid, test-restored and
   compared (141 tables, identical row counts, copy dropped); exactly 14–16 applied (`database update

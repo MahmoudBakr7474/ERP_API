@@ -1,11 +1,20 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-30 (Accounting V1 full-stack: backend on `feature/accounting`, Lovable's screens integrated on
-frontend `fix/accounting-integration`, both pushed, neither merged; Migrations 14–16 applied to `WarehouseERP_Dev`
-without activating accounting; POS V1 merged into `main` in both repositories earlier the same day).
+Last verified: 2026-10-30 (Accounting V1 merged into `main` in both repositories with the owner's approval — technical
+development acceptance only, not the accountant's or statutory sign-off; Migrations 14–16 applied to `WarehouseERP_Dev`,
+accounting not activated there).
 Read this first; don't re-analyse the repository.
 
 ## Where things stand
+- **`main` holds Accounting V1 (2026-10-30).** With the owner's approval ("Accounting V1 Final Acceptance and Merge"),
+  after a final focused browser check, both repositories were fast-forwarded — no merge commits, feature branches kept:
+  backend `main` from `302f57a` to the tip of `feature/accounting` (this handoff; the code is `eac7a2e`'s, every later
+  commit is documentation); frontend `main` from `66ddf07` (Lovable's screens) to `ecd86a4` (`fix/accounting-integration`).
+  Both pushed; `origin/main` equals local `main` in both. This is the technical development acceptance only: the
+  accountant's review of every **[Accountant]** item and any statutory or production sign-off are still open, and
+  accounting must not be activated on a production database before them. `WarehouseERP_Dev`: Migrations 14–16 applied,
+  accounting **not activated** (start date 2027-01-01, no account, journal or source posting). Details in *Accounting
+  status*.
 - **Accounting started (2026-10-30) on `feature/accounting`**, cut from backend `main` at `302f57a` (= `origin/main`).
   Decisions approved by the owner the same day: `docs/modules/Accounting/V1_DECISIONS.md`; how the code implements them:
   `docs/adr/0020-accounting-module.md`. **Milestones A (general ledger), B (receivables, payables, cash and banks), C
@@ -185,9 +194,22 @@ Read this first; don't re-analyse the repository.
   access required"; Sales exposure shows the receivable rows once active. API log: no 5xx, no password. Seeds and logs:
   `.artifacts/e2e-accounting-ui-seed.mjs`, `e2e-accounting-ui-api.log`. API-only re-run on a fresh database the same
   afternoon: 57/57 (`e2e-accounting-rerun.log`), databases dropped.
-- **Next:** the owner's acceptance of the screens; merging `feature/accounting` and `fix/accounting-integration` into
-  their `main`s only with the owner's explicit approval. Activating accounting on `WarehouseERP_Dev` is the owner's
-  decision (it would journal every dev document posted from the chosen start date).
+- **Final focused browser check (2026-10-30, throwaway database, then dropped):** CSV chart import — a malformed file is
+  refused in the browser, a missing parent by the server (`Accounting.Chart.ParentMissing`, translated) with nothing
+  created, a valid four-account file imported; year-end — "Close year" hidden while December was open (the API refuses with
+  `Accounting.FiscalYear.PeriodsStillOpen`), December closed (the confirmation names the period), the year closed with
+  `CJ-2026-000001` (net profit 1,100 to retained earnings, dated 2026-12-31, no manual actions), a period reopen in the
+  closed year refused (`Accounting.FiscalYear.Closed`), the year reopened with a reason (the closing journal reversed by
+  `RJ-2026-000001`); general ledger and account statement (opening, running balance, closing) correct; print and CSV;
+  phone width (no page overflow, dialogs keep Save visible). Fixed on `fix/accounting-integration` (`ecd86a4`): printing
+  any report printed a blank 80 mm strip (the POS receipt rule hid the page on every print — now scoped to a receipt
+  print, which also restores Sales document printing); the CSV export wrote one row per field (now tables of the shown
+  columns); the import dialog kept a stale error. Non-blocking items: `docs/modules/Accounting/FRONTEND_HANDOFF.md`,
+  *UI backlog*. The only error-level API log line was the antiforgery cookie of the previous throwaway host (another key
+  ring) being replaced at sign-in.
+- **Next:** the accountant's review and sign-off of every **[Accountant]** item, then any statutory/production sign-off;
+  activating accounting on `WarehouseERP_Dev` stays the owner's decision (it would journal every dev document posted from
+  the chosen start date).
 
 ## POS status
 - **Decisions:** approved by the owner on 2026-10-29 ("POS V1 Final Owner Approval", with corrections: product-level tax
@@ -525,12 +547,11 @@ Read this first; don't re-analyse the repository.
   - Radix `DirectionProvider` makes RTL correct.
   - Every module's Lovable prompt must tell Lovable to follow those conventions. Where the older
     `docs/modules/*/LOVABLE_PROMPT.md` files say otherwise (pages for new records, inline forms), `AGENTS.md` wins.
-- The frontend's `main` is at `fd44db5` with the POS screens (and Sales, Purchasing, address lookups before them). On this machine the frontend is cloned to
+- The frontend's `main` is at `ecd86a4` with the Accounting screens (and POS, Sales, Purchasing, address lookups before them). On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
 - **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). **POS V1 is accepted and
   merged in both repositories (2026-10-30)** (see *POS status*). **Accounting V1's backend is complete on
-  `feature/accounting`** (pushed, not merged; see *Accounting status*); its screens are on the frontend `main` (Lovable)
-  with the integration fixes on `fix/accounting-integration` (pushed, not merged).
+  `feature/accounting`**, merged into `main` with its screens in both repositories (2026-10-30; see *Accounting status*).
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -556,9 +577,10 @@ Read this first; don't re-analyse the repository.
 
 Earlier the same day: Accounting Milestone C 281 / 129 / 297; Milestone B 273 / 129 / 296; Milestone A 267 / 129 / 289.
 
-Frontend `fix/accounting-integration` (`6badbec`, 2026-10-30): Vitest 174/174, `tsc --noEmit` clean, `vite build`
-succeeds, ESLint on the Accounting files 0 errors / 7 warnings; Accounting real-host API E2E re-run 57/57; browser
-acceptance as in *Accounting status*. No backend code changed (`eac7a2e` + docs), so the backend regression above stands.
+Frontend `main` = `fix/accounting-integration` (`ecd86a4`, 2026-10-30): Vitest 175/175, `tsc --noEmit` clean, `vite
+build` succeeds, ESLint on the Accounting files 0 errors / 7 warnings; Accounting real-host API E2E re-run 57/57; browser
+acceptance and the final focused check as in *Accounting status*. No backend code changed after `eac7a2e` (documentation
+only), so the backend regression above stands.
 
 Earlier (2026-10-29, POS V1 acceptance, `feature/pos` at `2665824`): 259 / 114 / 275.
 

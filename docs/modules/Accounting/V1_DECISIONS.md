@@ -24,8 +24,8 @@ A — general ledger; B — receivables, payables, cash and banks; C — ERP int
 acceptance, frontend handoff, documentation. V1 is complete only when all four are verified. **Status (2026-10-30):** A, B
 and C implemented and verified; D's development acceptance done (real-host end-to-end on a throwaway database, dev
 database migrated without activation, frontend handoff written); the Lovable screens are integrated and browser-tested
-(frontend `fix/accounting-integration`, not merged). Still open: the owner's acceptance
-of them, and the accountant's sign-off of every **[Accountant]** item before statutory use.
+(frontend `fix/accounting-integration`); the owner accepted the technical development and both repositories' `main` hold
+Accounting V1 (2026-10-30). Still open: the accountant's sign-off of every **[Accountant]** item before statutory use.
 
 ## 3. Chart of accounts and mappings (A)
 - Hierarchical numeric codes extending the parent's code; header accounts group, posting accounts take lines and report
