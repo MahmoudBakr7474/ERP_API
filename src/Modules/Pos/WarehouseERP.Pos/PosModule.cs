@@ -58,7 +58,8 @@ namespace WarehouseERP.Pos;
 // Tills: terminals, cashier shifts and their drawers, checkout, receipts, returns and refunds (docs/modules/POS and ADR
 // 0019). Prices, VAT and customers come from Sales (ISalesPricing, ICustomerDirectory), products from Catalog, warehouses,
 // locations, branches and the company from Organization, display names from Identity; stock moves only through Inventory's
-// IPosStockPosting, from unreserved stock. The host calls AddPosModule and MapPosEndpoints; ITransactionRunner comes from
+// IPosStockPosting, from unreserved stock. Accounting reads sales, returns, shift closes and open issues through
+// IPosAccountingSource. The host calls AddPosModule and MapPosEndpoints; ITransactionRunner comes from
 // Persistence.
 public static class PosModule
 {
@@ -121,6 +122,7 @@ public static class PosModule
         services.AddScoped<IPosSaleReadStore, PosSaleReadStore>();
         services.AddScoped<IPosReturnReadStore, PosReturnReadStore>();
         services.AddScoped<ICardIncidentReadStore, CardIncidentReadStore>();
+        services.AddScoped<IPosAccountingSource, PosAccountingSource>();
 
         services.AddPermissions("Pos", PosPermissions.All);
         return services;

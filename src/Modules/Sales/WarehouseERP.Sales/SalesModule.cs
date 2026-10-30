@@ -94,7 +94,9 @@ namespace WarehouseERP.Sales;
 // Inventory's IStockReservations and ISalesStockPosting;
 // products and units come from Catalog, warehouses, locations, branches, the company and address lookups from Organization,
 // display names from Identity, all through their Contracts. POS prices lines through ISalesPricing and names registered
-// customers through ICustomerDirectory. The host calls AddSalesModule and MapSalesEndpoints;
+// customers through ICustomerDirectory. Accounting names customers through ICustomerDirectory and reads posted documents
+// through ISalesAccountingSource; Sales reads a customer's receivable balance through Accounting's ICustomerReceivables.
+// The host calls AddSalesModule and MapSalesEndpoints;
 // ITransactionRunner comes from Persistence.
 public static class SalesModule
 {
@@ -179,6 +181,7 @@ public static class SalesModule
         services.AddScoped<IProductTaxReadStore, ProductTaxReadStore>();
         services.AddScoped<ISalesPricing, SalesPricing>();
         services.AddScoped<ICustomerDirectory, CustomerDirectory>();
+        services.AddScoped<ISalesAccountingSource, SalesAccountingSource>();
         services.AddScoped<ISalesQuotationRepository, SalesQuotationRepository>();
         services.AddScoped<ISalesOrderRepository, SalesOrderRepository>();
         services.AddScoped<ISalesDeliveryRepository, SalesDeliveryRepository>();

@@ -78,7 +78,8 @@ namespace WarehouseERP.Purchasing;
 // Suppliers, purchase requests and orders, goods receipts, supplier invoices and returns (docs/modules/Purchasing and
 // ADR 0016). Goods move in and out of stock only through Inventory's IPurchaseStockPosting; products and units come
 // from Catalog, warehouses, locations, branches and the company from Organization, display names from Identity, all
-// through their Contracts. The host calls AddPurchasingModule and MapPurchasingEndpoints; ITransactionRunner comes from
+// through their Contracts. Accounting reads suppliers through ISupplierDirectory and posted documents through
+// IPurchasingAccountingSource. The host calls AddPurchasingModule and MapPurchasingEndpoints; ITransactionRunner comes from
 // Persistence.
 public static class PurchasingModule
 {
@@ -145,6 +146,7 @@ public static class PurchasingModule
         services.AddScoped<InvoicePosting>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
         services.AddScoped<ISupplierDirectory, SupplierDirectory>();
+        services.AddScoped<IPurchasingAccountingSource, PurchasingAccountingSource>();
         services.AddScoped<IDocumentPolicyRepository, DocumentPolicyRepository>();
         services.AddScoped<IPurchaseRequestRepository, PurchaseRequestRepository>();
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
