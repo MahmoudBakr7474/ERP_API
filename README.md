@@ -26,6 +26,8 @@ src/
                                     deliveries, invoices, returns; reservations and stock only through Inventory (ADR 0018)
   Modules/Pos/                      same layout: terminals, cashier shifts and cash, checkout, receipts, returns and
                                     refunds; prices from Sales, stock only through Inventory's IPosStockPosting (ADR 0019)
+  Modules/Accounting/               same layout: chart of accounts and posting-role mappings, fiscal years and periods,
+                                    journals (manual, opening, reversal, year-end close) and financial reports (ADR 0020)
 tests/
   WarehouseERP.UnitTests/           no database
   WarehouseERP.IntegrationTests/    SQL Server (LocalDB) + the real HTTP host
@@ -109,6 +111,13 @@ errors) and style: `Directory.Build.props`, `.editorconfig`.
 | GET, POST | `/api/pos/sales?page&pageSize&terminalId&shiftId&warehouseId&customerId&cashierUserId&search&from&to`, `/sales/{id}` / `/{id}/reprint` (counted copy) | `pos.read` / `pos.receipts.reprint` |
 | GET, POST | `/api/pos/returns?…`, `/returns/{id}` / create (`Idempotency-Key`; refunds and posts a PosReturn), `/{id}/reprint` | `pos.read` / `pos.returns.manage`, `pos.receipts.reprint` |
 | GET, POST | `/api/pos/card-incidents?page&pageSize&terminalId&shiftId&status` / `/{id}/resolve` (note, `rowVersion`) | `pos.read` / `pos.shifts.manage` |
+| GET, PUT | `/api/accounting/settings` (fiscal-year start month, accounting start date, manual-journal approval; + `rowVersion`) | signed in / `accounting.settings.manage` + company-wide |
+| GET, POST, PUT, DELETE | `/api/accounting/accounts?page&pageSize&search&type&isActive&isPosting&parentId`, `/accounts/tree`, `/accounts/{id}` / create, update (+ `rowVersion`), delete (unused only), `/{id}/activate`, `/{id}/deactivate`, `/default-chart`, `/import` (empty chart only) | `accounting.accounts.read` / `accounting.accounts.manage` + company-wide |
+| GET, PUT, DELETE | `/api/accounting/account-mappings`, `/account-mappings/{role}` (`accountId`, `rowVersion`) | `accounting.accounts.read` / `accounting.accounts.manage` + company-wide |
+| GET, POST | `/api/accounting/fiscal-years`, `/fiscal-years/{id}` / create (`startYear`), `/{id}/close` (`rowVersion`), `/{id}/reopen` (reason); `/api/accounting/fiscal-periods/{id}/close`, `/{id}/reopen` (reason) | `accounting.accounts.read` / `accounting.periods.manage`, `accounting.periods.reopen` + company-wide |
+| GET, POST, PUT | `/api/accounting/journals?page&pageSize&status&type&fromDate&toDate&search`, `/journals/{id}` / draft, `/opening` (`accounting.opening.manage`), update, `/{id}/submit`, `/post` (`Idempotency-Key`), `/cancel`, `/reverse` | `accounting.journals.read` / `accounting.journals.manage` (opening: `accounting.opening.manage`) + company-wide |
+| POST | `/api/accounting/journals/{id}/approve` (`Idempotency-Key`; posts), `/reject` (reason) | `accounting.journals.approve` + company-wide, the writer included |
+| GET | `/api/accounting/reports/trial-balance?fromDate&toDate&branchId&level&includeZero`, `/account-statement?accountId&fromDate&toDate&branchId`, `/general-ledger?fromDate&toDate&accountId&branchId&journalType&page&pageSize`, `/balance-sheet?asOfDate`, `/income-statement?fromDate&toDate&branchId&compareFromDate&compareToDate` | `accounting.reports.read` + company-wide |
 | POST | `/api/identity/login` → HttpOnly cookie + `XSRF-TOKEN`; `/api/identity/logout` | anonymous / signed in |
 | POST | `/api/identity/tokens` → bearer + refresh; `/tokens/refresh`; `/tokens/revoke` | anonymous / token |
 | GET | `/api/identity/me`; POST `/api/identity/me/password`; GET `/api/identity/password-policy` | signed in |
@@ -196,6 +205,9 @@ addresses and prices temporal) and the settings row. Neither changes data (ADR 0
 `Migration11_InventoryPos` widens the stock document type and source checks to types 13–14 (POS sale and return);
 `Migration12_SalesProductTaxes` adds `sales.ProductTaxes` (temporal); `Migration13_Pos` adds the `pos` schema (14 tables;
 terminals temporal) and the POS settings row. None changes data (ADR 0019 *Consequences*).
+`Migration14_Accounting` adds the `accounting` schema only (11 tables; accounts, posting-role mappings and settings
+temporal) and the settings row (calendar fiscal years, accounting start 2027-01-01, manual journals need approval); it
+changes no existing table or data (ADR 0020 *Consequences*).
 
 ## Running the API
 
@@ -242,6 +254,7 @@ On this laptop builds can run out of memory with parallel nodes; add `-m:1` if M
 13. **Approvals**: anyone with the approval permission and the warehouse in scope approves, the creator included (`CLAUDE.md`, *Document approvals*).
 14. **Reservations belong to Inventory**: Sales reserves, releases and consumes stock only through `IStockReservations` and `ISalesStockPosting`; `ProductWarehouseStock.ReservedQuantity` always equals what open `StockReservations` hold (the reconciliation report checks it). Delivery, invoice and return quantities are guarded by check constraints as well as the order's row lock (ADR 0018).
 15. **POS sells only unreserved stock, in one transaction**: a checkout locks its key and the terminal's open shift, prices the cart through Sales (`ISalesPricing`, no VAT logic in POS) and posts a PosSale through `IPosStockPosting`; sale, payments, stock, shift totals, receipt number and idempotency record commit together. A refused checkout with card payments records a card incident afterwards and answers `Pos.Checkout.CardReversalRequired`. Payment, drawer and return arithmetic are also check constraints (ADR 0019).
+16. **The ledger is computed from posted journal lines only**: every journal balances by its own lines (also a check constraint), posted journals never change (corrections are reversals or new journals), posting takes its period's lock shared and closing takes it exclusively, so nothing posts into a closed period; numbers are per journal type and fiscal year, postings idempotent (ADR 0020).
 
 ## Postponed
 

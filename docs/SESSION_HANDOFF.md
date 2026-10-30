@@ -1,9 +1,16 @@
 # Session handoff — WarehouseERP
 
-Last verified: 2026-10-30 (POS V1 accepted on `WarehouseERP_Dev` and merged into `main` in both repositories).
+Last verified: 2026-10-30 (Accounting Milestone A complete on `feature/accounting`; POS V1 merged into `main` in both
+repositories earlier the same day).
 Read this first; don't re-analyse the repository.
 
 ## Where things stand
+- **Accounting started (2026-10-30) on `feature/accounting`**, cut from backend `main` at `302f57a` (= `origin/main`).
+  Decisions approved by the owner the same day: `docs/modules/Accounting/V1_DECISIONS.md`; how the code implements them:
+  `docs/adr/0020-accounting-module.md`. **Milestone A (general ledger) is implemented and verified; Milestones B
+  (receivables, payables, cash and banks), C (ERP integration, cutover, reconciliations) and D (acceptance, Lovable
+  prompt and frontend handoff) remain.** Not merged, not pushed; `Migration14_Accounting` is not applied to
+  `WarehouseERP_Dev`. Details in *Accounting status* below.
 - **`main` holds POS V1 (2026-10-30).** With the owner's approval after the acceptance on the dev database, the
   backend `main` was fast-forwarded from `ea122c1` to the tip of `feature/pos` (this handoff) and the frontend's `main`
   from `e9da46f` (Lovable's POS screens) to `fd44db5` (`fix/pos-integration`). No merge commits; both branches stay on
@@ -50,6 +57,28 @@ Read this first; don't re-analyse the repository.
 - Identity's approved baseline: `5498eb5` (code and tests), `816fb20` (docs), `8d4a12b` (role management needs
   company-wide scope).
 - `src/WarehouseERP.Api/Properties/launchSettings.json` is the owner's untracked file: never commit or edit it.
+
+## Accounting status
+- **Owner decisions (2026-10-30, with corrections):** cutover 2027-01-01 configurable and explicitly approved before
+  activation, no replay of history; editable default Egyptian chart or an imported one, explicit posting-role mappings;
+  post-dated cheques deferred; manual withholding/collection amounts; revenue at posted delivery with unbilled
+  receivables (invoice reclassifies, VAT at its tax point); price differences split between stock held and sold or kept
+  as visible exceptions; POS per transaction, shift close settles cash only. All in `V1_DECISIONS.md` (the checklist it
+  replaces is gone).
+- **Milestone A (code on `feature/accounting`):** `src/Modules/Accounting` (`accounting` schema, `Migration14_Accounting`,
+  11 tables, 3 temporal, settings seeded): chart of accounts (tree, rules, default chart, import into an empty chart),
+  28 posting roles with explicit mappings, settings, fiscal years with 12 periods (close/reopen with reason, period locks),
+  manual and opening-balance journals (approval policy, self-approval, idempotent post/approve, numbering GJ/OB/RJ/CJ per
+  type and fiscal year), reversals, year-end close per branch into retained earnings and its reopen, and reports (trial
+  balance, account statement, general ledger, balance sheet, income statement by branch with comparison). 30 endpoints
+  under `/api/accounting`, ten permissions in `AccountingPermissions.All`, company-wide access only.
+- **Verified (2026-10-30):** build 0 warnings; Unit 267/267, Architecture 129/129, Integration 289/289 on LocalDB (14
+  Accounting tests, one on its own database for the default chart and the year-end close); migrations 01–14 on a fresh
+  database, 14 rolled back to 13 and re-applied, `has-pending-model-changes` none (`.artifacts/accounting-migration-check.ps1`
+  and its log); OpenAPI snapshot regenerated (+30 paths, +53 schemas, +6 tags, additive). Integration tests and the
+  migration check ran in the app's terminal (LocalDB caveat below).
+- **Next:** Milestone B. Real-host E2E, the dev-database migration (after a verified backup, with the owner's
+  authorization), the Lovable prompt and frontend handoff come with Milestone D.
 
 ## POS status
 - **Decisions:** approved by the owner on 2026-10-29 ("POS V1 Final Owner Approval", with corrections: product-level tax
@@ -126,7 +155,7 @@ Read this first; don't re-analyse the repository.
   `detail` texts from the API are English (the screens show the translated `err.<code>` first); page titles are English
   in every module.
 - **Merged (2026-10-30)** with the owner's approval, fast-forward in both repositories (see *Where things stand*).
-  Next module only when the owner asks; don't start Accounting unasked.
+  Accounting was started on the owner's request on 2026-10-30 (see *Accounting status*).
 - **Production prerequisites (ADR 0019):** Egyptian ETA e-Receipt (registration, EGS/GS1 codes, device registration,
   integration) where required — V1 receipts are internal commercial receipts; reviewed tax classification of every
   product sold at tills; the accountant approves cost treatment and the handling of card incidents and cash
@@ -390,8 +419,8 @@ Read this first; don't re-analyse the repository.
 - The frontend's `main` is at `fd44db5` with the POS screens (and Sales, Purchasing, address lookups before them). On this machine the frontend is cloned to
   `D:\work\WarehouseERP\warehouse-erp-web` and the backend to `D:\work\WarehouseERP\ERP_API`.
 - **Sales V1 is accepted and merged in both repositories (2026-10-29)** (see *Sales status*). **POS V1 is accepted and
-  merged in both repositories (2026-10-30)** (see *POS status*). Start the next module only
-  when the owner asks, from `main` on its own `feature/...` branch, decisions first. Don't start Accounting unasked.
+  merged in both repositories (2026-10-30)** (see *POS status*). **Accounting is in progress on `feature/accounting`**
+  (see *Accounting status*); the frontend has no Accounting screens yet.
 - Reopen a backend decision only for a confirmed correctness, security or blocking integration problem.
 
 ## Approved conventions
@@ -410,10 +439,12 @@ Read this first; don't re-analyse the repository.
 - Integration tests share one database with one company (`DatabaseFixture.EnsureCompanyAsync`). First-run setup has
   its own database (`CompanySetupTests`).
 
-## Latest verified tests (2026-10-29, POS V1 acceptance, `feature/pos` at `2665824`, LocalDB, `-m:1`)
+## Latest verified tests (2026-10-30, Accounting Milestone A, `feature/accounting`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests |
 |---|---|---|
-| 259/259 | 114/114 | 275/275 |
+| 267/267 | 129/129 | 289/289 |
+
+Earlier (2026-10-29, POS V1 acceptance, `feature/pos` at `2665824`): 259 / 114 / 275.
 
 Frontend `fix/pos-integration` (`fd44db5`): Vitest 112/112, `tsc --noEmit` clean, `vite build` succeeds, ESLint only
 Prettier formatting in Lovable's files and two older fast-refresh warnings in `Receipt.tsx`. POS dev acceptance: browser
