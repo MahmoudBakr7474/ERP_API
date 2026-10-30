@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using WarehouseERP.Accounting;
+using WarehouseERP.Accounting.Domain;
 using WarehouseERP.Catalog;
 using WarehouseERP.Catalog.Domain;
 using WarehouseERP.Identity;
@@ -41,6 +43,7 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
         builder.ApplyConfigurationsFromAssembly(typeof(PurchasingModule).Assembly);
         builder.ApplyConfigurationsFromAssembly(typeof(SalesModule).Assembly);
         builder.ApplyConfigurationsFromAssembly(typeof(PosModule).Assembly);
+        builder.ApplyConfigurationsFromAssembly(typeof(AccountingModule).Assembly);
         builder.Entity<DataProtectionKey>().ToTable("DataProtectionKeys", "identity");
 
         // Foreign keys between modules are configured here, the only place that sees every module.
@@ -55,7 +58,13 @@ public sealed class ErpDbContext : IdentityDbContext<ApplicationUser, Applicatio
         ConfigurePurchasingReferences(builder);
         ConfigureSalesReferences(builder);
         ConfigurePosReferences(builder);
+        ConfigureAccountingReferences(builder);
     }
+
+    // Every journal line names one of Organization's branches. Restrict: a branch with ledger lines is never deleted.
+    private static void ConfigureAccountingReferences(ModelBuilder builder) =>
+        builder.Entity<JournalLine>()
+            .HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
 
     // POS's rows point at Organization's structure, Catalog's products and units, Sales' customers, and the stock documents
     // and lines Inventory posted for its sales and returns (which name them back through SourceDocumentId). Restrict:

@@ -8,6 +8,12 @@
     <Project Path="src/BuildingBlocks/WarehouseERP.BuildingBlocks.Infrastructure/WarehouseERP.BuildingBlocks.Infrastructure.csproj" />
     <Project Path="src/BuildingBlocks/WarehouseERP.SharedKernel/WarehouseERP.SharedKernel.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Accounting/">
+    <Project Path="src/Modules/Accounting/WarehouseERP.Accounting/WarehouseERP.Accounting.csproj" />
+    <Project Path="src/Modules/Accounting/WarehouseERP.Accounting.Application/WarehouseERP.Accounting.Application.csproj" />
+    <Project Path="src/Modules/Accounting/WarehouseERP.Accounting.Contracts/WarehouseERP.Accounting.Contracts.csproj" />
+    <Project Path="src/Modules/Accounting/WarehouseERP.Accounting.Domain/WarehouseERP.Accounting.Domain.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Catalog/">
     <Project Path="src/Modules/Catalog/WarehouseERP.Catalog/WarehouseERP.Catalog.csproj" />
     <Project Path="src/Modules/Catalog/WarehouseERP.Catalog.Application/WarehouseERP.Catalog.Application.csproj" />

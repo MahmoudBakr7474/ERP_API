@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Accounting business rules: the chart of accounts, fiscal years and periods, journals and their balance. Only the
+       shared kernel and this module's own Contracts (for enums it publishes); never EF Core, ASP.NET Core or another module. -->
+  <ItemGroup>
+    <ProjectReference Include="../../../BuildingBlocks/WarehouseERP.SharedKernel/WarehouseERP.SharedKernel.csproj" />
+    <ProjectReference Include="../WarehouseERP.Accounting.Contracts/WarehouseERP.Accounting.Contracts.csproj" />
+  </ItemGroup>
+</Project>

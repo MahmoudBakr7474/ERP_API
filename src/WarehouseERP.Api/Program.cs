@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using WarehouseERP.Accounting;
 using WarehouseERP.Api.ApiDocumentation;
 using WarehouseERP.Api.ErrorHandling;
 using WarehouseERP.Api.Observability;
@@ -27,7 +28,8 @@ builder.Services
     .AddInventoryModule()
     .AddPurchasingModule()
     .AddSalesModule()
-    .AddPosModule();
+    .AddPosModule()
+    .AddAccountingModule();
 
 builder.Services.AddOptions<PaginationOptions>()
     .BindConfiguration(PaginationOptions.SectionName)
@@ -70,6 +72,7 @@ app.MapInventoryEndpoints();
 app.MapPurchasingEndpoints();
 app.MapSalesEndpoints();
 app.MapPosEndpoints();
+app.MapAccountingEndpoints();
 
 app.Run();
 
