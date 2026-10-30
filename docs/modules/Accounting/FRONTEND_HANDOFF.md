@@ -28,6 +28,26 @@ The Lovable prompt is [`LOVABLE_PROMPT.md`](LOVABLE_PROMPT.md). Business rules: 
 - **Self-approval:** a user holding `accounting.journals.approve` approves journals they wrote; there is no second-person
   step.
 
+## Frontend integration notes (2026-10-30)
+Lovable's screens (frontend `main` `66ddf07`) were integrated on `fix/accounting-integration` (`6badbec`, not merged) and
+browser-tested against the real API (dev database read-only; every workflow on a throwaway database). What a screen must
+respect, learned from the fixes:
+- A voucher journal's `voucher` has no `type`, `lines`, `branchId` or net amount: the type is the journal's `journalType`;
+  the edit form reads the request back from the server-built `lines` (cash receipt: cash first; cash payment: cash last;
+  expense bill: expense lines, then input VAT when there is tax, then the supplier) and `amount` is the settled total
+  (net cash = `amount` − `withholdingAmount` for receipts and payments).
+- Reversal links are `reversalOfNumber` / `reversedByNumber` (+ `reversedByStatus`); a reversal draft's update sends
+  `lines: null` (`Accounting.Journal.LinesFixed` otherwise).
+- The bank reconciliation list is `BankReconciliationSummaryResponse` (`cashAccountCode`, `clearedLines`, `clearedAmount`),
+  not the detail.
+- Activate/deactivate, delete, period reopen and allocation removal answer **204**: treat no body as success.
+- Every journal and voucher line needs a `branchId` (a Guid; null fails binding); report dates are required (`fromDate` +
+  `toDate`, or `asOfDate`).
+- In RTK Query, never pass `refetch` of a query skipped in create mode as a post-save reload: it throws and aborts the
+  success path (the dialog stays open and a second click creates a duplicate).
+- Translations: `acc.role.<PostingRole>` for the 28 roles, `acc.ev.<Action>` for history events and `err.<code>` for every
+  `Accounting.*` code are now in the frontend's `translations.ts`.
+
 ## Endpoints
 All under `/api/accounting`. Lists that page answer `{ items, page, pageSize, totalCount, totalPages }`. "In handler" means
 the endpoint only needs a signed-in user and the handler checks the permission the record's type needs.
