@@ -12,5 +12,6 @@ public sealed class ListProductsValidator : AbstractValidator<ListProductsQuery>
         RuleFor(x => x.Search).MaximumLength(100);
         RuleFor(x => x.CategoryId).NotEqual(Guid.Empty).When(x => x.CategoryId.HasValue);
         RuleFor(x => x.Type).IsInEnum().When(x => x.Type.HasValue);
+        RuleFor(x => x.Sort).IsInEnum().When(x => x.Sort.HasValue);
     }
 }

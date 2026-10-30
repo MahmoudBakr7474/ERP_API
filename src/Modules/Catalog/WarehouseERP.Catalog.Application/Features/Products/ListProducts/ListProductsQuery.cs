@@ -4,6 +4,8 @@ using WarehouseERP.Catalog.Contracts;
 namespace WarehouseERP.Catalog.Application.Features.Products.ListProducts;
 
 /// <param name="Search">Matches the SKU, either name, or a barcode exactly.</param>
+/// <param name="Sort">The order (SKU when left out).</param>
 public sealed record ListProductsQuery(
-    int Page, int? PageSize, string? Search, Guid? CategoryId = null, ProductType? Type = null, bool? IsActive = null)
+    int Page, int? PageSize, string? Search, Guid? CategoryId = null, ProductType? Type = null, bool? IsActive = null,
+    ProductSort? Sort = null, bool Descending = false)
     : IPagedQuery;

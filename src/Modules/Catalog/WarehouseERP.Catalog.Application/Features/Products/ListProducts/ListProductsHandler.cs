@@ -3,6 +3,7 @@ using WarehouseERP.BuildingBlocks.Application.Messaging;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.Catalog.Application.Abstractions.Interfaces.Products;
 using WarehouseERP.Catalog.Application.Contracts.Products;
+using WarehouseERP.Catalog.Contracts;
 using WarehouseERP.SharedKernel.Domain;
 using WarehouseERP.SharedKernel.Results;
 
@@ -13,6 +14,7 @@ public sealed class ListProductsHandler(IProductReadStore products, IOptions<Pag
 {
     public async Task<Result<PagedResult<ProductSummaryResponse>>> HandleAsync(ListProductsQuery query, CancellationToken ct) =>
         await products.ListAsync(
-            new ProductListFilter(Text.Optional(query.Search), query.CategoryId, query.Type, query.IsActive),
+            new ProductListFilter(Text.Optional(query.Search), query.CategoryId, query.Type, query.IsActive,
+                query.Sort ?? ProductSort.Sku, query.Descending),
             query.Page, query.ResolvePageSize(pagination.Value), ct);
 }

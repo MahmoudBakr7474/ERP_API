@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
 using WarehouseERP.Catalog.Application.Abstractions.Interfaces.Products;
 using WarehouseERP.Catalog.Application.Contracts.Products;
+using WarehouseERP.Catalog.Contracts;
 using WarehouseERP.Catalog.Domain;
 
 namespace WarehouseERP.Catalog.Infrastructure.Persistence;
@@ -35,7 +36,19 @@ internal sealed class ProductReadStore(DbContext db) : IProductReadStore
     public async Task<PagedResult<ProductSummaryResponse>> ListAsync(
         ProductListFilter filter, int page, int pageSize, CancellationToken ct)
     {
-        var query = db.Set<Product>().AsNoTracking();
+        var query = Filtered(db.Set<Product>().AsNoTracking(), filter);
+        var total = await query.CountAsync(ct);
+        var items = await Sorted(query, filter)
+            .Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(x => new ProductSummaryResponse(
+                x.Id, x.SKU, x.NameAr, x.NameEn, x.ProductType, x.TrackingMode, x.IsActive, x.CategoryId, x.BaseUnitId))
+            .ToListAsync(ct);
+        return new PagedResult<ProductSummaryResponse>(items, page, pageSize, total);
+    }
+
+    /// <summary>The product list's filter, shared with the product reports and exports so both select the same rows.</summary>
+    internal static IQueryable<Product> Filtered(IQueryable<Product> query, ProductListFilter filter)
+    {
         if (filter.Search is { } search)
             query = query.Where(x => x.SKU.Contains(search) || x.NameAr.Contains(search)
                                      || (x.NameEn != null && x.NameEn.Contains(search))
@@ -46,16 +59,22 @@ internal sealed class ProductReadStore(DbContext db) : IProductReadStore
             query = query.Where(x => x.ProductType == type);
         if (filter.IsActive is { } isActive)
             query = query.Where(x => x.IsActive == isActive);
-
-        var total = await query.CountAsync(ct);
-        var items = await query
-            .OrderBy(x => x.SKU)
-            .Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(x => new ProductSummaryResponse(
-                x.Id, x.SKU, x.NameAr, x.NameEn, x.ProductType, x.TrackingMode, x.IsActive, x.CategoryId, x.BaseUnitId))
-            .ToListAsync(ct);
-        return new PagedResult<ProductSummaryResponse>(items, page, pageSize, total);
+        return query;
     }
+
+    /// <summary>The requested order, then the unique SKU so equal names keep a stable order across pages.</summary>
+    internal static IOrderedQueryable<Product> Sorted(IQueryable<Product> query, ProductListFilter filter) =>
+        (filter.Sort, filter.Descending) switch
+        {
+            (ProductSort.NameAr, false) => query.OrderBy(x => x.NameAr).ThenBy(x => x.SKU),
+            (ProductSort.NameAr, true) => query.OrderByDescending(x => x.NameAr).ThenBy(x => x.SKU),
+            (ProductSort.NameEn, false) => query.OrderBy(x => x.NameEn).ThenBy(x => x.SKU),
+            (ProductSort.NameEn, true) => query.OrderByDescending(x => x.NameEn).ThenBy(x => x.SKU),
+            (ProductSort.CreatedAt, false) => query.OrderBy(x => x.CreatedAtUtc).ThenBy(x => x.SKU),
+            (ProductSort.CreatedAt, true) => query.OrderByDescending(x => x.CreatedAtUtc).ThenBy(x => x.SKU),
+            (_, true) => query.OrderByDescending(x => x.SKU),
+            _ => query.OrderBy(x => x.SKU),
+        };
 
     public Task<ProductLookupResponse?> FindByBarcodeAsync(string barcode, CancellationToken ct) =>
         db.Set<ProductBarcode>().AsNoTracking()

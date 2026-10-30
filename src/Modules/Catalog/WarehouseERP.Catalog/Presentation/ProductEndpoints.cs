@@ -96,8 +96,8 @@ internal static class ProductEndpoints
     private static async Task<IResult> ListAsync(
         IQueryHandler<ListProductsQuery, PagedResult<ProductSummaryResponse>> handler, CancellationToken ct,
         int page = 1, int? pageSize = null, string? search = null, Guid? categoryId = null, ProductType? type = null,
-        bool? isActive = null) =>
-        (await handler.HandleAsync(new ListProductsQuery(page, pageSize, search, categoryId, type, isActive), ct))
+        bool? isActive = null, ProductSort? sort = null, bool descending = false) =>
+        (await handler.HandleAsync(new ListProductsQuery(page, pageSize, search, categoryId, type, isActive, sort, descending), ct))
             .ToHttpResult(TypedResults.Ok);
 
     private static async Task<IResult> LookupAsync(
