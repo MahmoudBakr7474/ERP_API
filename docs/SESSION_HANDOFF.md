@@ -628,9 +628,11 @@ with title and company, the PDF row limit, permissions and format validation; da
 reports; product sorting. OpenAPI snapshot regenerated and reviewed (additive only). Build: 0 warnings, 0 errors. No
 migration: `has-pending-model-changes` reports none. Throwaway E2E database dropped; no test database left.
 
-Frontend `feature/catalog-operational-enhancements` (`ab5168f`): Vitest 181/181 (6 new), `tsc --noEmit` clean, `vite build`
+Frontend `feature/catalog-operational-enhancements` (`23510ae`): Vitest 182/182 (7 new), `tsc --noEmit` clean, `vite build`
 succeeds, ESLint clean on the new files (the older `no-useless-escape` in `catalog/rules.ts` and Prettier formatting in
-Lovable's existing files remain, as before).
+Lovable's existing files remain, as before). `23510ae` fixed a blank PDF preview and dead Download link found by the
+owner: the preview freed the file in an effect cleanup, which React StrictMode runs right after mounting; it is now freed
+only when the preview closes (StrictMode test; checked in the browser on the dev host).
 
 ## Earlier: Accounting Milestone D final regression (2026-10-30, `feature/accounting`, LocalDB, `-m:1`)
 | UnitTests | ArchitectureTests | IntegrationTests | Real-host E2E (Accounting) |
