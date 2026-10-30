@@ -396,6 +396,11 @@ namespace WarehouseERP.Persistence.Migrations
                         .HasColumnType("datetime2")
                         .HasColumnName("ValidTo");
 
+                    b.Property<bool>("VouchersRequireApproval")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.HasKey("Id");
 
                     b.ToTable("AccountingSettings", "accounting", t =>
@@ -425,8 +430,264 @@ namespace WarehouseERP.Persistence.Migrations
                             CreatedAtUtc = new DateTime(2026, 10, 30, 0, 0, 0, 0, DateTimeKind.Utc),
                             CutoverDate = new DateOnly(2027, 1, 1),
                             FiscalYearStartMonth = 1,
-                            ManualJournalsRequireApproval = true
+                            ManualJournalsRequireApproval = true,
+                            VouchersRequireApproval = false
                         });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.Allocation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("AllocatedOn")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CreditItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DebitItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("JournalEntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PartyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("PartyType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("RemovedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("RemovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreditItemId");
+
+                    b.HasIndex("DebitItemId");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.HasIndex("PartyType", "PartyId");
+
+                    b.ToTable("Allocations", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_Allocations_Amount", "[Amount] > 0");
+
+                            t.HasCheckConstraint("CK_Allocations_Items", "[DebitItemId] <> [CreditItemId]");
+
+                            t.HasCheckConstraint("CK_Allocations_Removed", "([IsActive] = 1 AND [RemovedAtUtc] IS NULL) OR ([IsActive] = 0 AND [RemovedAtUtc] IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.BankReconciliation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CashAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CompletedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("OpeningClearedBalance")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<decimal>("StatementBalance")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateOnly>("StatementDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CashAccountId", "StatementDate");
+
+                    b.HasIndex(new[] { "CashAccountId" }, "UX_BankReconciliations_Draft")
+                        .IsUnique()
+                        .HasFilter("[Status] = 1");
+
+                    b.ToTable("BankReconciliations", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_BankReconciliations_Completed", "([Status] = 2 AND [CompletedAtUtc] IS NOT NULL AND [OpeningClearedBalance] IS NOT NULL) OR ([Status] <> 2 AND [CompletedAtUtc] IS NULL)");
+
+                            t.HasCheckConstraint("CK_BankReconciliations_Status", "[Status] BETWEEN 1 AND 3");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.BankReconciliationLine", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("BankReconciliationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("JournalLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BankReconciliationId");
+
+                    b.HasIndex(new[] { "JournalLineId" }, "UX_BankReconciliationLines_Line")
+                        .IsUnique();
+
+                    b.ToTable("BankReconciliationLines", "accounting");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.CashAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AllowsOverdraft")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("BankAccountNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("BankName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidFrom");
+
+                    b.Property<DateTime>("ValidTo")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidTo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex(new[] { "AccountId" }, "UX_CashAccounts_Account")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "Code" }, "UX_CashAccounts_Code")
+                        .IsUnique();
+
+                    b.ToTable("CashAccounts", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_CashAccounts_Cashbox", "[Kind] = 2 OR ([BankName] IS NULL AND [BankAccountNumber] IS NULL AND [AllowsOverdraft] = 0)");
+
+                            t.HasCheckConstraint("CK_CashAccounts_Kind", "[Kind] BETWEEN 1 AND 2");
+                        });
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("CashAccountsHistory", "history");
+                                ttb
+                                    .HasPeriodStart("ValidFrom")
+                                    .HasColumnName("ValidFrom");
+                                ttb
+                                    .HasPeriodEnd("ValidTo")
+                                    .HasColumnName("ValidTo");
+                            }));
                 });
 
             modelBuilder.Entity("WarehouseERP.Accounting.Domain.DocumentNumberSequence", b =>
@@ -643,6 +904,12 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Property<Guid?>("ApprovedByUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<Guid?>("CashAccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CounterCashAccountId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2(3)");
 
@@ -667,6 +934,9 @@ namespace WarehouseERP.Persistence.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DraftNumber"));
 
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
                     b.Property<Guid?>("FiscalPeriodId")
                         .HasColumnType("uniqueidentifier");
 
@@ -683,6 +953,15 @@ namespace WarehouseERP.Persistence.Migrations
                         .HasMaxLength(30)
                         .IsUnicode(false)
                         .HasColumnType("varchar(30)");
+
+                    b.Property<Guid?>("PartyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte?>("PartyType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte?>("PaymentMethod")
+                        .HasColumnType("tinyint");
 
                     b.Property<DateTime?>("PostedAtUtc")
                         .HasColumnType("datetime2(3)");
@@ -718,6 +997,10 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Property<Guid?>("SubmittedByUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal?>("TaxAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
                     b.Property<decimal>("TotalCredit")
                         .HasPrecision(19, 4)
                         .HasColumnType("decimal(19,4)");
@@ -732,7 +1015,19 @@ namespace WarehouseERP.Persistence.Migrations
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<decimal?>("VoucherAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal?>("WithholdingAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CashAccountId");
+
+                    b.HasIndex("CounterCashAccountId");
 
                     b.HasIndex("CreatedAtUtc");
 
@@ -755,6 +1050,10 @@ namespace WarehouseERP.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("[SequenceNumber] IS NOT NULL");
 
+                    b.HasIndex(new[] { "PartyId", "Reference" }, "UX_JournalEntries_BillNumber")
+                        .IsUnique()
+                        .HasFilter("[JournalType] = 12 AND [Status] <> 4");
+
                     b.HasIndex(new[] { "ReversalOfJournalId" }, "UX_JournalEntries_Reversal")
                         .IsUnique()
                         .HasFilter("[ReversalOfJournalId] IS NOT NULL AND [Status] <> 4");
@@ -763,13 +1062,17 @@ namespace WarehouseERP.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_JournalEntries_Balanced", "[TotalDebit] = [TotalCredit] AND [TotalDebit] > 0");
 
+                            t.HasCheckConstraint("CK_JournalEntries_Party", "([PartyType] IS NULL AND [PartyId] IS NULL) OR ([PartyType] IS NOT NULL AND [PartyId] IS NOT NULL)");
+
                             t.HasCheckConstraint("CK_JournalEntries_Posted", "([Status] = 3 AND [Number] IS NOT NULL AND [FiscalYearId] IS NOT NULL AND [FiscalPeriodId] IS NOT NULL AND [SequenceNumber] IS NOT NULL AND [PostedAtUtc] IS NOT NULL) OR ([Status] <> 3 AND [Number] IS NULL AND [PostedAtUtc] IS NULL)");
 
                             t.HasCheckConstraint("CK_JournalEntries_Reversal", "([JournalType] = 3 AND [ReversalOfJournalId] IS NOT NULL) OR ([JournalType] <> 3 AND [ReversalOfJournalId] IS NULL)");
 
                             t.HasCheckConstraint("CK_JournalEntries_Status", "[Status] BETWEEN 1 AND 4");
 
-                            t.HasCheckConstraint("CK_JournalEntries_Type", "[JournalType] BETWEEN 1 AND 4");
+                            t.HasCheckConstraint("CK_JournalEntries_Type", "[JournalType] BETWEEN 1 AND 12");
+
+                            t.HasCheckConstraint("CK_JournalEntries_Voucher", "[JournalType] BETWEEN 5 AND 12 OR ([CashAccountId] IS NULL AND [CounterCashAccountId] IS NULL AND [PartyId] IS NULL AND [PaymentMethod] IS NULL AND [VoucherAmount] IS NULL)");
                         });
                 });
 
@@ -831,11 +1134,20 @@ namespace WarehouseERP.Persistence.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
                     b.Property<Guid>("JournalEntryId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("LineNumber")
                         .HasColumnType("int");
+
+                    b.Property<Guid?>("PartyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte?>("PartyType")
+                        .HasColumnType("tinyint");
 
                     b.HasKey("Id");
 
@@ -848,9 +1160,120 @@ namespace WarehouseERP.Persistence.Migrations
                     b.HasIndex("JournalEntryId", "LineNumber")
                         .IsUnique();
 
+                    b.HasIndex("PartyType", "PartyId")
+                        .HasFilter("[PartyId] IS NOT NULL");
+
                     b.ToTable("JournalLines", "accounting", t =>
                         {
                             t.HasCheckConstraint("CK_JournalLines_OneSide", "[Debit] >= 0 AND [Credit] >= 0 AND (([Debit] > 0 AND [Credit] = 0) OR ([Debit] = 0 AND [Credit] > 0))");
+
+                            t.HasCheckConstraint("CK_JournalLines_Party", "([PartyType] IS NULL AND [PartyId] IS NULL AND [DueDate] IS NULL) OR ([PartyType] BETWEEN 1 AND 2 AND [PartyId] IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.OpenItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateOnly>("DocumentDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DocumentNumber")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("JournalLineId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("JournalType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<decimal>("OpenAmount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("PartyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("PartyType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.HasIndex("PartyType", "PartyId", "DueDate");
+
+                    b.HasIndex(new[] { "JournalLineId" }, "UX_OpenItems_Line")
+                        .IsUnique();
+
+                    b.ToTable("OpenItems", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_OpenItems_Open", "([Amount] > 0 AND [OpenAmount] BETWEEN 0 AND [Amount]) OR ([Amount] < 0 AND [OpenAmount] BETWEEN [Amount] AND 0)");
+
+                            t.HasCheckConstraint("CK_OpenItems_PartyType", "[PartyType] BETWEEN 1 AND 2");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.VoucherAllocation", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("OpenItemId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OpenItemId");
+
+                    b.HasIndex("JournalEntryId", "OpenItemId")
+                        .IsUnique();
+
+                    b.ToTable("VoucherAllocations", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_VoucherAllocations_Amount", "[Amount] > 0");
                         });
                 });
 
@@ -8607,6 +9030,65 @@ namespace WarehouseERP.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.Allocation", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.OpenItem", null)
+                        .WithMany()
+                        .HasForeignKey("CreditItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.OpenItem", null)
+                        .WithMany()
+                        .HasForeignKey("DebitItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.JournalEntry", null)
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.BankReconciliation", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.CashAccount", null)
+                        .WithMany()
+                        .HasForeignKey("CashAccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.BankReconciliationLine", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.BankReconciliation", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("BankReconciliationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.JournalLine", null)
+                        .WithMany()
+                        .HasForeignKey("JournalLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.CashAccount", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("WarehouseERP.Accounting.Domain.DocumentNumberSequence", b =>
                 {
                     b.HasOne("WarehouseERP.Accounting.Domain.FiscalYear", null)
@@ -8644,6 +9126,16 @@ namespace WarehouseERP.Persistence.Migrations
 
             modelBuilder.Entity("WarehouseERP.Accounting.Domain.JournalEntry", b =>
                 {
+                    b.HasOne("WarehouseERP.Accounting.Domain.CashAccount", null)
+                        .WithMany()
+                        .HasForeignKey("CashAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.CashAccount", null)
+                        .WithMany()
+                        .HasForeignKey("CounterCashAccountId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("WarehouseERP.Accounting.Domain.FiscalPeriod", null)
                         .WithMany()
                         .HasForeignKey("FiscalPeriodId")
@@ -8687,6 +9179,48 @@ namespace WarehouseERP.Persistence.Migrations
                         .WithMany("Lines")
                         .HasForeignKey("JournalEntryId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.OpenItem", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.JournalEntry", null)
+                        .WithMany()
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.JournalLine", null)
+                        .WithMany()
+                        .HasForeignKey("JournalLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.VoucherAllocation", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.JournalEntry", null)
+                        .WithMany("Allocations")
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.OpenItem", null)
+                        .WithMany()
+                        .HasForeignKey("OpenItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -10404,6 +10938,11 @@ namespace WarehouseERP.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.BankReconciliation", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
             modelBuilder.Entity("WarehouseERP.Accounting.Domain.FiscalYear", b =>
                 {
                     b.Navigation("Events");
@@ -10413,6 +10952,8 @@ namespace WarehouseERP.Persistence.Migrations
 
             modelBuilder.Entity("WarehouseERP.Accounting.Domain.JournalEntry", b =>
                 {
+                    b.Navigation("Allocations");
+
                     b.Navigation("Events");
 
                     b.Navigation("Lines");
