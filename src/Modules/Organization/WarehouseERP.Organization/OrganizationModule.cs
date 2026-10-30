@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
+using WarehouseERP.BuildingBlocks.Infrastructure.Documents;
 using WarehouseERP.BuildingBlocks.Infrastructure.Messaging;
 using WarehouseERP.BuildingBlocks.Infrastructure.Security;
 using WarehouseERP.Organization.Application.Abstractions.Interfaces.Branches;
@@ -105,6 +106,7 @@ public static class OrganizationModule
         services.AddScoped<IWarehouseListing>(sp => sp.GetRequiredService<WarehouseDirectory>());
         services.AddScoped<IWarehouseLocationDirectory, WarehouseLocationDirectory>();
         services.AddScoped<ICompanyDirectory, CompanyDirectory>();
+        services.AddScoped<IDocumentIssuerSource, DocumentIssuerSource>();
         services.AddScoped<ITransitLocations, TransitLocations>();
         services.AddScoped<IGeographyRepository, GeographyRepository>();
         services.AddScoped<IGeographyReadStore, GeographyReadStore>();

@@ -33,6 +33,8 @@ public sealed class ApiFactory(string connectionString, string environment = "Pr
         {
             ["Database:ConnectionString"] = connectionString,
             ["Serilog:MinimumLevel:Default"] = "Warning",
+            // Tests generate PDFs as development and evaluation use (docs/DOCUMENTS.md).
+            ["Documents:PdfLicense"] = "Community",
         };
         foreach (var (key, value) in settings ?? new Dictionary<string, string?>())
             all[key] = value;

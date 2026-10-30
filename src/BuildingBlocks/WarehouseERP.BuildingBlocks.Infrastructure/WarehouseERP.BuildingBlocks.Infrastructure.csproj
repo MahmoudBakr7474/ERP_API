@@ -1,10 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Shared outer-ring plumbing for module Infrastructure and Presentation: EF Core helpers,
-       handler registration and the Result -> ProblemDetails mapping. -->
+       handler registration, the Result -> ProblemDetails mapping and the PDF/XLSX/CSV file foundation (Documents/). -->
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../WarehouseERP.BuildingBlocks.Application/WarehouseERP.BuildingBlocks.Application.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <PackageReference Include="QuestPDF" />
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="CsvHelper" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The default document logo and the PDF font (IBM Plex Sans Arabic, SIL OFL 1.1; licence text beside it). -->
+    <EmbeddedResource Include="Documents/Assets/*.svg;Documents/Assets/*.ttf" LogicalName="WarehouseERP.Documents.%(Filename)%(Extension)" />
+    <None Include="Documents/Assets/IBMPlexSansArabic-OFL.txt" CopyToOutputDirectory="PreserveNewest" Link="licenses/IBMPlexSansArabic-OFL.txt" />
   </ItemGroup>
 </Project>

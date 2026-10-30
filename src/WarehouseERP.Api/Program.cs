@@ -5,6 +5,7 @@ using WarehouseERP.Api.ErrorHandling;
 using WarehouseERP.Api.Observability;
 using WarehouseERP.Api.Security;
 using WarehouseERP.BuildingBlocks.Application.Pagination;
+using WarehouseERP.BuildingBlocks.Infrastructure.Documents;
 using WarehouseERP.Catalog;
 using WarehouseERP.Identity;
 using WarehouseERP.Inventory;
@@ -22,6 +23,7 @@ builder.Services
     .AddErpProblemDetails()
     .AddErpRateLimiting()
     .AddErpReverseProxy()
+    .AddErpDocuments() // PDF/XLSX/CSV files; the company comes from Organization
     .AddIdentityModule() // authentication, permission policies and ICurrentUser for every module
     .AddOrganizationModule()
     .AddCatalogModule()
