@@ -1,7 +1,7 @@
-namespace WarehouseERP.Catalog.Presentation.Imports;
+namespace WarehouseERP.BuildingBlocks.Infrastructure.Documents;
 
 /// <summary>How a template column is formatted and validated in Excel.</summary>
-internal enum ImportColumnKind
+public enum ImportColumnKind
 {
     Text,
     Code,

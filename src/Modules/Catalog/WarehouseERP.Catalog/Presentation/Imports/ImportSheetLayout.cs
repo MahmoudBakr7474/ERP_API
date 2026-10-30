@@ -1,3 +1,4 @@
+using WarehouseERP.BuildingBlocks.Infrastructure.Documents;
 using WarehouseERP.Catalog.Contracts;
 
 namespace WarehouseERP.Catalog.Presentation.Imports;

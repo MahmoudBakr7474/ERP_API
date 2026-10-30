@@ -10,8 +10,6 @@ namespace WarehouseERP.Catalog.Presentation.Imports;
 // rows in the data sheets, so an untouched template imports nothing.
 internal static class CatalogImportTemplate
 {
-    private const int TemplateRows = 5_000;
-
     public static byte[] Write(DocumentContext c, IReadOnlyList<UnitUsageResponse> units, IReadOnlyList<CategoryProductCountResponse> categories)
     {
         var arabic = c.IsArabic;
@@ -24,34 +22,7 @@ internal static class CatalogImportTemplate
         Instructions(instructions, c);
 
         foreach (var layout in CatalogImportLayout.Sheets)
-        {
-            var sheet = workbook.Worksheets.Add(layout.Name(arabic));
-            sheet.RightToLeft = arabic;
-            for (var i = 0; i < layout.Columns.Count; i++)
-            {
-                var column = layout.Columns[i];
-                var header = sheet.Cell(1, i + 1);
-                header.Value = column.Header(arabic);
-                header.Style.Font.Bold = true;
-                header.Style.Font.FontColor = XLColor.White;
-                header.Style.Fill.BackgroundColor = XLColor.FromHtml(column.Required ? BrandedPdf.Navy : "#1E4E8C");
-                header.CreateComment().AddText(arabic ? column.HelpAr : column.HelpEn);
-                var cells = sheet.Range(2, i + 1, TemplateRows + 1, i + 1);
-                if (column.Kind is ImportColumnKind.Code or ImportColumnKind.Text)
-                    cells.Style.NumberFormat.Format = "@";
-                if (column.Choices is { } choices && lists.TryGetValue(column.Key, out var range))
-                {
-                    var validation = cells.CreateDataValidation();
-                    validation.List(range, true);
-                    validation.IgnoreBlanks = true;
-                    validation.ErrorStyle = XLErrorStyle.Stop;
-                    validation.ErrorTitle = column.Header(arabic);
-                    validation.ErrorMessage = string.Join(" / ", choices.Select(x => arabic ? x.LabelAr : x.LabelEn));
-                }
-                sheet.Column(i + 1).Width = Math.Max(16, column.Header(arabic).Length + 6);
-            }
-            sheet.SheetView.FreezeRows(1);
-        }
+            ImportTemplateSheet.Add(workbook, layout.Name(arabic), layout.Columns, arabic, lists);
 
         instructions.SetTabActive();
         using var stream = new MemoryStream();
@@ -158,11 +129,5 @@ internal static class CatalogImportTemplate
             "Barcodes: OIL-5L | PCS | 6221234567891 | EAN-13  —  OIL-5L | BOX | BOX-OIL-5L | Internal");
     }
 
-    private static void Head(IXLCell cell, string text)
-    {
-        cell.SetValue(text);
-        cell.Style.Font.Bold = true;
-        cell.Style.Font.FontColor = XLColor.White;
-        cell.Style.Fill.BackgroundColor = XLColor.FromHtml(BrandedPdf.Navy);
-    }
+    private static void Head(IXLCell cell, string text) => ImportTemplateSheet.Head(cell, text);
 }

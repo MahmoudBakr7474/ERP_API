@@ -1,10 +1,10 @@
+using WarehouseERP.BuildingBlocks.Infrastructure.Documents;
 using WarehouseERP.Catalog.Contracts;
 
 namespace WarehouseERP.Catalog.Presentation.Imports;
 
-// The import file's layout, in one place for the reader, the template and the error report. Headers are matched
-// in either language (and by the field key), ignoring case, spaces and the "*" required marker; choices accept the
-// API name or either label.
+// The import file's layout, in one place for the reader, the template and the error report. Headers and choices are
+// matched by the shared ImportColumns rules (either language, the key, case and spaces ignored).
 internal static class CatalogImportLayout
 {
     private static readonly ImportChoice[] YesNo = [new("true", "Yes", "نعم"), new("false", "No", "لا")];
@@ -105,27 +105,10 @@ internal static class CatalogImportLayout
     /// <summary>The layout a workbook sheet is for, by its English or Arabic name; null for any other sheet.</summary>
     public static ImportSheetLayout? Find(string sheetName)
     {
-        var name = Normalize(sheetName);
-        return Sheets.FirstOrDefault(s => Normalize(s.NameEn) == name || Normalize(s.NameAr) == name);
-    }
-
-    /// <summary>The column a header names, in either language or by its key.</summary>
-    public static ImportColumn? Column(ImportSheetLayout layout, string header)
-    {
-        var name = Normalize(header);
-        return layout.Columns.FirstOrDefault(c => Normalize(c.Key) == name || Normalize(c.HeaderEn) == name || Normalize(c.HeaderAr) == name);
+        var name = ImportColumns.Normalize(sheetName);
+        return Sheets.FirstOrDefault(s => ImportColumns.Normalize(s.NameEn) == name || ImportColumns.Normalize(s.NameAr) == name);
     }
 
     /// <summary>A cell as the import rows expect it: a choice's label becomes its API name; anything else is unchanged.</summary>
-    public static string? Value(ImportColumn column, string? cell)
-    {
-        if (cell is null || column.Choices is null)
-            return cell;
-        var text = Normalize(cell);
-        return column.Choices.FirstOrDefault(c => Normalize(c.Value) == text || Normalize(c.LabelEn) == text || Normalize(c.LabelAr) == text)
-            ?.Value ?? cell;
-    }
-
-    private static string Normalize(string text) =>
-        new(text.Where(ch => !char.IsWhiteSpace(ch) && ch is not ('*' or '_' or '-' or '(' or ')' or '\u0640')).Select(char.ToLowerInvariant).ToArray());
+    public static string? Value(ImportColumn column, string? cell) => ImportColumns.Value(column, cell);
 }

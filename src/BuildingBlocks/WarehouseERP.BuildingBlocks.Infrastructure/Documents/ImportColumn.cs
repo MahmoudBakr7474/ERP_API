@@ -1,7 +1,7 @@
-namespace WarehouseERP.Catalog.Presentation.Imports;
+namespace WarehouseERP.BuildingBlocks.Infrastructure.Documents;
 
 /// <summary>A column of an import sheet: its key (the row record's field), headers, whether it is required, help text.</summary>
-internal sealed record ImportColumn(
+public sealed record ImportColumn(
     string Key, string HeaderEn, string HeaderAr, bool Required, ImportColumnKind Kind, string HelpEn, string HelpAr,
     IReadOnlyList<ImportChoice>? Choices = null)
 {

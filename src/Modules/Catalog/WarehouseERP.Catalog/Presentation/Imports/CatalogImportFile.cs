@@ -83,11 +83,7 @@ internal static class CatalogImportFile
     // Header text -> cell index, or null (with an issue per missing column) when a required column is absent.
     private static Dictionary<string, int>? Columns(ImportSheetLayout layout, ImportSheet sheet, List<CatalogImportIssue> issues)
     {
-        var columns = new Dictionary<string, int>(StringComparer.Ordinal);
-        for (var i = 0; i < sheet.Headers.Count; i++)
-            if (CatalogImportLayout.Column(layout, sheet.Headers[i]) is { } column)
-                columns.TryAdd(column.Key, i);
-        var missing = layout.Columns.Where(c => c.Required && !columns.ContainsKey(c.Key)).ToList();
+        var (columns, missing) = ImportColumns.Map(layout.Columns, sheet.Headers);
         foreach (var column in missing)
             issues.Add(new CatalogImportIssue(layout.Sheet, 1, column.Key, ImportIssueCodes.MissingColumn,
                 $"The {layout.NameEn} sheet has no \"{column.HeaderEn}\" column. Use the template's header row.", null));
