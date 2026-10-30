@@ -14,6 +14,14 @@ internal sealed class CustomerDirectory(DbContext db) : ICustomerDirectory
     public Task<SalesCustomerInfo?> FindAsync(Guid customerId, CancellationToken ct) =>
         db.Set<Customer>().AsNoTracking().Where(x => x.Id == customerId).Select(ToInfo).SingleOrDefaultAsync(ct);
 
+    public async Task<IReadOnlyList<SalesCustomerInfo>> FindManyAsync(IReadOnlyCollection<Guid> customerIds, CancellationToken ct)
+    {
+        if (customerIds.Count == 0)
+            return [];
+        var ids = customerIds.ToArray();
+        return await db.Set<Customer>().AsNoTracking().Where(x => ids.Contains(x.Id)).Select(ToInfo).ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<SalesCustomerInfo>> SearchActiveAsync(string text, int take, CancellationToken ct)
     {
         var search = text.Trim();

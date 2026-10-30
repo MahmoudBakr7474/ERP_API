@@ -144,6 +144,7 @@ public static class PurchasingModule
         services.AddScoped<IdempotentRequests>();
         services.AddScoped<InvoicePosting>();
         services.AddScoped<ISupplierRepository, SupplierRepository>();
+        services.AddScoped<ISupplierDirectory, SupplierDirectory>();
         services.AddScoped<IDocumentPolicyRepository, DocumentPolicyRepository>();
         services.AddScoped<IPurchaseRequestRepository, PurchaseRequestRepository>();
         services.AddScoped<IPurchaseOrderRepository, PurchaseOrderRepository>();
