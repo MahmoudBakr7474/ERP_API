@@ -186,6 +186,674 @@ namespace WarehouseERP.Persistence.Migrations
                     b.ToTable("UserTokens", "identity");
                 });
 
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.Account", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("AllowsManualPosting")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(20)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("IsPosting")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("NameEn")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte?>("PartyType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<byte?>("Section")
+                        .HasColumnType("tinyint");
+
+                    b.Property<byte>("Type")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidFrom");
+
+                    b.Property<DateTime>("ValidTo")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidTo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId");
+
+                    b.HasIndex(new[] { "Code" }, "UX_Accounts_Code")
+                        .IsUnique();
+
+                    b.ToTable("Accounts", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_Accounts_Level", "[Level] BETWEEN 1 AND 8");
+
+                            t.HasCheckConstraint("CK_Accounts_Manual", "[AllowsManualPosting] = 0 OR [IsPosting] = 1");
+
+                            t.HasCheckConstraint("CK_Accounts_Party", "[PartyType] IS NULL OR ([IsPosting] = 1 AND [PartyType] BETWEEN 1 AND 2)");
+
+                            t.HasCheckConstraint("CK_Accounts_PostingSection", "[IsPosting] = 0 OR [Section] IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_Accounts_Section", "[Section] IS NULL OR [Section] BETWEEN 1 AND 11");
+
+                            t.HasCheckConstraint("CK_Accounts_Type", "[Type] BETWEEN 1 AND 5");
+                        });
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("AccountsHistory", "history");
+                                ttb
+                                    .HasPeriodStart("ValidFrom")
+                                    .HasColumnName("ValidFrom");
+                                ttb
+                                    .HasPeriodEnd("ValidTo")
+                                    .HasColumnName("ValidTo");
+                            }));
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.AccountMapping", b =>
+                {
+                    b.Property<byte>("Role")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidFrom");
+
+                    b.Property<DateTime>("ValidTo")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidTo");
+
+                    b.HasKey("Role");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("AccountMappings", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_AccountMappings_Role", "[Role] BETWEEN 1 AND 28");
+                        });
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("AccountMappingsHistory", "history");
+                                ttb
+                                    .HasPeriodStart("ValidFrom")
+                                    .HasColumnName("ValidFrom");
+                                ttb
+                                    .HasPeriodEnd("ValidTo")
+                                    .HasColumnName("ValidTo");
+                            }));
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.AccountingSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("CutoverDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("FiscalYearStartMonth")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("ManualJournalsRequireApproval")
+                        .HasColumnType("bit");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("ValidFrom")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidFrom");
+
+                    b.Property<DateTime>("ValidTo")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("datetime2")
+                        .HasColumnName("ValidTo");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AccountingSettings", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_AccountingSettings_Cutover", "DAY([CutoverDate]) = 1");
+
+                            t.HasCheckConstraint("CK_AccountingSettings_Single", "[Id] = 1");
+
+                            t.HasCheckConstraint("CK_AccountingSettings_StartMonth", "[FiscalYearStartMonth] BETWEEN 1 AND 12");
+                        });
+
+                    b.ToTable(tb => tb.IsTemporal(ttb =>
+                            {
+                                ttb.UseHistoryTable("AccountingSettingsHistory", "history");
+                                ttb
+                                    .HasPeriodStart("ValidFrom")
+                                    .HasColumnName("ValidFrom");
+                                ttb
+                                    .HasPeriodEnd("ValidTo")
+                                    .HasColumnName("ValidTo");
+                            }));
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAtUtc = new DateTime(2026, 10, 30, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CutoverDate = new DateOnly(2027, 1, 1),
+                            FiscalYearStartMonth = 1,
+                            ManualJournalsRequireApproval = true
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.DocumentNumberSequence", b =>
+                {
+                    b.Property<byte>("JournalType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid>("FiscalYearId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("LastNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("JournalType", "FiscalYearId");
+
+                    b.HasIndex("FiscalYearId");
+
+                    b.ToTable("DocumentNumberSequences", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_DocumentNumberSequences_Last", "[LastNumber] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.FiscalPeriod", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ClosedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ClosedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("FiscalYearId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FiscalYearId", "Number")
+                        .IsUnique();
+
+                    b.HasIndex(new[] { "StartDate" }, "UX_FiscalPeriods_StartDate")
+                        .IsUnique();
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex(new[] { "StartDate" }, "UX_FiscalPeriods_StartDate"), new[] { "EndDate", "Status" });
+
+                    b.ToTable("FiscalPeriods", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_FiscalPeriods_Closed", "([Status] = 2 AND [ClosedAtUtc] IS NOT NULL) OR ([Status] = 1 AND [ClosedAtUtc] IS NULL)");
+
+                            t.HasCheckConstraint("CK_FiscalPeriods_Dates", "[EndDate] >= [StartDate]");
+
+                            t.HasCheckConstraint("CK_FiscalPeriods_Number", "[Number] BETWEEN 1 AND 12");
+
+                            t.HasCheckConstraint("CK_FiscalPeriods_Status", "[Status] BETWEEN 1 AND 2");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.FiscalYear", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ClosedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("ClosedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ClosingJournalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClosingJournalId");
+
+                    b.HasIndex(new[] { "StartDate" }, "UX_FiscalYears_StartDate")
+                        .IsUnique();
+
+                    b.ToTable("FiscalYears", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_FiscalYears_Closed", "([Status] = 2 AND [ClosedAtUtc] IS NOT NULL) OR ([Status] = 1 AND [ClosedAtUtc] IS NULL AND [ClosingJournalId] IS NULL)");
+
+                            t.HasCheckConstraint("CK_FiscalYears_Dates", "[EndDate] > [StartDate]");
+
+                            t.HasCheckConstraint("CK_FiscalYears_Status", "[Status] BETWEEN 1 AND 2");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.FiscalYearEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<byte>("Action")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("FiscalYearId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("PeriodNumber")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FiscalYearId");
+
+                    b.ToTable("FiscalYearEvents", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_FiscalYearEvents_Action", "[Action] BETWEEN 1 AND 5");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("Key")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(40)");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Key");
+
+                    b.HasIndex("SubjectId");
+
+                    b.ToTable("IdempotencyRecords", "accounting");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.JournalEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .IsUnicode(false)
+                        .HasColumnType("char(3)")
+                        .IsFixedLength();
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("DraftNumber")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DraftNumber"));
+
+                    b.Property<Guid?>("FiscalPeriodId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("FiscalYearId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte>("JournalType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<bool>("LinesFixed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Number")
+                        .HasMaxLength(30)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(30)");
+
+                    b.Property<DateTime?>("PostedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("PostedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("PostingDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Reference")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("RequiresApproval")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("ReversalOfJournalId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int?>("SequenceNumber")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<Guid?>("SubmittedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalCredit")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("TotalDebit")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid?>("UpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedAtUtc");
+
+                    b.HasIndex("DraftNumber")
+                        .IsUnique();
+
+                    b.HasIndex("FiscalPeriodId");
+
+                    b.HasIndex("FiscalYearId");
+
+                    b.HasIndex("Number")
+                        .IsUnique()
+                        .HasFilter("[Number] IS NOT NULL");
+
+                    b.HasIndex("Status", "PostingDate");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("Status", "PostingDate"), new[] { "JournalType" });
+
+                    b.HasIndex("JournalType", "FiscalYearId", "SequenceNumber")
+                        .IsUnique()
+                        .HasFilter("[SequenceNumber] IS NOT NULL");
+
+                    b.HasIndex(new[] { "ReversalOfJournalId" }, "UX_JournalEntries_Reversal")
+                        .IsUnique()
+                        .HasFilter("[ReversalOfJournalId] IS NOT NULL AND [Status] <> 4");
+
+                    b.ToTable("JournalEntries", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_JournalEntries_Balanced", "[TotalDebit] = [TotalCredit] AND [TotalDebit] > 0");
+
+                            t.HasCheckConstraint("CK_JournalEntries_Posted", "([Status] = 3 AND [Number] IS NOT NULL AND [FiscalYearId] IS NOT NULL AND [FiscalPeriodId] IS NOT NULL AND [SequenceNumber] IS NOT NULL AND [PostedAtUtc] IS NOT NULL) OR ([Status] <> 3 AND [Number] IS NULL AND [PostedAtUtc] IS NULL)");
+
+                            t.HasCheckConstraint("CK_JournalEntries_Reversal", "([JournalType] = 3 AND [ReversalOfJournalId] IS NOT NULL) OR ([JournalType] <> 3 AND [ReversalOfJournalId] IS NULL)");
+
+                            t.HasCheckConstraint("CK_JournalEntries_Status", "[Status] BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("CK_JournalEntries_Type", "[JournalType] BETWEEN 1 AND 4");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.JournalEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<byte>("Action")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JournalEntryId");
+
+                    b.ToTable("JournalEvents", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_JournalEvents_Action", "[Action] BETWEEN 1 AND 8");
+                        });
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.JournalLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Credit")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<decimal>("Debit")
+                        .HasPrecision(19, 4)
+                        .HasColumnType("decimal(19,4)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<Guid>("JournalEntryId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("AccountId"), new[] { "JournalEntryId", "BranchId", "Debit", "Credit" });
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("JournalEntryId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("JournalLines", "accounting", t =>
+                        {
+                            t.HasCheckConstraint("CK_JournalLines_OneSide", "[Debit] >= 0 AND [Credit] >= 0 AND (([Debit] > 0 AND [Credit] = 0) OR ([Debit] = 0 AND [Credit] > 0))");
+                        });
+                });
+
             modelBuilder.Entity("WarehouseERP.Catalog.Domain.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7922,6 +8590,106 @@ namespace WarehouseERP.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.Account", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.Account", null)
+                        .WithMany()
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.AccountMapping", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.DocumentNumberSequence", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.FiscalYear", null)
+                        .WithMany()
+                        .HasForeignKey("FiscalYearId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.FiscalPeriod", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.FiscalYear", null)
+                        .WithMany("Periods")
+                        .HasForeignKey("FiscalYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.FiscalYear", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.JournalEntry", null)
+                        .WithMany()
+                        .HasForeignKey("ClosingJournalId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.FiscalYearEvent", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.FiscalYear", null)
+                        .WithMany("Events")
+                        .HasForeignKey("FiscalYearId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.JournalEntry", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.FiscalPeriod", null)
+                        .WithMany()
+                        .HasForeignKey("FiscalPeriodId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.FiscalYear", null)
+                        .WithMany()
+                        .HasForeignKey("FiscalYearId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.JournalEntry", null)
+                        .WithMany()
+                        .HasForeignKey("ReversalOfJournalId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.JournalEvent", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.JournalEntry", null)
+                        .WithMany("Events")
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.JournalLine", b =>
+                {
+                    b.HasOne("WarehouseERP.Accounting.Domain.Account", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Organization.Domain.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("WarehouseERP.Accounting.Domain.JournalEntry", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("JournalEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("WarehouseERP.Catalog.Domain.Category", b =>
                 {
                     b.HasOne("WarehouseERP.Catalog.Domain.Category", "Parent")
@@ -9634,6 +10402,20 @@ namespace WarehouseERP.Persistence.Migrations
                         .HasForeignKey("UnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.FiscalYear", b =>
+                {
+                    b.Navigation("Events");
+
+                    b.Navigation("Periods");
+                });
+
+            modelBuilder.Entity("WarehouseERP.Accounting.Domain.JournalEntry", b =>
+                {
+                    b.Navigation("Events");
+
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("WarehouseERP.Catalog.Domain.Category", b =>
